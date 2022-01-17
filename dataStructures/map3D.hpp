@@ -1,0 +1,35 @@
+#ifndef map3D_h
+#define map3D_h
+
+#include "mapPoint.hpp"
+
+class Map3D
+{
+    private:
+        std::vector<std::shared_ptr<MapPoint>> map_points;
+
+        // Mutexes
+        mutable std::shared_mutex mutex_map_points;
+    
+    public:
+        Map3D();
+        ~Map3D();
+
+        // Write functions
+        void addMapPoint(std::shared_ptr<MapPoint> map_point);
+        void removeMapPoint(int idx);
+        //void registerTriangulation(cv::Mat coordinates_3D, )
+        void batchUpdateMap(std::vector<std::shared_ptr<KeyPoint2>>& kpts1, std::vector<std::shared_ptr<KeyPoint2>>& kpts2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ, cv::Mat XYZ_std);
+        void resetMap();
+
+        // Read functions
+        int getNumMapPoints();
+        std::shared_ptr<MapPoint> getMapPoint(int idx);
+
+        // Static functions
+        static void calculateReprojectionError(cv::Mat uv1, cv::Mat uv2, cv::Mat K1, cv::Mat K2, cv::Mat T1, cv::Mat T2, cv::Mat reproj_error1, cv::Mat reproj_error2);
+        static cv::Mat calculate3DUncertainty(cv::Mat XYZ, cv::Mat uv1, cv::Mat uv2, cv::Mat K1, cv::Mat K2, cv::Mat T1, cv::Mat T2);
+
+};
+
+#endif

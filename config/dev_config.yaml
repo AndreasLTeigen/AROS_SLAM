@@ -1,0 +1,58 @@
+
+# -----Video In-----
+VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
+#VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
+VIn.file_format: png
+VIn.fps: 24
+
+# -----Camera param(KITTI)-----
+Camera.fx: 718.865
+Camera.fy: 718.856
+Camera.cx: 607.1928
+Camera.cy: 185.2157
+
+# -----Camera param(EuRoC)-----
+#Camera.fx: 458.654
+#Camera.fy: 457.296
+#Camera.cx: 367.215
+#Camera.cy: 248.375
+
+# -----Algorithms-----
+Method.detector: orb
+Method.descriptor: orb
+Method.matcher: bf_mono
+Method.pose_calculator: 5-point + outlier removal
+Method.point_reg_3D: ALL
+Method.point_cull_3D: OoW
+
+# -----Video Out-----
+VOut.show: true
+VOut.record: false
+VOut.rec_name: avg_slam_recording.avi
+VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
+
+# -----Log out----
+Log.save: false
+Log.name: poses.txt
+Log.path: output/
+
+# -----UI config-----
+UI.timing_show: true
+UI.tracking_log_show: true
+UI.GUI_show: true
+UI.GUI_size_x: 1024
+UI.GUI_size_y: 768
+UI.camera_size: 0.15
+UI.camera_line_width: 1.0
+UI.point_size: 2.0
+UI.line_width: 1.0
+UI.menu_bar_width: 175
+
+
+# -----Sequencer parameter config-----
+Seq.starting_frame_nr: 0
+Seq.frame_buffer_size: 5
+
+# -----Tracker parameter config-----
+Trck.tracking_window_length: 50
+Trck.keypoint_trail_length: 10
