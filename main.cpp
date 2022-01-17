@@ -7,7 +7,10 @@
 #include "tracking/tracking.hpp"
 #include "sequencer/sequencer.hpp"
 #include "util/util.hpp"
-#include "gui/pangolinInterface.hpp"
+
+#ifdef PANGOLIN_ACTIVE
+    #include "gui/pangolinInterface.hpp"
+#endif
 
 #include "test/concurrencyTest.hpp"
 
@@ -108,13 +111,15 @@ int AVGSlam()
     }
 
     // ###################### GUI Intialization and thread start ######################
-    std::thread GUI_thread;
-    std::shared_ptr<GUI> viewer = std::make_shared<GUI>();
-    if (UI_GUI_show)
-    {
-        viewer->GUIConfigParser(config);
-        GUI_thread = std::thread(&GUI::updateFrame, viewer, std::ref(tracker));
-    }
+    #ifdef PANGOLIN_ACTIVE
+        std::thread GUI_thread;
+        std::shared_ptr<GUI> viewer = std::make_shared<GUI>();
+        if (UI_GUI_show)
+        {
+            viewer->GUIConfigParser(config);
+            GUI_thread = std::thread(&GUI::updateFrame, viewer, std::ref(tracker));
+        }
+    #endif
 
 
     // ###################### Image loop ######################
@@ -177,12 +182,14 @@ int AVGSlam()
         }
     }
 
-    if (UI_GUI_show)
-    {
-        // Shut down GUI thread
-        viewer->setShutdown(true);
-        GUI_thread.join();
-    }
+    #ifdef PANGOLIN_ACTIVE
+        if (UI_GUI_show)
+        {
+            // Shut down GUI thread
+            viewer->setShutdown(true);
+            GUI_thread.join();
+        }
+    #endif
 
 	return 0;
     

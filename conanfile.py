@@ -5,13 +5,19 @@ class avg_slam_conan(ConanFile):
     generators = "cmake"
     author = "ALT"
 
+    options = {"pangolin": [True, False],
+                "wsl": [True, False]}
+    default_options = {"pangolin": False,
+                        "wsl": False}
+
     def requirements(self):
-        self.installPangolin()
         self.requires("cmake/3.20.4")
         self.requires("eigen/3.3.9")
         self.requires("opencv/4.5.1")
         self.requires("yaml-cpp/0.6.3")
-        self.requires("pangolin/1.0@demo/testing")
+        if self.options.pangolin:
+            self.installPangolin()
+            self.requires("pangolin/1.0@demo/testing")
 
     def imports(self):
         self.copy("*.dll", dst="bin", src="bin") # From bin to bin
@@ -19,6 +25,8 @@ class avg_slam_conan(ConanFile):
 
     def build(self):
         cmake = CMake(self)
+        cmake.definitions["pangolin_active"] = self.options.pangolin
+        cmake.definitions["os_wsl"] = self.options.wsl
         cmake.configure()
         cmake.build()
 
