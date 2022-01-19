@@ -10,6 +10,9 @@ class avg_slam_conan(ConanFile):
     default_options = {"pangolin": False,
                         "wsl": False}
 
+    def configure(self):
+        self.options["opencv"].with_ffmpeg = False
+
     def requirements(self):
         self.requires("cmake/3.20.4")
         self.requires("eigen/3.3.9")

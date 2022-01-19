@@ -40,14 +40,6 @@ int AVGSlam()
     double cx = config["Camera.cx"].as<double>();
     double cy = config["Camera.cy"].as<double>();
 
-    // Initializing method choices
-    const std::string detect_method = config["Method.detector"].as<std::string>();
-    const std::string desc_method = config["Method.descriptor"].as<std::string>();
-    const std::string matching_method = config["Method.matcher"].as<std::string>();
-    const std::string pose_calculation_method = config["Method.pose_calculator"].as<std::string>();
-    const std::string point_reg_3D_method = config["Method.point_reg_3D"].as<std::string>();
-    const std::string point_cull_3D_method = config["Method.point_cull_3D"].as<std::string>();
-
     // Initializing video output parameters
     bool VOut_show = config["VOut.show"].as<bool>();
     bool VOut_record = config["VOut.record"].as<bool>();
@@ -63,27 +55,17 @@ int AVGSlam()
 
     // Initializing user interface parameters
     bool UI_timing_show = config["UI.timing_show"].as<bool>();
-    bool UI_tracking_log_show = config["UI.tracking_log_show"].as<bool>();
     bool UI_GUI_show = config["UI.GUI_show"].as<bool>();
+    int UI_keypoint_trail_length = config["UI.keypoint_trail_length"].as<int>();
 
     // Initializing sequencer parameters
     int Seq_starting_frame_nr = config["Seq.starting_frame_nr"].as<int>();
     int Seq_frame_buffer_size = config["Seq.frame_buffer_size"].as<int>();
 
-    // Initializing tracker parameters
-    int Trck_tracking_window_length = config["Trck.tracking_window_length"].as<int>();
-    int Trck_keypoint_trail_length = config["Trck.keypoint_trail_length"].as<int>();
-
     // Initializing other parameters
     int idx_current;
     std::string name_current;
     cv::Mat  K_matrix, img_previous, img_current, img_disp, T_global, T_0; 
-    Detector detector = getDetectionMethod( detect_method );
-    Descriptor descriptor = getDescriptionMethod( desc_method );
-    Matcher matcher = getMatchingMethod( matching_method );
-    PoseCalculator pose_calculator = getRelativePoseCalculationMethod( pose_calculation_method );
-    PointReg3D point_reg_3D = get3DPointRegistrationMethod( point_reg_3D_method );
-    PointCull3D point_cull_3D = get3DPointCullingMethod( point_cull_3D_method );
 
     K_matrix = compileKMatrix( fx, fy, cx, cy );
     
@@ -91,9 +73,8 @@ int AVGSlam()
     // ###################### Sequencer and frame tracker Initialization ######################
 
     // Initialize sequencer and frame tracker
-    //FTracker tracker = FTracker(detector, descriptor, matcher, Trck_tracking_window_length, UI_timing_show);
-    std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(detector, descriptor, matcher, pose_calculator, point_reg_3D, Trck_tracking_window_length, UI_timing_show, UI_tracking_log_show);
-	Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VOut_rec_name, VIn_fps);
+    std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
+    Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VOut_rec_name, VIn_fps);
 	
     seq.set_current_index(Seq_starting_frame_nr);
     for ( int i = 0; i < seq.getFrameBufferSize(); i++)
@@ -147,7 +128,7 @@ int AVGSlam()
             tracker->drawKeypoints(img_current, img_disp);
             reduceImgContrast(img_disp);
             //tracker->drawEpipolarLinesWithPrev(img_disp);
-            tracker->drawKeypointTrails(img_disp, Trck_keypoint_trail_length);
+            tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
             //tracker->drawEpipoleWithPrev(img_disp);
             seq.visualize_image(img_disp);
         }
@@ -212,11 +193,6 @@ int main()
     an image is loaded 2 times, this vil disrupt the real validity
     of visualized matches with previous frame when pausing and 
     playing video*/
-
-/*TODO: The configuration intitialization is still very long. It is
-    kept like this to avoid the YAML dependency in the dataframe config
-    file. Can possibly be loaded into tracking and sequencer files
-    - Update: no native .as<std::map<>> function for yaml, have to DIY*/
 
 /*TODO: Returning a vector returns a copy of that vector, make sure that
     vectors are not returned unnecessarily*/

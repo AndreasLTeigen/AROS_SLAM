@@ -4,9 +4,10 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <shared_mutex>
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
-
 #include <opencv2/core/eigen.hpp>
+
 #include "tracking.hpp"
 #include "../util/util.hpp"
 #include "../keypointExtraction/findKeypoints.hpp"
@@ -29,25 +30,18 @@ using std::chrono::high_resolution_clock;
 
 
 
-FTracker::FTracker( Detector detec_type, 
-                    Descriptor descr_type, 
-                    Matcher matcher_type,
-                    PoseCalculator pose_calculation_type,
-                    PointReg3D point_reg_3D_type,
-                    int tracking_window_length,
-                    bool show_timings,
-                    bool show_tracking_log )
-{
+FTracker::FTracker(YAML::Node config){
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
-    this->detec_type = detec_type;
-    this->descr_type = descr_type;
-    this->matcher_type = matcher_type;
-    this->pose_calculation_type = pose_calculation_type;
-    this->point_reg_3D_type = point_reg_3D_type;
-    this->tracking_window_length = tracking_window_length;
-    this->show_timings = show_timings;
-    this->show_tracking_log = show_tracking_log;
+    this->detec_type = getDetectionMethod( config["Method.detector"].as<std::string>() );
+    this->descr_type = getDescriptionMethod( config["Method.descriptor"].as<std::string>() );
+    this->matcher_type = getMatchingMethod( config["Method.matcher"].as<std::string>() );
+    this->pose_calculation_type = getRelativePoseCalculationMethod( config["Method.pose_calculator"].as<std::string>() );
+    this->point_reg_3D_type = get3DPointRegistrationMethod( config["Method.point_reg_3D"].as<std::string>() );
+    this->point_cull_3D_type = get3DPointCullingMethod( config["Method.point_cull_3D"].as<std::string>() );
+    this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
+    this->show_timings = config["UI.timing_show"].as<bool>();
+    this->show_tracking_log = config["UI.tracking_log_show"].as<bool>();
     this->map_3d = std::make_shared<Map3D>();
 }
 

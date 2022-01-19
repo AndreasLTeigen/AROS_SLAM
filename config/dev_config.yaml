@@ -39,6 +39,7 @@ Log.path: output/
 # -----UI config-----
 UI.timing_show: true
 UI.tracking_log_show: true
+UI.keypoint_trail_length: 10
 UI.GUI_show: true
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
@@ -55,4 +56,3 @@ Seq.frame_buffer_size: 5
 
 # -----Tracker parameter config-----
 Trck.tracking_window_length: 50
-Trck.keypoint_trail_length: 10

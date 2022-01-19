@@ -19,6 +19,7 @@ class FTracker
         Matcher matcher_type;
         PoseCalculator pose_calculation_type;
         PointReg3D point_reg_3D_type;
+        PointCull3D point_cull_3D_type;
         int curr_frame_nr, tracking_window_length;
         std::vector<std::shared_ptr<FrameData>> frame_list;  // TODO:Change this to something like <frame_window_list>
         std::shared_ptr<Map3D> map_3d;
@@ -30,14 +31,7 @@ class FTracker
         mutable std::shared_mutex mutex_map3D;
 
     public:
-        FTracker(   Detector detec_type, 
-                    Descriptor descr_type, 
-                    Matcher matcher_type,
-                    PoseCalculator pose_calculation_type,
-                    PointReg3D point_reg_3D_type,
-                    int tracking_window_length,
-                    bool show_timings = false,
-                    bool show_tracking_log = false);
+        FTracker( YAML::Node config);
         ~FTracker();
 
         int getCurrentFrameNr();
