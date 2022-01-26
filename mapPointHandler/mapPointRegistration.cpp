@@ -6,6 +6,7 @@
 
 #include "mapPointRegistration.hpp"
 #include "mapPointRegistrationMethods/linearInclusiveMPReg.hpp"
+#include "mapPointRegistrationMethods/depthGT.hpp"
 
 using cv::KeyPoint;
 using std::vector;
@@ -15,8 +16,13 @@ PointReg3D get3DPointRegistrationMethod(std::string point_reg_3D_method)
 {
     if ( point_reg_3D_method == "ALL" )
     {
-        // All points that are matched are registered as 3D points
+        // All points that are matched are registered as 3D points.
         return PointReg3D::ALL;
+    }
+    else if ( "depth_gt")
+    {
+        // Points from the most recent frame is triangulated with a ground truth depth value.
+        return PointReg3D::DEPTH_GT;
     }
     else
     {
@@ -31,6 +37,18 @@ void register3DPoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameD
     switch(point_reg_3D)
     {
         case PointReg3D::ALL:
+        {
             linearInclusiveMPReg(frame1, frame2, map_3d);
+        } break;
+
+        case PointReg3D::DEPTH_GT:
+        {
+            depthGTMPReg( frame1, map_3d );
+        } break;
+        
+        default:
+        {
+            std::cout << "ERROR: MAP POINT REGISTRATION ALGORITHM NOT IMPLEMENTED" << std::endl;
+        }
     }
 }

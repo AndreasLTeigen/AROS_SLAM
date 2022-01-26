@@ -1,6 +1,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "findKeypoints.hpp"
+#include "extractionMethods/bucketing.hpp"
 
 using std::vector;
 
@@ -15,6 +16,10 @@ Detector getDetectionMethod( std::string detect_method )
     if ( detect_method == "orb" )
     {
         return Detector::ORB;
+    }
+    else if ( detect_method == "orb_nb" )
+    {
+        return Detector::ORB_NB;
     }
     else
     {
@@ -49,17 +54,40 @@ void findKeypoints(cv::Mat& img, std::shared_ptr<FrameData> frame, Detector dete
     switch(detect_type)
     {
         case Detector::ORB:
-            Ptr<cv::ORB> detector = cv::ORB::create();
+        {
+            Ptr<cv::ORB> detector = cv::ORB::create(frame->getNumKeypoints());
             detector->detect( img, kpts );
             opencv_method = true;
+        } break;
+        
+        case Detector::ORB_NB:
+        {
+            Ptr<cv::ORB> detector = cv::ORB::create(frame->getNumKeypoints());
+            detector->detect( img, kpts );
+            globalNaiveBucketing( img, kpts, 10, 10 );
+            opencv_method = true;
+            std::cout << "Remaining keypoints: " << kpts.size() << std::endl;
+        } break;
+
+        default:
+        {
+            std::cout << "ERROR: KEYPOINT DETECTION ALGORITHM NOT IMPLEMENTED" << std::endl;
+        }
     }
 
     switch(desc_type)
     {
         case Descriptor::ORB:
+        {
             Ptr<cv::ORB> descriptor = cv::ORB::create();
             descriptor->compute( img, kpts, desc);
             opencv_method = true;
+        } break;
+        
+        default:
+        {
+            std::cout << "ERROR: KEYPOINT DESCRIPTION ALGORITHM NOT IMPLEMENTED" << std::endl;
+        }
     }
 
     if (opencv_method)

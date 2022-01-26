@@ -11,6 +11,7 @@
 #include "tracking.hpp"
 #include "../util/util.hpp"
 #include "../keypointExtraction/findKeypoints.hpp"
+#include "../motionPrior/motionPrior.hpp"
 #include "../keypointMatching/matchKeypoints.hpp"
 #include "../poseCalculation/poseCalculation.hpp"
 #include "../mapPointHandler/mapPointRegistration.hpp"
@@ -36,6 +37,7 @@ FTracker::FTracker(YAML::Node config){
     this->detec_type = getDetectionMethod( config["Method.detector"].as<std::string>() );
     this->descr_type = getDescriptionMethod( config["Method.descriptor"].as<std::string>() );
     this->matcher_type = getMatchingMethod( config["Method.matcher"].as<std::string>() );
+    this->motion_prior_type = getMotionPriorMethod( config["Method.motion_prior"].as<std::string>() );
     this->pose_calculation_type = getRelativePoseCalculationMethod( config["Method.pose_calculator"].as<std::string>() );
     this->point_reg_3D_type = get3DPointRegistrationMethod( config["Method.point_reg_3D"].as<std::string>() );
     this->point_cull_3D_type = get3DPointCullingMethod( config["Method.point_cull_3D"].as<std::string>() );
@@ -75,6 +77,11 @@ Detector FTracker::getDetectorType()
 Descriptor FTracker::getDescriptorType()
 {
     return this->descr_type;
+}
+
+MotionPrior FTracker::getMotionPriorType()
+{
+    return this->motion_prior_type;
 }
 
 Matcher FTracker::getMatcherType()
@@ -144,12 +151,12 @@ void FTracker::updateGlobalPose(cv::Mat T_rel, shared_ptr<FrameData> current_fra
     current_frame->setGlobalPose(this->getGlobalPose());
 }
 
-void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix)
+void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoints)
 {
     /* Creates a new initalization frame. Currently just extracts the 
        keypoints with descriptor*/
 
-    shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
+    shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix, n_keypoints));
 
     findKeypoints( img, frame, this->getDetectorType(), this->getDescriptorType());
     this->appendTrackingFrame(frame);
@@ -157,13 +164,13 @@ void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix)
 
 
 
-void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_frame_spacing)
+void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoints, int comparison_frame_spacing)
 {
     /* Core function of FTracker, recieves new image, extracts information
        with chosen methods and redirects to matching / pose prediction
        funcitons */
 
-    shared_ptr<FrameData> frame1 = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
+    shared_ptr<FrameData> frame1 = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix, n_keypoints));
     shared_ptr<FrameData> frame2 = this->getFrame(-comparison_frame_spacing);
 
 
@@ -171,9 +178,12 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     auto kpts_start_time = high_resolution_clock::now();
 
+    // Motion prior
+    calculateMotionPrior( frame1, frame2, this->getMotionPriorType() );
+
 
     // Keypoint identification
-    findKeypoints( img, frame1, this->getDetectorType(), this->getDescriptorType());
+    findKeypoints( img, frame1, this->getDetectorType(), this->getDescriptorType() );
 
 
     auto kpts_end_time = high_resolution_clock::now(); 

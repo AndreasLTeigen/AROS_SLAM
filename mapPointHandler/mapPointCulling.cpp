@@ -7,7 +7,7 @@ PointCull3D get3DPointCullingMethod(std::string point_cull_3D_method)
 {
     if ( point_cull_3D_method == "OoW" )
     {
-        // All points that are not visible any frame in the window is culled
+        // All points that are not visible any frame in the local window is culled (Outside of Window)
         return PointCull3D::OoW;
     }
     else

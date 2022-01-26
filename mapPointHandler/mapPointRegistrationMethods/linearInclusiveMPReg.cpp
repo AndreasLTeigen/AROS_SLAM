@@ -20,6 +20,7 @@ void linearInclusiveMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Fr
         map_3d:     3D global map
     Effect:
         map_3d->map_points: Adds new matches by creating new <mapPoint>s or updating existing <mapPoint>s
+    Overview: Linearly triangulates every matched keypoint between frame 1 and 2.
     TODO: Clean up linearInclusiveMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )
     */
 

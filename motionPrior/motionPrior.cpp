@@ -5,7 +5,7 @@
 #include "motionPrior.hpp"
 
 
-MotionPrior getMotionPriorMethodMethod( std::string motion_prior_method )
+MotionPrior getMotionPriorMethod( std::string motion_prior_method )
 {
     /* Retrieve the right keypoint matching class from the corresponding config string */
 
@@ -26,6 +26,18 @@ void calculateMotionPrior( std::shared_ptr<FrameData> frame1, std::shared_ptr<Fr
     switch(motion_prior_method)
     {
         case MotionPrior::constant:
-            std::cout << "Implement constant motion prior method" << std::endl;
+        {
+            std::cout << "ERROR: MOTION PRIOR METHOD NOT IMPLEMENTED" << std::endl;
+        } break;
+
+        case MotionPrior::GT:
+        {
+            std::cout << "ERROR: MOTION PRIOR METHOD NOT IMPLEMENTED" << std::endl;
+        } break;
+
+        default:
+        {
+            std::cout << "ERROR: MOTION PRIOR ALGORITHM NOT IMPLEMENTED" << std::endl;
+        }
     }
 }

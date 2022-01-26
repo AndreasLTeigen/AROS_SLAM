@@ -13,6 +13,21 @@
 
 using std::string;
 
+
+std::string zeroPad(int num, int pad_n)
+{
+    /*
+    Arguments:
+        num:        Integer one wants to add padding to.
+        pad_n:      Total length after padding.
+    Returns:
+        out:        String of integer <num> padded with 0s to be a total of <pad_n> long.
+    */
+    std::ostringstream out;
+    out << std::setfill('0') << std::setw(pad_n) << num;
+    return out.str();
+}
+
 void reduceImgContrast(cv::Mat img, int lower_level, int upper_level)
 {
     /* Function for moving the contrast of the image to the newly defined
@@ -171,6 +186,21 @@ void dehomogenizeMatrix(cv::Mat& X)
     {
         X.col(i) = X.col(i) / X.at<double>(num_rows-1,i);
     }
+}
+
+cv::Mat dilateKptWDepth(double x, double y, double z, cv::Mat T)
+{
+    /*
+    Arguments:
+        x:      Horizontal pixel position in image.
+        y:      Vertical pixel position in image.
+        z:      Depth in meters.
+        T:      Camera global transformation matrix [shape 4 x 4].
+    Returns:
+        XYZ:    Position of map point given in global coordinates.
+    */
+    cv::Mat XYZ = cv::Mat::zeros(3, 1, CV_64F);
+    return XYZ;
 }
 
 std::vector<double> transform2stdParam(cv::Mat &T)

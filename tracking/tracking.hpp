@@ -3,6 +3,7 @@
 
 #include "../keypointExtraction/findKeypoints.hpp"
 #include "../keypointMatching/matchKeypoints.hpp"
+#include "../motionPrior/motionPrior.hpp"
 #include "../poseCalculation/poseCalculation.hpp"
 #include "../mapPointHandler/mapPointRegistration.hpp"
 #include "../mapPointHandler/mapPointCulling.hpp"
@@ -17,6 +18,7 @@ class FTracker
         Detector detec_type;
         Descriptor descr_type;
         Matcher matcher_type;
+        MotionPrior motion_prior_type;
         PoseCalculator pose_calculation_type;
         PointReg3D point_reg_3D_type;
         PointCull3D point_cull_3D_type;
@@ -31,7 +33,7 @@ class FTracker
         mutable std::shared_mutex mutex_map3D;
 
     public:
-        FTracker( YAML::Node config);
+        FTracker( YAML::Node config );
         ~FTracker();
 
         int getCurrentFrameNr();
@@ -39,6 +41,7 @@ class FTracker
         int getFrameListLength();
         Detector getDetectorType();
         Descriptor getDescriptorType();
+        MotionPrior getMotionPriorType();
         Matcher getMatcherType();
         PoseCalculator getPoseCalcuationType();
         PointReg3D getPointReg3DType();
@@ -49,8 +52,8 @@ class FTracker
         void setCurrentFrameNr(int curr_frame_nr);
         void setGlobalPose(cv::Mat T_global);
         void updateGlobalPose(cv::Mat T_rel, std::shared_ptr<FrameData> current_frame);
-        void initializeTracking(cv::Mat &img, int img_id, cv::Mat K_matrix);
-        void trackFrame(cv::Mat &img, int img_id, cv::Mat K_matrix, int comparison_frame_spacing=1);
+        void initializeTracking(cv::Mat &img, int img_id, cv::Mat K_matrix, int nKeypoints=500);
+        void trackFrame(cv::Mat &img, int img_id, cv::Mat K_matrix, int nKeypoints=500, int comparison_frame_spacing=1);
         void appendTrackingFrame(std::shared_ptr<FrameData> new_frame);
         void frameListPruning();
         void drawKeypoints(cv::Mat &src, cv::Mat &dst, int frame_nr=-1);

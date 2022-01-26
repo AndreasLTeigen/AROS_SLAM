@@ -5,7 +5,7 @@
 
 #include "../dataStructures/frameData.hpp"
 
-enum class Detector {ORB, NONE};
+enum class Detector {ORB, ORB_NB, NONE};
 enum class Descriptor {ORB, NONE};
 
 Detector getDetectionMethod( std::string detect_method );

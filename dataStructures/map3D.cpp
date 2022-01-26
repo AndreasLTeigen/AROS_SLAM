@@ -23,6 +23,30 @@ void Map3D::addMapPoint(std::shared_ptr<MapPoint> map_point)
     this->map_points.push_back(map_point);
 }
 
+void Map3D::createMapPoint(cv::Mat XYZ, cv::Mat XYZ_std, shared_ptr<KeyPoint2> kpt1, cv::Mat T1)
+{
+    /*
+    Arguments:
+        XYZ:        Dehomogenized 3D point in the world frame, ordered in same manner 
+                    as kptsX [shape 4 x 1] 
+        XYZ_std:    Standard deviation of 3D point in the world frame, same structure
+                    as XYZ [shape 3 x 1] 
+        kptX:       Keypoint associated with the new mapPoint
+        TX:         Global transformation matrices of frameX
+    Overview:
+        Generates a map point based on only one point (with 3D data)
+    */
+    shared_ptr<MapPoint> map_point = std::make_shared<MapPoint>(XYZ.at<double>(0,0), 
+                                                            XYZ.at<double>(1,0), 
+                                                            XYZ.at<double>(2,0), 
+                                                            XYZ_std.at<double>(0,0), 
+                                                            XYZ_std.at<double>(1,0), 
+                                                            XYZ_std.at<double>(2,0), 
+                                                            kpt1, T1);
+    this->addMapPoint(map_point);
+    kpt1->setMapPoint(map_point);
+}
+
 void Map3D::removeMapPoint(int idx)
 {
     std::unique_lock lock(this->mutex_map_points);
@@ -33,9 +57,12 @@ void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_p
 {
     /*
     Arguments:
-        kptsX:  List of matched keypoints,in order of matches [shape n]
-        XYZ:    Dehomogenized 3D point in the world frame, ordered in same manner 
-                as kptsX [shape 4 x n] 
+        kptsX:      List of matched keypoints,in order of matches [shape n]
+        TX:         Global transformation matrices of frameX
+        XYZ:        Dehomogenized 3D point in the world frame, ordered in same manner 
+                    as kptsX [shape 4 x n] 
+        XYZ_std:    Standard deviation of 3D point in the world frame, same structure
+                    as XYZ [shape 3 x n] 
     */
     // If existing track, register new kpt to track and update position
     // If new track, create new map point and register both kpts and give position
@@ -80,7 +107,7 @@ void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_p
                                                                         T1, T2);
             this->addMapPoint(map_point);
             temp_key_point1->setMapPoint(map_point);
-            //temp_key_point2->setMapPoint(map_point);
+            temp_key_point2->setMapPoint(map_point);
         }
         else
         {

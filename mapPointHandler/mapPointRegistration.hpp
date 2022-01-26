@@ -4,7 +4,7 @@
 #include "../dataStructures/frameData.hpp"
 #include "../dataStructures/map3D.hpp"
 
-enum class PointReg3D {ALL, NONE};
+enum class PointReg3D {ALL, DEPTH_GT, NONE};
 
 PointReg3D get3DPointRegistrationMethod(std::string point_reg_3D_method);
 

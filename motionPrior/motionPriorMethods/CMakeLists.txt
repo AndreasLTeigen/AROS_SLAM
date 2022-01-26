@@ -2,8 +2,10 @@ add_library(MotionPriorMethodsLib)
 target_sources(MotionPriorMethodsLib #${PROJECT_NAME}_lib 
 	PRIVATE 
 		constant.cpp
+		groundTruth.cpp
 	PUBLIC
 		constant.hpp
+		groundTruth.hpp
 )
 
 

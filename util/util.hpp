@@ -1,6 +1,8 @@
 #ifndef util_h
 #define util_h
 
+std::string zeroPad(int num, int pad_n);
+
 void reduceImgContrast(cv::Mat img, int lower_level=128, int upper_level=255);
 void drawCircle(cv::Mat &img, cv::Point point, int radius=15);
 void drawCircle(cv::Mat &img, cv::Mat point, int radius=15);
@@ -24,6 +26,8 @@ void T2RotAndTrans(cv::Mat &T, cv::Mat &R, cv::Mat &t);
 cv::Mat inverseTMatrix(cv::Mat T);
 
 void dehomogenizeMatrix(cv::Mat& X);
+
+cv::Mat dilateKptWDepth(double x, double y, double z, cv::Mat T);
 
 std::vector<double> transform2stdParam(cv::Mat &T);
 

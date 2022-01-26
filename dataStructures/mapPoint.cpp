@@ -25,6 +25,20 @@ MapPoint::MapPoint(double X, double Y, double Z, double std_X, double std_Y, dou
     this->updateMeanViewDir(T2);
 }
 
+MapPoint::MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, Mat T1)
+{
+    // Constructor for map point with depth prior
+    this->observation_cnt = 1;
+    this->setCoordX(X);
+    this->setCoordY(Y);
+    this->setCoordZ(Z);
+    this->setSTDX(std_X);
+    this->setSTDY(std_Y);
+    this->setSTDZ(std_Z);
+    this->addObservationKpt(kpt1);
+    this->updateMeanViewDir(T1);
+}
+
 MapPoint::~MapPoint()
 {
     //TODO: Implement destructor

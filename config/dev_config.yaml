@@ -1,7 +1,8 @@
 
 # -----Video In-----
-VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
+#VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
+VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/A/
 VIn.file_format: png
 VIn.fps: 24
 
@@ -21,8 +22,9 @@ Camera.cy: 185.2157
 Method.detector: orb
 Method.descriptor: orb
 Method.matcher: bf_mono
+Method.motion_prior: constant
 Method.pose_calculator: 5-point + outlier removal
-Method.point_reg_3D: ALL
+Method.point_reg_3D: depth_gt
 Method.point_cull_3D: OoW
 
 # -----Video Out-----
@@ -40,7 +42,7 @@ Log.path: output/
 UI.timing_show: true
 UI.tracking_log_show: true
 UI.keypoint_trail_length: 10
-UI.GUI_show: true
+UI.GUI_show: false
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15
@@ -56,3 +58,4 @@ Seq.frame_buffer_size: 5
 
 # -----Tracker parameter config-----
 Trck.tracking_window_length: 50
+Trck.nKeypoints_per_image: 500

@@ -34,6 +34,8 @@ class MapPoint
         MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, 
                     std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2,
                     cv::Mat T1, cv::Mat T2);
+        MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, 
+                    std::shared_ptr<KeyPoint2> kpt1, cv::Mat T1);
         ~MapPoint();
 
         // Write functions

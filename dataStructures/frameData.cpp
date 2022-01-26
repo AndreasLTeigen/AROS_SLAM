@@ -25,6 +25,12 @@ FrameData::~FrameData()
 }
 
 // ----------- Write functions -------------
+void FrameData::setNumKeypoints( int n_keypoints )
+{
+    std::unique_lock lock(this->mutex_n_keypoints);
+    this->n_keypoints = n_keypoints;
+}
+
 void FrameData::setKMatrix( Mat K_matrix )
 {
     std::unique_lock lock(this->mutex_K_matrix);
@@ -35,6 +41,12 @@ void FrameData::setGlobalPose( cv::Mat global_pose)
 {
     std::unique_lock lock(this->mutex_global_pose);
     this->global_pose = global_pose;
+}
+
+void FrameData::setAllKeypoints( vector<std::shared_ptr<KeyPoint2>> kpts )
+{
+    std::unique_lock lock(this->mutex_kpts);
+    this->kpts = kpts;
 }
 
 void FrameData::promoteToKeyframe()
@@ -256,6 +268,12 @@ int FrameData::getImgId()
         this->img_id:       Image id of current frame, unique per image.
     */
     return this->img_id;
+}
+
+int FrameData::getNumKeypoints()
+{
+    std::shared_lock lock(this->mutex_n_keypoints);
+    return this->n_keypoints;
 }
 
 Mat FrameData::getKMatrix()

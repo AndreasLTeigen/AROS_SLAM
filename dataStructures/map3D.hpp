@@ -17,8 +17,8 @@ class Map3D
 
         // Write functions
         void addMapPoint(std::shared_ptr<MapPoint> map_point);
+        void createMapPoint(cv::Mat XYZ, cv::Mat XYZ_std, std::shared_ptr<KeyPoint2> kpt1, cv::Mat T1);
         void removeMapPoint(int idx);
-        //void registerTriangulation(cv::Mat coordinates_3D, )
         void batchUpdateMap(std::vector<std::shared_ptr<KeyPoint2>>& kpts1, std::vector<std::shared_ptr<KeyPoint2>>& kpts2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ, cv::Mat XYZ_std);
         void resetMap();
 

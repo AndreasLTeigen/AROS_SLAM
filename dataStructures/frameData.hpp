@@ -15,6 +15,7 @@ class FrameData
     private:
         // Variables
         const int frame_nr, img_id;
+        int n_keypoints;
         bool is_keyframe = false;
         cv::Mat K_matrix;
         cv::Mat global_pose = cv::Mat::eye(4,4,CV_64F);
@@ -23,6 +24,7 @@ class FrameData
         std::map<int, std::vector<std::shared_ptr<KeyPoint2>>> matched_kpts;
 
         // Mutexes
+        mutable std::shared_mutex mutex_n_keypoints;
         mutable std::shared_mutex mutex_K_matrix;
         mutable std::shared_mutex mutex_global_pose;
         mutable std::shared_mutex mutex_is_keyframe;
@@ -31,19 +33,21 @@ class FrameData
         mutable std::shared_mutex mutex_matched_kpts;
 
     public:
-        FrameData( int frame_nr, int img_id, cv::Mat K_matrix ) : frame_nr(frame_nr), img_id(img_id)
-                                                                    {this->setKMatrix( K_matrix );} ;
+        FrameData( int frame_nr, int img_id, cv::Mat K_matrix, int n_keypoints ) : frame_nr(frame_nr), img_id(img_id), n_keypoints(n_keypoints)
+                                                                                {this->setKMatrix( K_matrix );} ;
         ~FrameData();
 
         // Write functions
+        void setNumKeypoints( int n_keypoints );
         void setKMatrix( cv::Mat K_matrix );
         void setGlobalPose( cv::Mat global_pose);
+        void setAllKeypoints( std::vector<std::shared_ptr<KeyPoint2>> kpts );
         void promoteToKeyframe();
         void demoteFromKeyframe();
         void addKeypoint( std::shared_ptr<KeyPoint2> kpt );
         void registerKeypoints( std::vector<cv::KeyPoint> kpts, cv::Mat descrs );
-        void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list);
-        std::vector<int> removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> connecting_frame);
+        void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list );
+        std::vector<int> removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> connecting_frame );
         void addKptToMatchList( std::shared_ptr<KeyPoint2> kpt, std::shared_ptr<FrameData> connecting_frame );
         void addRelPose( std::shared_ptr<Pose> rel_pose, std::shared_ptr<FrameData> connecting_frame );
         
@@ -56,6 +60,7 @@ class FrameData
         bool isKeyframe();
         int getFrameNr();
         int getImgId();
+        int getNumKeypoints();
         cv::Mat getKMatrix();
         cv::Mat getGlobalPose();
         std::vector<std::shared_ptr<KeyPoint2>> getKeypoints();
