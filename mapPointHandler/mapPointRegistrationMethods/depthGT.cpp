@@ -3,6 +3,7 @@
 #include <memory>
 #include <iomanip>
 #include <iostream>
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 
 #include "depthGT.hpp"
@@ -11,11 +12,14 @@
 
 void depthGTMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Map3D> map_3d)
 {
-    double max_depth_m = 25;
-    int max_depth_p = 65535;
-    std::string depth_gt_folder = "/mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/D/";
-    std::string depth_gt_image = "seq01_veh0_camM0_D-" + zeroPad(frame1->getImgId(), 8);
-    std::string depth_gt_file_format = ".png";
+    YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
+
+    double max_depth_m = config["depth_gt.max_depth_m"].as<double>();
+    int max_depth_p = config["depth_gt.max_depth_p"].as<int>();
+    std::string depth_gt_folder = config["depth_gt.folder"].as<std::string>();
+    std::string depth_gt_prefix = config["depth_gt.prefix"].as<std::string>();
+    std::string depth_gt_image = depth_gt_prefix + zeroPad(frame1->getImgId(), 8);
+    std::string depth_gt_file_format = config["depth_gt.file_format"].as<std::string>();
     std::string depth_gt_path = depth_gt_folder + depth_gt_image + depth_gt_file_format;
 
     cv::Mat depth_gt = cv::imread(depth_gt_path, cv::IMREAD_ANYDEPTH);
@@ -41,7 +45,7 @@ void depthGTMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Map3D> map
     }
     //std::cout << depth_gt.size() << std::endl;
     //std::cout << depth_gt << std::endl;
-    //depth = int(depth_gt.at<ushort>(719, 1279));
-    //std::cout << depth << std::endl;
-    //std::cout << depth*max_depth_m /  max_depth_p << std::endl;
+    //depth_p = int(depth_gt.at<ushort>(719, 1279));
+    //std::cout << depth_p << std::endl;
+    //std::cout << depth_p*max_depth_m /  max_depth_p << std::endl;
 }

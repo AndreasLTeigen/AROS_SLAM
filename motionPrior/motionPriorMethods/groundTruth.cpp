@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 
 #include "groundTruth.hpp"
@@ -9,9 +10,11 @@
 
 cv::Mat motionPriorGT(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2)
 {
-    std::string timestamp_path = "/mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/camM0_timestamps.csv";
-    std::string gt_poses_path = "/mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/camM0_poses/camM0_poses_transformation_matrix.csv";
-    std::string image_prefix = "seq01_veh0_camM0_D-";
+    YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
+
+    std::string timestamp_path = config["pose_gt.timestamp_folder"].as<std::string>();
+    std::string gt_poses_path = config["pose_gt.pose_folder"].as<std::string>();
+    std::string image_prefix = config["pose_gt.prefix"].as<std::string>();
 
 
     // Retrieveing the timestamp corresponding with the image id

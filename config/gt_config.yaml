@@ -1,0 +1,13 @@
+
+# -----Depth map-----
+depth_gt.max_depth_m: 25
+depth_gt.max_depth_p: 65535
+depth_gt.folder: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/D/
+depth_gt.prefix: seq01_veh0_camM0_D-
+depth_gt.file_format: .png
+
+
+# -----Camera pose-----
+pose_gt.timestamp_folder: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/camM0_timestamps.csv
+pose_gt.pose_folder: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/camM0_poses/camM0_poses_transformation_matrix.csv
+pose_gt.prefix: seq01_veh0_camM0_D-
