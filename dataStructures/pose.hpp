@@ -17,7 +17,6 @@ class Pose
         cv::Mat E_matrix;
         std::weak_ptr<FrameData> frame1;
         std::weak_ptr<FrameData> frame2;
-        ParamID test;
         std::map<ParamID, std::shared_ptr<Parametrization>> params;
 
         // Mutexes
@@ -34,13 +33,16 @@ class Pose
         void createParametrization( cv::Mat R, cv::Mat t, ParamID parametrization_id=ParamID::STDPARAM );
     
     public:
-        Pose(cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, ParamID parametrization_id=ParamID::STDPARAM, int pose_nr=-1);
+        Pose( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, int pose_nr=-1 );
+        Pose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, int pose_nr=-1 );
+        //Pose( cv::Mat T_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, int pose_nr=-1 );
         ~Pose();
 
         // Write functions
-        void setPose( cv::Mat E_matrix, ParamID parametrization_id=ParamID::STDPARAM );
+        void setPose( cv::Mat E_matrix );
         void setPose( std::vector<double> params, ParamID parametrization_id=ParamID::STDPARAM );
         void updateParametrization( ParamID parametrization_id=ParamID::STDPARAM );
+        void updatePoseVariables(cv::Mat T_matrix);
         void updatePoseVariables(cv::Mat R_matrix, cv::Mat t_vector);
         void updatePoseVariables(cv::Mat E_matrix, cv::Mat R_matrix, cv::Mat t_vector);
         void updatePoseVariables(ParamID parametrization_id);

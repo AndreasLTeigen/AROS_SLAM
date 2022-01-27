@@ -32,6 +32,13 @@ void matchKeypoints( shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2,
     switch(matcher_type)
     {
         case Matcher::brute_force_mono:
+        {
             doBruteForceMatchingMono( frame1, frame2 );
+        } break;
+
+        default:
+        {
+            std::cout << "ERROR: KEYPOINT MATCHING ALGORITHM NOT IMPLEMENTED" << std::endl;
+        }
     }
 }

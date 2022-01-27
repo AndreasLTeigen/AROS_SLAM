@@ -1,4 +1,5 @@
 #include <fstream>
+#include <sstream>
 #include <iostream>
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
@@ -150,7 +151,7 @@ cv::Mat T2Rot(cv::Mat &T)
 cv::Mat T2Trans(cv::Mat &T)
 {
     // Chekc if getting rows and cols is quicker than this process
-    cv::Mat trans = cv::Mat::zeros(3,1,T.type());
+    cv::Mat trans = cv::Mat::zeros(3,1,CV_64F);
     trans = (cv::Mat_<double>(3,1)<<T.at<double>(0,3),
                                 T.at<double>(1,3),
                                 T.at<double>(2,3));
@@ -177,6 +178,48 @@ cv::Mat inverseTMatrix(cv::Mat T)
     return T_inv;
 }
 
+cv::Mat compileTMatrix(std::vector<double> pose)
+{
+    /*
+    Arguments:
+        pose:       Vector containing all values of T [shape 1 x 12]
+    Returns:
+        T:          Transformation matrix [shape 4 x 4]
+    */
+
+    cv::Mat T = cv::Mat::eye(4,4,CV_64F);
+    int h = 3;
+    int w = 4;
+    for ( int i = 0; i < h; i++ )
+    {
+        for ( int j = 0; j < w; j++ )
+        {
+            T.at<double>(i,j) = pose[i*w + j];
+        }
+    }
+    return T;
+}
+
+cv::Mat xy2Mat(double x, double y)
+{
+    double data [2] = {x, y};
+    cv::Mat xy = cv::Mat(1,2, CV_64F, data);
+    return xy.t(); 
+}
+
+cv::Mat xyToxy1(double x, double y)
+{
+    cv::Mat xy = xy2Mat(x, y);
+    xyToxy1(xy);
+    return xy;
+}
+
+void xyToxy1(cv::Mat& xy)
+{
+    cv::Mat row = cv::Mat::ones(1, xy.cols, CV_64F);
+    xy.push_back(row);
+}
+
 void dehomogenizeMatrix(cv::Mat& X)
 {
     int num_rows = X.rows;
@@ -188,19 +231,48 @@ void dehomogenizeMatrix(cv::Mat& X)
     }
 }
 
-cv::Mat dilateKptWDepth(double x, double y, double z, cv::Mat T)
+cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K)
 {
     /*
     Arguments:
-        x:      Horizontal pixel position in image.
-        y:      Vertical pixel position in image.
-        z:      Depth in meters.
+        xy1:    Homogeneous pixel coordinates [shape 3 x 1].
+        Z:      Depth in meters from camera.
         T:      Camera global transformation matrix [shape 4 x 4].
+        K:      Camera intrinsic parameters [shape 3 x 3].
     Returns:
         XYZ:    Position of map point given in global coordinates.
     */
+
     cv::Mat XYZ = cv::Mat::zeros(3, 1, CV_64F);
     return XYZ;
+}
+
+cv::Mat projectKpt( cv::Mat XYZ, cv::Mat T, cv::Mat K )
+{
+    /*
+    Arguments:
+        XYZ:    Global postion of <MapPoint> [shape 4 x 1].
+        T:      Camera global transformation matrix [shape 4 x 4].
+        K:      Camera intrinsic paramters [shape 3 x 3].
+    Returns:
+        xy1:     Keypoint location in homogeneous pixel coordinates [shape 3 x 1].
+    */
+
+    cv::Mat xy1 = cv::Mat::zeros(3, 1, CV_64F);
+    return xy1;
+}
+
+cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2)
+{
+    /*
+    Arguments:
+        T1:     Global transformation matrix 1, newest
+        T2:     Global transformation matrix 2, oldest
+    Returns:
+        rel_T:  Relative transformation between T1 and T2
+    */
+    cv::Mat rel_T = T1 * inverseTMatrix(T2);
+    return rel_T;
 }
 
 std::vector<double> transform2stdParam(cv::Mat &T)
@@ -230,4 +302,33 @@ void writeParameters2File(std::string file_path, std::string image_idenifier, cv
     {
         std::cout << "Unable to open file: " << file_path << std::endl;
     }
+}
+
+std::vector<std::vector<std::string>> readCSVFile(std::string filename)
+{
+    std::vector<std::vector<std::string>> content;
+    std::vector<std::string> row;
+	std::string line, word;
+ 
+	std::fstream file (filename, std::ios::in);
+	if(file.is_open())
+	{
+		while(getline(file, line))
+		{
+			row.clear();
+ 
+			std::stringstream str(line);
+ 
+			while(getline(str, word, ','))
+            {
+				row.push_back(word);
+            }
+            content.push_back(row);
+		}
+	}
+    else
+    {
+        std::cout << "ERROR: COULD NOT OPEN FILE " << filename << std::endl;
+    }
+    return content;
 }

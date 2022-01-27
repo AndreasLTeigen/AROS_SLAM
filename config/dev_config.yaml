@@ -22,7 +22,7 @@ Camera.cy: 185.2157
 Method.detector: orb
 Method.descriptor: orb
 Method.matcher: bf_mono
-Method.motion_prior: constant
+Method.motion_prior: gt
 Method.pose_calculator: 5-point + outlier removal
 Method.point_reg_3D: depth_gt
 Method.point_cull_3D: OoW

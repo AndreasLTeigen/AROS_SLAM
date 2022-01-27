@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "motionPrior.hpp"
+#include "motionPriorMethods/groundTruth.hpp"
 
 
 MotionPrior getMotionPriorMethod( std::string motion_prior_method )
@@ -12,7 +13,11 @@ MotionPrior getMotionPriorMethod( std::string motion_prior_method )
     if ( motion_prior_method == "constant" )
     {
         // Brute force KNN matching of keypoints with lowes ratio test
-        return MotionPrior::constant;
+        return MotionPrior::CONSTANT;
+    }
+    else if ( motion_prior_method == "gt" )
+    {
+        return MotionPrior::GT;
     }
     else
     {
@@ -25,14 +30,14 @@ void calculateMotionPrior( std::shared_ptr<FrameData> frame1, std::shared_ptr<Fr
 {
     switch(motion_prior_method)
     {
-        case MotionPrior::constant:
+        case MotionPrior::CONSTANT:
         {
             std::cout << "ERROR: MOTION PRIOR METHOD NOT IMPLEMENTED" << std::endl;
         } break;
 
         case MotionPrior::GT:
         {
-            std::cout << "ERROR: MOTION PRIOR METHOD NOT IMPLEMENTED" << std::endl;
+            cv::Mat T = motionPriorGT(frame1, frame2);
         } break;
 
         default:

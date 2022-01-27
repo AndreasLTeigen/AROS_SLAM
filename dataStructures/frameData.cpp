@@ -216,6 +216,24 @@ shared_ptr<Pose> FrameData::registerRelPose(Mat E_matrix, shared_ptr<FrameData> 
     return rel_pose;
 }
 
+shared_ptr<Pose> FrameData::registerGTRelPose(Mat T_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
+{
+    /*
+    Arguments:
+        T_matrix:                   Relative transformation matrix between <frame1> and <frame2>
+        frameX:                     Frame objects connecting the relative pose of interest.
+    Returns:
+        rel_pose:                   Newly created relative pose object between <frame1> and <frame2>.
+    Effect:
+        frameX->rel_poses[frameY]:  Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+    */
+    shared_ptr<Pose> rel_pose = shared_ptr<Pose>(new Pose(frame1, frame2));
+    rel_pose->updatePoseVariables(T_matrix);
+    frame1->addRelPose(rel_pose, frame2);
+    frame2->addRelPose(rel_pose, frame1);
+    return rel_pose;
+}
+
 void FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
 {
     /*

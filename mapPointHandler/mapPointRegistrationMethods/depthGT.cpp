@@ -4,7 +4,6 @@
 #include <iomanip>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <opencv2/core/core.hpp>
 
 #include "depthGT.hpp"
 #include "../../util/util.hpp"
@@ -25,10 +24,10 @@ void depthGTMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Map3D> map
         std::cout << "ERROR: COULD NOT READ THE DEPTH GROUND TRUTH: " << depth_gt_path << std::endl;
     }
     
-    
+
     int depth_p;    // Depth pixel value
     double depth_m;  // Depth meter value
-    cv::Mat XYZ;
+    cv::Mat xy1, XYZ;
     cv::Mat T1 = frame1->getGlobalPose();
     std::vector<std::shared_ptr<KeyPoint2>> kpts = frame1->getKeypoints();
 
@@ -36,7 +35,8 @@ void depthGTMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Map3D> map
     {
         depth_p = int( depth_gt.at<ushort>(int(kpt->getCoordY()), int(kpt->getCoordX())) );
         depth_m = depth_p*max_depth_m /  max_depth_p;
-        XYZ = dilateKptWDepth(kpt->getCoordX(), kpt->getCoordY(), depth_m, T1);
+        xy1 = xyToxy1( kpt->getCoordX(), kpt->getCoordY() );
+        XYZ = dilateKptWDepth(xy1, depth_m, T1, frame1->getKMatrix());
         map_3d->createMapPoint(XYZ, cv::Mat::zeros(3, 1, CV_64F), kpt, T1);
     }
     //std::cout << depth_gt.size() << std::endl;

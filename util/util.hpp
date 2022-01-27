@@ -25,12 +25,26 @@ void T2RotAndTrans(cv::Mat &T, cv::Mat &R, cv::Mat &t);
 
 cv::Mat inverseTMatrix(cv::Mat T);
 
+cv::Mat compileTMatrix(std::vector<double> pose);
+
+cv::Mat xy2Mat(double x, double y);
+
+cv::Mat xyToxy1(double x, double y);
+
+void xyToxy1(cv::Mat& xy);
+
 void dehomogenizeMatrix(cv::Mat& X);
 
-cv::Mat dilateKptWDepth(double x, double y, double z, cv::Mat T);
+cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K);
+
+cv::Mat projectKpt( cv::Mat XYZ, cv::Mat T, cv::Mat K );
+
+cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2);
 
 std::vector<double> transform2stdParam(cv::Mat &T);
 
 void writeParameters2File(std::string file_path, std::string image_idenifier, cv::Mat &T );
+
+std::vector<std::vector<std::string>> readCSVFile(std::string filename);
 
 #endif

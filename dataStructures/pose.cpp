@@ -15,14 +15,32 @@ using cv::Mat;
 #include "parametrization.hpp"
 #include "pose.hpp"
 
-Pose::Pose(Mat E_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, ParamID parametrization_id, int pose_nr)
+Pose::Pose( shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, int pose_nr )
+{
+    this->pose_nr = pose_nr;
+    this->frame1 = frame1;
+    this->frame2 = frame2;
+}
+
+Pose::Pose( Mat E_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, int pose_nr )
 {
     this->pose_nr = pose_nr;
     this->frame1 = frame1;
     this->frame2 = frame2;
 
-    this->setPose( E_matrix, parametrization_id );
+    this->setPose( E_matrix );
 }
+
+/*
+Pose::Pose(Mat T_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, int pose_nr)
+{
+    this->pose_nr;
+    this->frame1 = frame1;
+    this->frame2 = frame2;
+
+    this->updatePoseVariables( T_matrix );
+}
+*/
 
 Pose::~Pose()
 {
@@ -65,7 +83,7 @@ void Pose::setEmatrix(Mat E_matrix)
 }
 
 
-void Pose::setPose( Mat E_matrix, ParamID parametrization_id )
+void Pose::setPose( Mat E_matrix )
 {
     /* Updating pose variables on the basis of <E_matrix> 
        NOTE: It is slow because it projects the points in 3d space
@@ -152,6 +170,28 @@ void Pose::createParametrization( Mat R, Mat t, ParamID parametrization_id )
     {
         std::cout << "Error: Parametrization initializer for <parametrization_id> not specified" << std::endl;
     }
+}
+
+void Pose::updatePoseVariables(Mat T_matrix)
+{
+    /* Updates pose based on T */
+    std::unique_lock lock(mutex_pose);
+    cv::Mat R_matrix = cv::Mat::zeros(3,3,CV_64F);
+    cv::Mat trans = cv::Mat::zeros(3,1,CV_64F);
+
+    R_matrix = (cv::Mat_<double>(3,3)<<T_matrix.at<double>(0,0), T_matrix.at<double>(0,1), T_matrix.at<double>(0,2),
+                                T_matrix.at<double>(1,0), T_matrix.at<double>(1,1), T_matrix.at<double>(1,2),
+                                T_matrix.at<double>(2,0), T_matrix.at<double>(2,1), T_matrix.at<double>(2,2));
+
+    t_vector = (cv::Mat_<double>(3,1)<<T_matrix.at<double>(0,3),
+                                T_matrix.at<double>(1,3),
+                                T_matrix.at<double>(2,3));
+
+    this->setRMatrix( R_matrix );
+    this->settvector( t_vector );
+    this->setTMatrix( T_matrix );
+    this->setEmatrix( this->composeEMatrix(R_matrix, t_vector) );
+    this->riseParametrizationInvalidFlags();
 }
 
 void Pose::updatePoseVariables(Mat R_matrix, Mat t_vector)

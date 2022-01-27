@@ -39,7 +39,14 @@ std::shared_ptr<Pose> calculateRelativePose(std::shared_ptr<FrameData> frame1, s
     switch(pose_calculation_type)
     {
         case PoseCalculator::P5OR:
+        {
             rel_pose = do5pointAlgOutlierRejection( frame1, frame2, K_matrix );
+        } break;
+
+        default:
+        {
+            std::cout << "ERROR: RELATIVE POSE ALGORITHM NOT IMPLEMENTED" << std::endl;
+        }
     }
     return rel_pose;
 }

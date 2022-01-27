@@ -53,6 +53,7 @@ class FrameData
         
         static void registerMatches( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<std::vector<cv::DMatch>>& matches );
         static std::shared_ptr<Pose> registerRelPose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
+        static std::shared_ptr<Pose> registerGTRelPose(cv::Mat T_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
         static void removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
 
 
