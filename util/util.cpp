@@ -231,7 +231,7 @@ void dehomogenizeMatrix(cv::Mat& X)
     }
 }
 
-cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K)
+cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T_wc, cv::Mat K)
 {
     /*
     Arguments:
@@ -242,12 +242,15 @@ cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K)
     Returns:
         XYZ:    Position of map point given in global coordinates.
     */
-
+    cv::Mat x_z_y_z = cv::Mat::zeros(3, 1, CV_64F); // To Andreas: K inverse should be computed on forhand.
+    cv::solve(K, xy1, x_z_y_z);
+    cv::Mat XYZ_camera = z*x_z_y_z;
     cv::Mat XYZ = cv::Mat::zeros(3, 1, CV_64F);
-    return XYZ;
+    XYZ_world = T_wc*XYZ_camera;
+    return XYZ_world;
 }
 
-cv::Mat projectKpt( cv::Mat XYZ, cv::Mat T, cv::Mat K )
+cv::Mat projectKpt(cv::Mat XYZ, cv::Mat T, cv::Mat K )
 {
     /*
     Arguments:
@@ -257,8 +260,16 @@ cv::Mat projectKpt( cv::Mat XYZ, cv::Mat T, cv::Mat K )
     Returns:
         xy1:     Keypoint location in homogeneous pixel coordinates [shape 3 x 1].
     */
-
+    cv::Mat XYZ_camera_homo = cv::Mat::zeros(4, 1, CV_64F);
+    cv::solve(T, XYZ, XYZ_camera_homo);
+    dehomogenizeMatrix(XYZ_camera_homo);
+    cv::Mat reduce;
+    reduce = (cv::Mat_<double>(3,4)<<1, 0, 0, 0,
+                                     0, 1, 0, 0,
+                                     0, 0, 1, 0);
     cv::Mat xy1 = cv::Mat::zeros(3, 1, CV_64F);
+    xy1 = K * reduce * XYZ_camera_homo
+    dehomogenizeMatrix(xy1);
     return xy1;
 }
 
