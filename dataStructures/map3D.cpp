@@ -36,13 +36,15 @@ void Map3D::createMapPoint(cv::Mat XYZ, cv::Mat XYZ_std, shared_ptr<KeyPoint2> k
     Overview:
         Generates a map point based on only one point (with 3D data)
     */
-    shared_ptr<MapPoint> map_point = std::make_shared<MapPoint>(XYZ.at<double>(0,0), 
-                                                            XYZ.at<double>(1,0), 
-                                                            XYZ.at<double>(2,0), 
-                                                            XYZ_std.at<double>(0,0), 
-                                                            XYZ_std.at<double>(1,0), 
-                                                            XYZ_std.at<double>(2,0), 
-                                                            kpt1, T1);
+    int map_point_id = this->getNumMapPoints();
+    shared_ptr<MapPoint> map_point = std::make_shared<MapPoint>(map_point_id,
+                                                                XYZ.at<double>(0,0), 
+                                                                XYZ.at<double>(1,0), 
+                                                                XYZ.at<double>(2,0), 
+                                                                XYZ_std.at<double>(0,0), 
+                                                                XYZ_std.at<double>(1,0), 
+                                                                XYZ_std.at<double>(2,0), 
+                                                                kpt1, T1);
     this->addMapPoint(map_point);
     kpt1->setMapPoint(map_point);
 }
@@ -53,7 +55,47 @@ void Map3D::removeMapPoint(int idx)
     this->map_points.erase( this->map_points.begin() + idx );
 }
 
-void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_ptr<KeyPoint2>>& kpts2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ, cv::Mat XYZ_std)
+void Map3D::updateMap(shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ1, cv::Mat XYZ_std)
+{
+    /*
+    Arguments:
+        kptX:       Matched keypoints, kpt1 is the new keypoint, kpt2 is the old keypoint.
+        TX:         Global transformation matrices of frameX.
+        XYZ1:        Dehomogenized 3D point in the world frame, ordered in same manner 
+                    as kptsX [shape 4 x 1].
+        XYZ_std:    Standard deviation of 3D point in the world frame, same structure
+                    as XYZ [shape 3 x 1].
+    */
+    // If existing track, register new kpt to track and update position
+    // If new track, create new map point and register both kpts and give position
+
+    shared_ptr<MapPoint> temp_map_point;
+    int map_point_id = this->getNumMapPoints();
+
+    if ( kpt2->getMapPoint() == nullptr )
+    {
+        shared_ptr<MapPoint> map_point = std::make_shared<MapPoint>(map_point_id,
+                                                                    XYZ1.at<double>(0,0), 
+                                                                    XYZ1.at<double>(1,0), 
+                                                                    XYZ1.at<double>(2,0), 
+                                                                    XYZ_std.at<double>(0,0), 
+                                                                    XYZ_std.at<double>(1,0), 
+                                                                    XYZ_std.at<double>(2,0), 
+                                                                    kpt1, kpt2,
+                                                                    T1, T2);
+        this->addMapPoint(map_point);
+        kpt1->setMapPoint(map_point);
+        kpt2->setMapPoint(map_point);
+    }
+    else
+    {
+        temp_map_point = kpt2->getMapPoint();
+        temp_map_point->addObservation( kpt1, XYZ1, XYZ_std, T1 );
+        kpt1->setMapPoint(temp_map_point);
+    }
+}
+
+void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_ptr<KeyPoint2>>& kpts2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ1, cv::Mat XYZ_std)
 {
     /*
     Arguments:
@@ -67,11 +109,10 @@ void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_p
     // If existing track, register new kpt to track and update position
     // If new track, create new map point and register both kpts and give position
 
-    int N = XYZ.cols;
+    int N = XYZ1.cols;
     int frame1_nr = kpts1[0]->getObservationFrameNr();
     int frame2_nr = kpts2[0]->getObservationFrameNr();
     cv::Mat new_T;
-    shared_ptr<MapPoint> temp_map_point;
     shared_ptr<KeyPoint2> temp_key_point1, temp_key_point2;
     vector<shared_ptr<KeyPoint2>> new_kpts, exist_kpts;
 
@@ -93,28 +134,10 @@ void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_p
 
     for ( int i = 0; i < N; i++ )
     {
-        temp_key_point1 = exist_kpts[i];
-        temp_key_point2 = new_kpts[i];
-        if ( temp_key_point1->getMapPoint() == nullptr )
-        {
-            shared_ptr<MapPoint> map_point = std::make_shared<MapPoint>(XYZ.at<double>(0,i), 
-                                                                        XYZ.at<double>(1,i), 
-                                                                        XYZ.at<double>(2,i), 
-                                                                        XYZ_std.at<double>(0,i), 
-                                                                        XYZ_std.at<double>(1,i), 
-                                                                        XYZ_std.at<double>(2,i), 
-                                                                        kpts1[i], kpts2[i],
-                                                                        T1, T2);
-            this->addMapPoint(map_point);
-            temp_key_point1->setMapPoint(map_point);
-            temp_key_point2->setMapPoint(map_point);
-        }
-        else
-        {
-            temp_map_point = temp_key_point1->getMapPoint();
-            temp_map_point->addObservation( temp_key_point2, XYZ.col(i), XYZ_std.col(i), new_T );
-            temp_key_point2->setMapPoint(temp_map_point);
-        }
+        temp_key_point1 = new_kpts[i];
+        temp_key_point2 = exist_kpts[i];
+
+        this->updateMap(temp_key_point1, temp_key_point2, T1, T2, XYZ1.col(i), XYZ_std.col(i));
     }
 }
 
@@ -138,6 +161,12 @@ std::shared_ptr<MapPoint> Map3D::getMapPoint(int idx)
 {
     std::shared_lock lock(this->mutex_map_points);
     return this->map_points[idx];
+}
+
+vector<std::shared_ptr<MapPoint>> Map3D::getAllMapPoints()
+{
+    std::shared_lock lock(this->mutex_map_points);
+    return this->map_points;
 }
 
 

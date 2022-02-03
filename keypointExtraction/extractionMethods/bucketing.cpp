@@ -125,9 +125,10 @@ void globalNaiveBucketing(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, int h_n
         n:              Max number of keypoints remaining in each bucket
     Returns:
         kpts:           Variable changed to reduced form after bucketing.
+    Overview:
+        Calculates first keypoints as normal, then chooses only one keypoint in every bucket.
     */
     // Keypoint agnostic, aka. keypoints need to be calculated beforehand
-    // Selects the best 'n' keypoints in every 'bucket'
 
     cv::Size s = img.size();
     int h_img = s.height;
@@ -143,6 +144,7 @@ void globalNaiveBucketing(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, int h_n
     cv::KeyPoint dummy = cv::KeyPoint(-1,-1, 1);
     vector<vector<vector<cv::KeyPoint>>> buckets ( h_n_buckets, vector<vector<cv::KeyPoint>> ( w_n_buckets, vector<cv::KeyPoint> (1, dummy) ) );
 
+    // Place all kpt into buckets
     for ( cv::KeyPoint kpt : kpts )
     {
         h_bucket = int(kpt.pt.y / bucket_height);
@@ -150,9 +152,10 @@ void globalNaiveBucketing(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, int h_n
         buckets[h_bucket][w_bucket].push_back(kpt);
     }
 
-    print2DBuckets(buckets);
-    std::cout << "Keypoints len 1: " << kpts.size() << std::endl;
+    //print2DBuckets(buckets);
+    //std::cout << "Keypoints len 1: " << kpts.size() << std::endl;
 
+    // Find best kpt in bucket and add to list.
     cv::KeyPoint kpt;
     vector<cv::KeyPoint> best_keypoints;
     for (vector<vector<cv::KeyPoint>> w_buckets : buckets)
@@ -166,7 +169,7 @@ void globalNaiveBucketing(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, int h_n
             }
         }
     }
-    std::cout << "Keypoints len 2: " << best_keypoints.size() << std::endl;
+    //std::cout << "Keypoints len 2: " << best_keypoints.size() << std::endl;
 
     kpts = best_keypoints;
 }

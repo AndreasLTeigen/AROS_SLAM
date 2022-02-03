@@ -14,4 +14,5 @@ void globalNaiveBucketing(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, int h_n
 void print2DBuckets(std::vector<std::vector<std::vector<cv::KeyPoint>>> buckets);
 cv::KeyPoint getBestKeypointInBucket(std::vector<cv::KeyPoint> bucket);
 
+
 #endif

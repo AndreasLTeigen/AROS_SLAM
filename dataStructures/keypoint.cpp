@@ -15,17 +15,49 @@ using std::unique_ptr;
 using cv::Mat;
 
 
-KeyPoint2::KeyPoint2( int observation_frame_nr, int kpt_id, cv::KeyPoint kpt, Mat descr, std::string descr_type )
+
+KeyPoint2::KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr )
 {
     this->setKptID(kpt_id);
     this->setCoordx(kpt.pt.x);
     this->setCoordy(kpt.pt.y);
+    this->setObservationFrameNr(observation_frame_nr);
     this->setSize(kpt.size);
     this->setAngle(kpt.angle);
     this->setResponse(kpt.response);
     this->setOctave(kpt.octave);
+    this->setMapPoint(nullptr);
+}
+
+KeyPoint2::KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr, Mat descr, std::string descr_type )
+{
+    this->setKptID(kpt_id);
+    this->setCoordx(kpt.pt.x);
+    this->setCoordy(kpt.pt.y);
     this->setObservationFrameNr(observation_frame_nr);
+    this->setSize(kpt.size);
+    this->setAngle(kpt.angle);
+    this->setResponse(kpt.response);
+    this->setOctave(kpt.octave);
     this->setDescriptor(descr, descr_type);
+    this->setMapPoint(nullptr);
+}
+
+KeyPoint2::KeyPoint2( int kpt_id, cv::Mat xy1, int observation_frame_nr, double angle, int octave, double response, double size)
+{
+    /*
+    Arguments:
+        xy1:    Homogeneous pixel coordinates [shape 3 x 1].
+    */
+
+    this->setKptID(kpt_id);
+    this->setCoordx(xy1.at<double>(0,0));
+    this->setCoordy(xy1.at<double>(1,0));
+    this->setObservationFrameNr(observation_frame_nr);
+    this->setSize(size);
+    this->setAngle(angle);
+    this->setResponse(response);
+    this->setOctave(octave);
     this->setMapPoint(nullptr);
 }
 

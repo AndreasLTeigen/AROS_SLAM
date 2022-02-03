@@ -14,7 +14,7 @@ using std::shared_ptr;
 
 PointReg3D get3DPointRegistrationMethod(std::string point_reg_3D_method)
 {
-    if ( point_reg_3D_method == "ALL" )
+    if ( point_reg_3D_method == "all" )
     {
         // All points that are matched are registered as 3D points.
         return PointReg3D::ALL;

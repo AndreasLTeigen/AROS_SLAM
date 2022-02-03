@@ -4,15 +4,15 @@
 
 #include "motionPrior.hpp"
 #include "motionPriorMethods/groundTruth.hpp"
+#include "../util/util.hpp"
 
 
 MotionPrior getMotionPriorMethod( std::string motion_prior_method )
 {
-    /* Retrieve the right keypoint matching class from the corresponding config string */
+    /* Retrieve the right motion prior class from the corresponding config string */
 
     if ( motion_prior_method == "constant" )
     {
-        // Brute force KNN matching of keypoints with lowes ratio test
         return MotionPrior::CONSTANT;
     }
     else if ( motion_prior_method == "gt" )
@@ -37,7 +37,11 @@ void calculateMotionPrior( std::shared_ptr<FrameData> frame1, std::shared_ptr<Fr
 
         case MotionPrior::GT:
         {
-            cv::Mat T = motionPriorGT(frame1, frame2);
+            cv::Mat T_wc = globalMotionPriorGT(frame1);
+            frame1->setGlobalPose( T_wc );
+            cv::Mat rel_T = relTfromglobalTx2(T_wc, frame2->getGlobalPose());
+            FrameData::registerGTRelPose(T_wc, frame1, frame2);
+
         } break;
 
         default:

@@ -52,6 +52,8 @@ int AVGSlam()
     std::string Log_name = config["Log.name"].as<std::string>();
     std::string Log_path = config["Log.path"].as<std::string>();
     std::string Log_full_dst = Log_path + Log_name;
+    bool ILog_save = config["ILog.save"].as<bool>();
+    std::string ILog_path = config["ILog.path"].as<std::string>();
 
     // Initializing user interface parameters
     bool UI_timing_show = config["UI.timing_show"].as<bool>();
@@ -144,6 +146,10 @@ int AVGSlam()
             writeParameters2File(Log_full_dst, name_current, T_global );
         }
 
+        if ( ILog_save )
+        {
+            tracker->incremental3DMapTrackingLog(tracker->getFrame(-1), ILog_path);
+        }
 
 		// Set sequencer variables for next iteration
         seq.iterate_to_new_frame();

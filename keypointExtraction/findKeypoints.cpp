@@ -2,6 +2,7 @@
 
 #include "findKeypoints.hpp"
 #include "extractionMethods/bucketing.hpp"
+#include "extractionMethods/extraction_gt.hpp"
 
 using std::vector;
 
@@ -20,6 +21,10 @@ Detector getDetectionMethod( std::string detect_method )
     else if ( detect_method == "orb_nb" )
     {
         return Detector::ORB_NB;
+    }
+    else if ( detect_method == "orb_nb_gt" )
+    {
+        return Detector::ORB_NB_GT;
     }
     else
     {
@@ -42,7 +47,7 @@ Descriptor getDescriptionMethod( std::string desc_method )
     }
 }
 
-void findKeypoints(cv::Mat& img, std::shared_ptr<FrameData> frame, Detector detect_type, Descriptor desc_type )
+void findKeypoints(cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d, Detector detect_type, Descriptor desc_type )
 {
     /* Finds keypoints in <img> and stores them in <frame>,
         NOTE: Currently detector and descriptor either has to both be an opencv method or a custom method */
@@ -55,18 +60,25 @@ void findKeypoints(cv::Mat& img, std::shared_ptr<FrameData> frame, Detector dete
     {
         case Detector::ORB:
         {
-            Ptr<cv::ORB> detector = cv::ORB::create(frame->getNumKeypoints());
+            Ptr<cv::ORB> detector = cv::ORB::create(frame->getTargetNumKeypoints());
             detector->detect( img, kpts );
             opencv_method = true;
         } break;
         
         case Detector::ORB_NB:
         {
-            Ptr<cv::ORB> detector = cv::ORB::create(frame->getNumKeypoints());
+            Ptr<cv::ORB> detector = cv::ORB::create(frame->getTargetNumKeypoints());
             detector->detect( img, kpts );
             globalNaiveBucketing( img, kpts, 10, 10 );
             opencv_method = true;
             std::cout << "Remaining keypoints: " << kpts.size() << std::endl;
+        } break;
+
+        case Detector::ORB_NB_GT:
+        {
+            Ptr<cv::ORB> detector = cv::ORB::create(frame->getTargetNumKeypoints());
+            detector->detect( img, kpts );
+            depthGTwBucketing( img, frame, kpts, map_3d, 20, 20 );
         } break;
 
         default:

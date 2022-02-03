@@ -18,6 +18,7 @@ class avg_slam_conan(ConanFile):
         self.requires("eigen/3.3.9")
         self.requires("opencv/4.5.1")
         self.requires("yaml-cpp/0.6.3")
+        self.requires("nlohmann_json/3.10.5")
         if self.options.pangolin:
             self.installPangolin()
             self.requires("pangolin/1.0@demo/testing")

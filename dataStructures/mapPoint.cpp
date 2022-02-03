@@ -10,8 +10,24 @@ using std::map;
 using std::weak_ptr;
 using std::shared_ptr;
 
-MapPoint::MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, Mat T1, Mat T2)
+MapPoint::MapPoint(int id, double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, Mat T1)
 {
+    // Constructor for map point with depth prior
+    this->id = id;
+    this->observation_cnt = 1;
+    this->setCoordX(X);
+    this->setCoordY(Y);
+    this->setCoordZ(Z);
+    this->setSTDX(std_X);
+    this->setSTDY(std_Y);
+    this->setSTDZ(std_Z);
+    this->addObservationKpt(kpt1);
+    this->updateMeanViewDir(T1);
+}
+
+MapPoint::MapPoint(int id, double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, Mat T1, Mat T2)
+{
+    this->id = id;
     this->observation_cnt = 2;
     this->setCoordX(X);
     this->setCoordY(Y);
@@ -23,20 +39,6 @@ MapPoint::MapPoint(double X, double Y, double Z, double std_X, double std_Y, dou
     this->addObservationKpt(kpt2);
     this->updateMeanViewDir(T1);
     this->updateMeanViewDir(T2);
-}
-
-MapPoint::MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, Mat T1)
-{
-    // Constructor for map point with depth prior
-    this->observation_cnt = 1;
-    this->setCoordX(X);
-    this->setCoordY(Y);
-    this->setCoordZ(Z);
-    this->setSTDX(std_X);
-    this->setSTDY(std_Y);
-    this->setSTDZ(std_Z);
-    this->addObservationKpt(kpt1);
-    this->updateMeanViewDir(T1);
 }
 
 MapPoint::~MapPoint()
@@ -100,12 +102,7 @@ void MapPoint::update3DLocation( cv::Mat XYZ )
     /*
     Arguments:
         XYZ:    Dehomogenized 3D point in the world frame [shape 4 x n].
-    TODO: Fix this function: MapPoint::update3DLocation( cv::Mat XYZ )
     */
-    int n = this->getObservationCounter();
-    //cv::Mat XYZ_curr = this->getCoordXYZ();
-    //cv::Mat XYZ_next = XYZ_curr + (XYZ - XYZ_curr)/(n+1);
-    //this->setCoordXYZ(XYZ_next);
     this->setCoordXYZ(XYZ);
 }
 
@@ -161,6 +158,12 @@ void MapPoint::addObservationKpt(shared_ptr<KeyPoint2> kpt)
 
 // Read functions
 
+int MapPoint::getId()
+{
+    std::shared_lock lock(this->mutex_id);
+    return this->id;
+}
+
 int MapPoint::getObservationCounter()
 {
     std::shared_lock lock(this->mutex_observation_cnt);
@@ -205,11 +208,12 @@ double MapPoint::getSTDZ()
 
 cv::Mat MapPoint::getCoordXYZ()
 {
-    cv::Mat XYZ;
-    XYZ = (cv::Mat_<double>(3,1)<<  this->getCoordX(),
+    cv::Mat XYZ1;
+    XYZ1 = (cv::Mat_<double>(4,1)<<  this->getCoordX(),
                                     this->getCoordY(),
-                                    this->getCoordZ());
-    return XYZ;
+                                    this->getCoordZ(),
+                                    1);
+    return XYZ1;
 }
 
 Mat MapPoint::getMeanViewingDir()

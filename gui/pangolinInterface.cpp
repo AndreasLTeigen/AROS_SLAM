@@ -220,7 +220,6 @@ void GUI::drawMapPoints( std::shared_ptr<FTracker> tracker )
         //std::cout << "Map point loc:" << "\nX:" << map_point->getCoordX() << "\nY:" << map_point->getCoordY() << "\nZ:" << map_point->getCoordZ()  << std::endl;
         glVertex3f( map_point->getCoordX(), map_point->getCoordY(), map_point->getCoordZ() );
     }
-    //std::cout << "//////////////////////////////////////////// " << map_3d->getNumMapPoints() << std::endl;
     glEnd();
 }
 

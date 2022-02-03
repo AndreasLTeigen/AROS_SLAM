@@ -60,6 +60,7 @@ class FTracker
         void drawKeypointTrails(cv::Mat &img, int trail_length=49, int frame_nr=-1, int trail_thickness=2);
         void drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr1=-1);
         void drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr=-1);
+        void incremental3DMapTrackingLog(std::shared_ptr<FrameData> frame, std::string ILog_path);
 
         // Functions for error checking
         float getLongestDistanceMatch(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<KeyPoint2>& kpt1, std::shared_ptr<KeyPoint2>& kpt2);

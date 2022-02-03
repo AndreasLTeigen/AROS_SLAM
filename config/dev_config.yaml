@@ -7,10 +7,10 @@ VIn.file_format: png
 VIn.fps: 24
 
 # -----Camera param(KITTI)-----
-Camera.fx: 718.865
-Camera.fy: 718.856
-Camera.cx: 607.1928
-Camera.cy: 185.2157
+#Camera.fx: 718.865
+#Camera.fy: 718.856
+#Camera.cx: 607.1928
+#Camera.cy: 185.2157
 
 # -----Camera param(EuRoC)-----
 #Camera.fx: 458.654
@@ -18,12 +18,27 @@ Camera.cy: 185.2157
 #Camera.cx: 367.215
 #Camera.cy: 248.375
 
+# -----Camera param(VAROS)-----
+Camera.fx: 985.50724637681159420289855072464
+Camera.fy: 985.50724637681159420289855072464
+Camera.cx: 639.5
+Camera.cy: 359.5
+
 # -----Algorithms-----
-Method.detector: orb
-Method.descriptor: orb
-Method.matcher: bf_mono
+#Method.motion_prior: none
+#Method.detector: orb
+#Method.descriptor: orb
+#Method.matcher: bf_mono
+#Method.pose_calculator: 5-point + outlier removal
+#Method.point_reg_3D: all
+#Method.point_cull_3D: OoW
+
+# -----Algorithms-----
 Method.motion_prior: gt
-Method.pose_calculator: 5-point + outlier removal
+Method.detector: orb_nb_gt
+Method.descriptor: none
+Method.matcher: none
+Method.pose_calculator: motion prior
 Method.point_reg_3D: depth_gt
 Method.point_cull_3D: OoW
 
@@ -38,11 +53,15 @@ Log.save: false
 Log.name: poses.txt
 Log.path: output/
 
+# -----Incremental Log-----
+ILog.save: true
+ILog.path: output/IncrementalLog/
+
 # -----UI config-----
 UI.timing_show: true
 UI.tracking_log_show: true
 UI.keypoint_trail_length: 10
-UI.GUI_show: false
+UI.GUI_show: true
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15

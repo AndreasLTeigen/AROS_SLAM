@@ -45,6 +45,7 @@ class FrameData
         void promoteToKeyframe();
         void demoteFromKeyframe();
         void addKeypoint( std::shared_ptr<KeyPoint2> kpt );
+        void registerKeypoints(std::vector<std::shared_ptr<KeyPoint2>> kpts);
         void registerKeypoints( std::vector<cv::KeyPoint> kpts, cv::Mat descrs );
         void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list );
         std::vector<int> removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> connecting_frame );
@@ -62,6 +63,7 @@ class FrameData
         int getFrameNr();
         int getImgId();
         int getNumKeypoints();
+        int getTargetNumKeypoints();
         cv::Mat getKMatrix();
         cv::Mat getGlobalPose();
         std::vector<std::shared_ptr<KeyPoint2>> getKeypoints();

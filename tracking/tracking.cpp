@@ -1,10 +1,12 @@
 #include <vector>
 #include <chrono>
 #include <memory>
+#include <fstream>
 #include <iostream>
 #include <Eigen/Dense>
 #include <shared_mutex>
 #include <yaml-cpp/yaml.h>
+#include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
@@ -28,6 +30,7 @@ using std::chrono::duration;
 using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
+using json = nlohmann::json;
 
 
 
@@ -158,7 +161,7 @@ void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix, int n_
 
     shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix, n_keypoints));
 
-    findKeypoints( img, frame, this->getDetectorType(), this->getDescriptorType());
+    findKeypoints( img, frame, this->getMap3D(), this->getDetectorType(), this->getDescriptorType());
     this->appendTrackingFrame(frame);
 }
 
@@ -183,7 +186,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoint
 
 
     // Keypoint identification
-    findKeypoints( img, frame1, this->getDetectorType(), this->getDescriptorType() );
+    findKeypoints( img, frame1, this->getMap3D(), this->getDetectorType(), this->getDescriptorType() );
 
 
     auto kpts_end_time = high_resolution_clock::now(); 
@@ -200,7 +203,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoint
     shared_ptr<Pose> rel_pose = calculateRelativePose(frame1, frame2, K_matrix, this->getPoseCalcuationType());
     
     rel_pose->updateParametrization();
-    this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
+    //this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
 
 
     auto rel_pose_calc_end_time = high_resolution_clock::now();
@@ -209,6 +212,8 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoint
     // Map update
     register3DPoints( frame1, frame2, this->getMap3D(), this->getPointReg3DType() );
 
+    std::cout << "Frame num keypoints: " << frame1->getNumKeypoints() << std::endl;
+    std::cout << "Total num mappoints: " << map_3d->getNumMapPoints() << std::endl;
 
     auto map_update_end_time = high_resolution_clock::now();
 
@@ -337,7 +342,7 @@ void FTracker::drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr)
         frame_nr = this->getFrameListLength()-1;
     }
 
-    E_matrix = curr_frame->getRelPose( curr_frame->getFrameNr()-1 )->getEMatrix();
+    E_matrix = curr_frame->getRelPose( curr_frame->getFrameNr()-1 )->getEMatrix(); //TODO: Should not be 1, depends on <comparion frame spacing variable>
     F_matrix = fundamentalFromEssential( E_matrix, curr_frame->getKMatrix() );
     epipole = calculateEpipole( F_matrix );
     drawCircle( img_disp, epipole );
@@ -354,12 +359,66 @@ void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
         frame_nr = this->getFrameListLength()-1;
     }
     curr_frame = this->getFrame( frame_nr );
-    prev_frame = this->getFrame( frame_nr - 1 );
+    prev_frame = this->getFrame( frame_nr - 1 );    //TODO: Should not be 1, depends on <comparion frame spacing variable>
     pts1 = curr_frame->compileCV2DPoints();
     pts2 = prev_frame->compileCV2DPoints();
-    E_matrix = curr_frame->getRelPose( curr_frame->getFrameNr()-1 )->getEMatrix();
+    E_matrix = curr_frame->getRelPose( prev_frame->getFrameNr() )->getEMatrix(); 
     F_matrix = fundamentalFromEssential( E_matrix, curr_frame->getKMatrix() );
     drawEpipolarLines( F_matrix, img_disp, pts2, pts1 );
+}
+
+void FTracker::incremental3DMapTrackingLog(shared_ptr<FrameData> frame, string ILog)
+{
+    /*
+    Arguments:
+        frame:  Latest tracking frame
+    Overview:
+        If frame is keyframe save all relevant Frame data to json file
+    Note:
+        TODO: Check if frame is keyframe
+    */
+
+    json data;
+
+    //Extract data from frame
+    Mat T_wc = frame->getGlobalPose();
+    data["frame_nr"] = frame->getFrameNr();
+    data["img_id"] = frame->getImgId();
+    data["T_wc"] = {{T_wc.at<double>(0,0), T_wc.at<double>(0,1), T_wc.at<double>(0,2), T_wc.at<double>(0,3)},
+                    {T_wc.at<double>(1,0), T_wc.at<double>(1,1), T_wc.at<double>(1,2), T_wc.at<double>(1,3)},
+                    {T_wc.at<double>(2,0), T_wc.at<double>(2,1), T_wc.at<double>(2,2), T_wc.at<double>(2,3)}};
+    vector<shared_ptr<KeyPoint2>> kpt_list = frame->getKeypoints();
+
+    shared_ptr<MapPoint> map_point;
+    vector<vector<double>> kpt_loc_list;
+    vector<int> map_point_id_list;
+    vector<vector<double>> map_point_loc_list;
+    vector<vector<double>> map_point_unc_list;
+    for ( shared_ptr<KeyPoint2> kpt : kpt_list )
+    {
+        map_point = kpt->getMapPoint();
+        
+        if (map_point != nullptr)
+        {
+            // Extract data from keypoint
+            kpt_loc_list.push_back(vector{kpt->getCoordX(), kpt->getCoordY()});
+
+            // Extract data from map point
+            map_point_id_list.push_back(map_point->getId());
+            map_point_loc_list.push_back(vector{{map_point->getCoordX(), map_point->getCoordY(), map_point->getCoordZ()}});
+            map_point_unc_list.push_back({map_point->getSTDX(), map_point->getSTDY(), map_point->getSTDZ()});
+        }
+    }
+
+    data["KP_loc"] = kpt_loc_list;
+    data["MP_id"] = map_point_id_list;
+    data["MP_loc"] = map_point_loc_list;
+    data["MP_unc"] = map_point_unc_list;
+
+
+    string file_path = ILog + std::to_string(frame->getFrameNr()) + ".json";
+    std::ofstream file(file_path);
+    file << data.dump(4);
 }
 
 //Functions for error checking

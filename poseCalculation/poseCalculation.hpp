@@ -9,7 +9,7 @@
 
 // P5OR - 5 point + outlier removal
 
-enum class PoseCalculator {P5OR, NONE};
+enum class PoseCalculator {P5OR, MP, NONE};
 
 PoseCalculator getRelativePoseCalculationMethod( std::string pose_calculation_method );
 

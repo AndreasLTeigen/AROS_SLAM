@@ -37,11 +37,14 @@ void depthGTMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Map3D> map
 
     for (std::shared_ptr<KeyPoint2> kpt : kpts )
     {
-        depth_p = int( depth_gt.at<ushort>(int(kpt->getCoordY()), int(kpt->getCoordX())) );
-        depth_m = depth_p*max_depth_m /  max_depth_p;
-        xy1 = xyToxy1( kpt->getCoordX(), kpt->getCoordY() );
-        XYZ = dilateKptWDepth(xy1, depth_m, T1, frame1->getKMatrix());
-        map_3d->createMapPoint(XYZ, cv::Mat::zeros(3, 1, CV_64F), kpt, T1);
+        if ( kpt->getMapPoint() == nullptr )
+        {
+            depth_p = int( depth_gt.at<ushort>(int(kpt->getCoordY()), int(kpt->getCoordX())) );
+            depth_m = depth_p*max_depth_m /  max_depth_p;
+            xy1 = xyToxy1( kpt->getCoordX(), kpt->getCoordY() );
+            XYZ = dilateKptWDepth(xy1, depth_m, T1, frame1->getKMatrix());
+            map_3d->createMapPoint(XYZ, cv::Mat::zeros(3, 1, CV_64F), kpt, T1);
+        }
     }
     //std::cout << depth_gt.size() << std::endl;
     //std::cout << depth_gt << std::endl;

@@ -15,6 +15,7 @@ void drawEpipolarLines(cv::Mat F, cv::Mat &img_disp2,
 cv::Mat compileKMatrix( double fx, double fy, double cx, double cy );
 
 bool isRotationMatrix(cv::Mat &R);
+
 std::vector<double>  rotationMatrixToEulerAngles(cv::Mat &R);
 
 cv::Mat T2Rot(cv::Mat &T);
@@ -31,17 +32,19 @@ cv::Mat xy2Mat(double x, double y);
 
 cv::Mat xyToxy1(double x, double y);
 
-void xyToxy1(cv::Mat& xy);
+void homogenizeArray(cv::Mat& xy);
 
 void dehomogenizeMatrix(cv::Mat& X);
 
 cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K);
 
-cv::Mat projectKpt( cv::Mat XYZ, cv::Mat T, cv::Mat K );
+cv::Mat projectKpt( cv::Mat XYZ1, cv::Mat T, cv::Mat K );
 
 cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2);
 
 std::vector<double> transform2stdParam(cv::Mat &T);
+
+bool isInsideImageBounds( double y, double x, int H, int W);
 
 void writeParameters2File(std::string file_path, std::string image_idenifier, cv::Mat &T );
 

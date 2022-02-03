@@ -4,6 +4,6 @@
 #include "../../dataStructures/frameData.hpp"
 #include "../../dataStructures/map3D.hpp"
 
-cv::Mat motionPriorGT(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
+cv::Mat globalMotionPriorGT( std::shared_ptr<FrameData> frame1 );
 
 #endif

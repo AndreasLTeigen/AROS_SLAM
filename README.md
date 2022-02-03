@@ -25,3 +25,32 @@ If your present working directory is the project folder with the conanfile.py, t
 
 To run the code use the command:  
     $./build/bin/AVG_SLAM
+
+
+
+
+List of methods that are implemented:
+
+    Motion prior:
+        - "constant":   Expect acceleration from previous frame to current frame to be within a Gaussian profile.
+        - "gt":         Retrieves ground truth pose information.
+
+    Keypoint exctraction:
+        - "orb":        Oriented fast, rotated brief detection.
+        - "orb_nb":     Orb + naive bucketing.
+        - "orb_gt_nb":  Orb + naive bucketing + prioritize reprojected points from previous frame based on GT.
+    
+    Keypoint matching:
+        - "bf_mono":    Brute force matching based only on descriptors. Uses Lowes ratio test, selects only one match candidate per point.
+
+    Pose calculation:
+        - "5-point + outlier removal":  Uses 5-point algorithm to calculate pose between frames which include a RANSAC outlier removal process.
+        - "motion prior":               Simply returns the motion prior.
+    
+    Map point registration:
+        - "all":        Registers or updates all map points in the newest frame that was matched with the previous frame.
+        - "depth_gt":   Registers points from the newest frame that has not been observed before based on a ground truth depth map.
+
+    Map point culling:
+        - "OoW":        Removes all map points no longer visible by any frame in a temporal frame window.
+    

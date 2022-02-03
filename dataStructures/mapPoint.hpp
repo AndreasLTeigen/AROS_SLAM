@@ -10,7 +10,7 @@ class KeyPoint2;
 class MapPoint
 {
     private:
-        int map_point_nr, observation_cnt;
+        int id, observation_cnt;
         double X;
         double Y;
         double Z;
@@ -23,6 +23,7 @@ class MapPoint
 
 
         // Mutexes
+        mutable std::shared_mutex mutex_id;
         mutable std::shared_mutex mutex_coord;
         mutable std::shared_mutex mutex_coord_std;
         mutable std::shared_mutex mutex_mean_view_dir;
@@ -31,11 +32,11 @@ class MapPoint
         mutable std::shared_mutex mutex_observation_cnt;
 
     public:
-        MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, 
+        MapPoint(int id, double X, double Y, double Z, double std_X, double std_Y, double std_Z, 
+                    std::shared_ptr<KeyPoint2> kpt1, cv::Mat T1);
+        MapPoint(int id, double X, double Y, double Z, double std_X, double std_Y, double std_Z, 
                     std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2,
                     cv::Mat T1, cv::Mat T2);
-        MapPoint(double X, double Y, double Z, double std_X, double std_Y, double std_Z, 
-                    std::shared_ptr<KeyPoint2> kpt1, cv::Mat T1);
         ~MapPoint();
 
         // Write functions
@@ -55,6 +56,7 @@ class MapPoint
         void addObservationKpt(std::shared_ptr<KeyPoint2> kpt);
 
         // Read functions
+        int getId();
         int getObservationCounter();
         double getCoordX();
         double getCoordY();

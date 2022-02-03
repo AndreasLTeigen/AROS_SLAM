@@ -8,7 +8,7 @@
 #include "groundTruth.hpp"
 #include "../../util/util.hpp"
 
-cv::Mat motionPriorGT(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2)
+cv::Mat globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
 {
     YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
 
@@ -40,17 +40,18 @@ cv::Mat motionPriorGT(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDa
     {
         if ( timestamp == std::stoll(poses_gt[i][0]) )
         {
+            std::cout << "Read pose: " << std::endl;
             for ( int j = 1; j < poses_gt[i].size(); j++ )
             {   
                 pose_gt.push_back(std::stod(poses_gt[i][j]));
+                std::cout << std::stod(poses_gt[i][j]) << "     ";
             }
+            std::cout << std::endl;
             break;
         }
     }
 
-    cv::Mat T = compileTMatrix(pose_gt);
-
-    cv::Mat rel_T = relTfromglobalTx2(T, frame2->getGlobalPose());
+    cv::Mat T_wc = compileTMatrix(pose_gt);
     
-    return rel_T;
+    return T_wc;
 }

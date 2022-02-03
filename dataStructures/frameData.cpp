@@ -67,14 +67,25 @@ void FrameData::addKeypoint(shared_ptr<KeyPoint2> kpt)
     this->kpts.push_back(kpt);
 }
 
+void FrameData::registerKeypoints(vector<shared_ptr<KeyPoint2>> kpts)
+{
+    /* Registers vector<shared_ptr<KeyPoint2>> and saves it in the frameData class. 
+    For more details, see design document*/
+
+    for( shared_ptr<KeyPoint2> kpt : kpts )
+    {
+        this->addKeypoint(kpt);
+    }
+}
+
 void FrameData::registerKeypoints(vector<cv::KeyPoint> kpts, Mat descrs)
 {
     /* Converts and registers vector<cv::KeyPoint> into the AVG Keypoint class
        and saves it in the frameData class. For more details, see design document*/
 
-    for(int i = 0; i < kpts.size(); i++)
+    for( int i = 0; i < kpts.size(); i++ )
     {
-        shared_ptr<KeyPoint2> keypoint = shared_ptr<KeyPoint2>(new KeyPoint2(this->getFrameNr(), i, kpts[i], descrs.row(i)));
+        shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(i, kpts[i], this->getFrameNr(), descrs.row(i));
         this->addKeypoint(keypoint);
     }
 }
@@ -289,6 +300,12 @@ int FrameData::getImgId()
 }
 
 int FrameData::getNumKeypoints()
+{
+    std::shared_lock lock(this->mutex_kpts);
+    return this->kpts.size();
+}
+
+int FrameData::getTargetNumKeypoints()
 {
     std::shared_lock lock(this->mutex_n_keypoints);
     return this->n_keypoints;

@@ -210,14 +210,14 @@ cv::Mat xy2Mat(double x, double y)
 cv::Mat xyToxy1(double x, double y)
 {
     cv::Mat xy = xy2Mat(x, y);
-    xyToxy1(xy);
+    homogenizeArray(xy);
     return xy;
 }
 
-void xyToxy1(cv::Mat& xy)
+void homogenizeArray(cv::Mat& arr)
 {
-    cv::Mat row = cv::Mat::ones(1, xy.cols, CV_64F);
-    xy.push_back(row);
+    cv::Mat row = cv::Mat::ones(1, arr.cols, CV_64F);
+    arr.push_back(row);
 }
 
 void dehomogenizeMatrix(cv::Mat& X)
@@ -237,20 +237,25 @@ cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T_wc, cv::Mat K)
     Arguments:
         xy1:    Homogeneous pixel coordinates [shape 3 x 1].
         Z:      Depth in meters from camera.
-        T:      Camera global transformation matrix [shape 4 x 4].
+        T_wc:   Camera global transformation matrix [shape 4 x 4].
         K:      Camera intrinsic parameters [shape 3 x 3].
     Returns:
-        XYZ:    Position of map point given in global coordinates.
+        XYZ1:    Position of map point given in global, homogeneous coordinates.
+    Overview:
+        XYZ = Z * (K^-1) * xy1 = Z * xy1_z
     */
-    cv::Mat x_z_y_z = cv::Mat::zeros(3, 1, CV_64F); // To Andreas: K inverse should be computed on forhand.
-    cv::solve(K, xy1, x_z_y_z);
-    cv::Mat XYZ_camera = Z*x_z_y_z;
-    cv::Mat XYZ = cv::Mat::zeros(3, 1, CV_64F);
-    cv::Mat XYZ_world = T_wc*XYZ_camera;
-    return XYZ_world;
+    cv::Mat xy1_z; // TODO: K inverse should be computed on forhand.
+    cv::solve(K, xy1, xy1_z);
+    cv::Mat XYZ_c = Z * xy1_z;
+    homogenizeArray(XYZ_c);
+    cv::Mat XYZ1 = T_wc*XYZ_c;
+    //std::cout << "T_wc:\n" << T_wc << std::endl;            //TODO: Remove 
+    //std::cout << "XYZ1:\n" << XYZ1 << std::endl;            //TODO: Remove
+    return XYZ1;
+    //return cv::Mat::zeros(3, 1, CV_64F);
 }
 
-cv::Mat projectKpt(cv::Mat XYZ, cv::Mat T, cv::Mat K )
+cv::Mat projectKpt(cv::Mat XYZ1, cv::Mat T, cv::Mat K )
 {
     /*
     Arguments:
@@ -259,18 +264,20 @@ cv::Mat projectKpt(cv::Mat XYZ, cv::Mat T, cv::Mat K )
         K:      Camera intrinsic paramters [shape 3 x 3].
     Returns:
         xy1:     Keypoint location in homogeneous pixel coordinates [shape 3 x 1].
+    Overview:
+        lambda * xy1 = K * I' * XYZ1
     */
-    cv::Mat XYZ_camera_hom = cv::Mat::zeros(4, 1, CV_64F);
-    cv::solve(T, XYZ, XYZ_camera_hom);
+    cv::Mat XYZ_camera_hom;// = cv::Mat::zeros(4, 1, CV_64F);
+    cv::solve(T, XYZ1, XYZ_camera_hom);
     dehomogenizeMatrix(XYZ_camera_hom);
     cv::Mat reduce;
     reduce = (cv::Mat_<double>(3,4)<<1, 0, 0, 0,
                                      0, 1, 0, 0,
                                      0, 0, 1, 0);
-    cv::Mat xy1 = cv::Mat::zeros(3, 1, CV_64F);
-    xy1 = K * reduce * XYZ_camera_hom;
+    cv::Mat xy1 = K * reduce * XYZ_camera_hom;
     dehomogenizeMatrix(xy1);
     return xy1;
+    //return cv::Mat::zeros(3, 1, CV_64F);
 }
 
 cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2)
@@ -280,9 +287,9 @@ cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2)
         T1:     Global transformation matrix 1, newest
         T2:     Global transformation matrix 2, oldest
     Returns:
-        rel_T:  Relative transformation between T1 and T2
+        rel_T:  Relative basis vector transformation between T1 and T2
     */
-    cv::Mat rel_T = T1 * inverseTMatrix(T2);
+    cv::Mat rel_T = inverseTMatrix(T2) * T1;
     return rel_T;
 }
 
@@ -294,6 +301,18 @@ std::vector<double> transform2stdParam(cv::Mat &T)
     T2RotAndTrans(T, R, t);
     std::vector<double> rot = rotationMatrixToEulerAngles(R);
     return std::vector<double> {rot[0], rot[1], rot[2], t.at<double>(0,0), t.at<double>(1,0), t.at<double>(2,0)};
+}
+
+bool isInsideImageBounds( double y, double x, int H, int W)
+{
+    if ( y >= H || y < 0 || x >= W || x < 0)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
 void writeParameters2File(std::string file_path, std::string image_idenifier, cv::Mat &T )
