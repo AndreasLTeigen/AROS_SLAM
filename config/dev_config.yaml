@@ -35,8 +35,8 @@ Camera.cy: 359.5
 
 # -----Algorithms-----
 Method.motion_prior: gt
-Method.detector: orb_nb_gt
-Method.descriptor: none
+Method.detector: orb
+Method.descriptor: orb
 Method.matcher: none
 Method.pose_calculator: motion prior
 Method.point_reg_3D: depth_gt
@@ -54,7 +54,7 @@ Log.name: poses.txt
 Log.path: output/
 
 # -----Incremental Log-----
-ILog.save: true
+ILog.save: false
 ILog.path: output/IncrementalLog/
 
 # -----UI config-----
