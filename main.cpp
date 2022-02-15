@@ -80,13 +80,13 @@ int AVGSlam()
     std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
     Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VOut_rec_name, VIn_fps);
 	
-    seq.set_current_index(Seq_starting_frame_nr);
+    seq.setCurrentIndex(Seq_starting_frame_nr);
     for ( int i = 0; i < seq.getFrameBufferSize(); i++)
     {
-        img_current = seq.get_current_frame();
-        idx_current = seq.get_current_index();
-        name_current = seq.get_current_name();
-        seq.pre_load_frame_buffer_frame(img_current);
+        img_current = seq.getCurrentFrame();
+        idx_current = seq.getCurrentIndex();
+        name_current = seq.getCurrentName();
+        seq.preLoadFrameBufferFrame(img_current);
         tracker->initializeTracking(img_current, idx_current, K_matrix, n_keypoints);
         T_0 = cv::Mat::eye(4,4,CV_64F);
         if ( Log_save )
@@ -110,14 +110,14 @@ int AVGSlam()
     // ###################### Image loop ######################
 
     // Start reading image sequence
-	while ( seq.has_next_frame() ){
+	while ( seq.hasNextFrame() ){
         auto frame_start_time = high_resolution_clock::now();
 
         // Loading sequencer image
-		img_current = seq.get_current_frame();
-        idx_current = seq.get_current_index();
-        seq.frame_buffer_push(img_current);
-        std::cout << "Img nr: " << seq.get_current_index() << std::endl;
+		img_current = seq.getCurrentFrame();
+        idx_current = seq.getCurrentIndex();
+        seq.frameBufferPush(img_current);
+        std::cout << "Img nr: " << seq.getCurrentIndex() << std::endl;
 
 
         // Computing based on image
@@ -134,14 +134,14 @@ int AVGSlam()
             //tracker->drawEpipolarLinesWithPrev(img_disp);
             tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
             //tracker->drawEpipoleWithPrev(img_disp);
-            seq.visualize_image(img_disp);
+            seq.visualizeImage(img_disp);
         }
 
 
         if ( Log_save )
         {
             //Saving frame ego-motion parameters to file
-            name_current = seq.get_current_name();
+            name_current = seq.getCurrentName();
             T_global = tracker->getGlobalPose();
             writeParameters2File(Log_full_dst, name_current, T_global );
         }
@@ -152,8 +152,8 @@ int AVGSlam()
         }
 
 		// Set sequencer variables for next iteration
-        seq.iterate_to_new_frame();
-		if ( seq.is_finished() ){
+        seq.iterateToNewFrame();
+		if ( seq.isFinished() ){
 			cv::waitKey(0);
 		}
 

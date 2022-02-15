@@ -1,44 +1,88 @@
+#include <vector>
+#include <string>
+#include <opencv2/opencv.hpp>
+
+#include "sequencer2.hpp"
 
 
-/*
-Init:
-    Arguments:
-        int Speed mode (1,2,3)
-        int num_cam
-        vector<string> source
-        int fps
-        bool reverse
-        int frame_buffer_size
-*/
+using std::vector;
+using std::string;
 
-// Functionality
+Sequencer2::Sequencer2(string source, int playback_mode, int start_idx)
+{
+    this->curr_idx = start_idx;
+    this->playback_mode = playback_mode;
 
-    /*
-    Speed Modes: 
-        Fast(1): Quick as possible.
-        Normal(2): Max(Fps, Fast).
-        Manual(3): Manual jump back and fourth.
-    */
-
-    /*
-    Reverse:
-        Run entire sequence in reverse.
-    */
-
-    /*
-    Skip Frames: 
-        X: Skip x amount of frames between every loaded frame, show them at <Speed Modes> speed.
-    */
-
-    /*
-    Multi Camera:
-        Load multiple camera sources at once.
-        Return multiple camera sources at once.
-    */
-
-    /*
-    Multithreading frame buffer:
-        Faster loading of images.
-    */
+    if (source == "webcam")
+    {
+        this->webcam = webcam;
+        cv::namedWindow("Webcam", cv::WINDOW_AUTOSIZE);
+    }
+    else
+    {
+        this->video_path = source;
+        cv::namedWindow(this->video_path, cv::WINDOW_AUTOSIZE);
+    }
 
 
+    if ( this->webcam )
+    {
+        this->video_cap = cv::VideoCapture(0);
+    }
+    else
+    {
+        this->video_cap = cv::VideoCapture(this->video_path);
+    }
+
+    
+    if ( !this->video_cap.isOpened() )
+    {
+        std::cerr << "ERROR: Could not open video source: " << source << std::endl;
+    }
+}
+
+Sequencer2::~Sequencer2()
+{
+    //TODO: Implement sequencer destructor
+}
+
+int Sequencer2::getCurrentIdx()
+{
+    return this->curr_idx;
+}
+
+string Sequencer2::getCurrentImgName()
+{
+    return std::to_string(this->curr_idx);
+}
+
+cv::Mat Sequencer2::getCurrentImg()
+{
+    cv::Mat img;
+
+    if ( this->webcam )
+    {
+        this->video_cap >> img;
+    }
+    return img;
+}
+
+void Sequencer2::visualizeImage(cv::Mat& img)
+{
+    cv::imshow("Webcam", img);
+}
+
+bool Sequencer2::hasNextFrame()
+{
+    return true;
+}
+
+void Sequencer2::iterateToNewFrame()
+{
+    this->curr_idx += 1;
+}
+
+bool Sequencer2::isFinished()
+{
+    return false;
+}

@@ -77,7 +77,7 @@ Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file
 	current_index = 0;
 	max_index = img_seq.size() - 1;
 	if (max_index >= 0){
-		setup_gui();
+		setupGui();
 	}
 	else{
 		cout << "No images found in folder " << folder_path << endl;
@@ -94,12 +94,12 @@ int Sequencer::getFrameBufferSize()
 	return this->frame_buffer_size;
 }
 
-bool Sequencer::has_next_frame(){
+bool Sequencer::hasNextFrame(){
 	return (this->current_index <= this->max_index);
 }
 
 
-Mat Sequencer::get_current_frame(){
+Mat Sequencer::getCurrentFrame(){
 	string img_path = this->path + this->img_seq[this->current_index];
 	Mat imgCurrent = imread(img_path, cv::IMREAD_GRAYSCALE);
 
@@ -108,46 +108,46 @@ Mat Sequencer::get_current_frame(){
 	return imgCurrent;
 }
 
-Mat Sequencer::get_next_frame(){
+Mat Sequencer::getNextFrame(){
 	string img_path = this->path + this->img_seq[this->current_index + this->play_speed];
 	Mat imgCurrent = imread(img_path, cv::IMREAD_GRAYSCALE);
 	return imgCurrent;
 }
 
-string Sequencer::get_current_path(){
+string Sequencer::getCurrentPath(){
 	return this->path + this->img_seq[this->current_index];
 }
 
-string Sequencer::get_current_name()
+string Sequencer::getCurrentName()
 {
 	return this->img_seq[this->current_index];
 }
 
-int Sequencer::get_current_index(){
+int Sequencer::getCurrentIndex(){
 	return this->current_index;
 }
 
-void Sequencer::set_current_index(int index){
+void Sequencer::setCurrentIndex(int index){
 	this->current_index = index;
 }
 
-Point2d Sequencer::get_mouse_coords(){
+Point2d Sequencer::getMouseCoords(){
 	return this->mouse_coords;
 }
 
-int Sequencer::get_pressed_key(){
+int Sequencer::getPressedKey(){
 	return this->pressed_key;
 }
 
-bool Sequencer::is_just_finished(){
+bool Sequencer::isJustFinished(){
 	return this->just_finished;
 }
 
-bool Sequencer::is_finished(){
+bool Sequencer::isFinished(){
 	return this->finished;
 }
 
-void Sequencer::pre_load_frame_buffer_full()
+void Sequencer::preLoadFrameBufferFull()
 {
 
 	/* Pre-loading frame FIFO buffer of size N and sets current index 
@@ -160,43 +160,43 @@ void Sequencer::pre_load_frame_buffer_full()
 	
 	for (int i = 0; i < this->frame_buffer_size; i++)
 	{
-		frame = this->get_current_frame();
+		frame = this->getCurrentFrame();
 		this->frame_buffer.push (frame);
-		cout << "Pre-loading frame nr: " << this->get_current_index() << endl;
-		this->iterate_to_new_frame();
+		cout << "Pre-loading frame nr: " << this->getCurrentIndex() << endl;
+		this->iterateToNewFrame();
 	}
 	this->play_mode = false;
 }
 
-void Sequencer::pre_load_frame_buffer_frame(Mat frame)
+void Sequencer::preLoadFrameBufferFrame(Mat frame)
 {
 	/* Loading frame into frame buffer and iterating the sequencer */
 
-	cout << "Pre-loading frame nr: " << this->get_current_index() << endl;
+	cout << "Pre-loading frame nr: " << this->getCurrentIndex() << endl;
 	this->play_mode = true;
 	this->frame_buffer.push( frame );
-	this->iterate_to_new_frame();
+	this->iterateToNewFrame();
 	this->play_mode = false;
 
 }
 
-void Sequencer::frame_buffer_push(Mat frame)
+void Sequencer::frameBufferPush(Mat frame)
 {
 	this->frame_buffer.push(frame);
 	this->frame_buffer.pop();
 }
 
-Mat Sequencer::frame_buffer_get_newest()
+Mat Sequencer::frameBufferGetNewest()
 {
 	return this->frame_buffer.back();
 }
 
-Mat Sequencer::frame_buffer_get_oldest()
+Mat Sequencer::frameBufferGetOldest()
 {
 	return this->frame_buffer.front();
 }
 
-void Sequencer::visualize_image(Mat &img){
+void Sequencer::visualizeImage(Mat &img){
 
 	/* Visualizes the image and also links to hotkey based UI */
 
@@ -213,29 +213,29 @@ void Sequencer::visualize_image(Mat &img){
 
 	if (recording)
 	{
-		this->record_image(this->img_current);
+		this->recordImage(this->img_current);
 	}
 	if (this->play_mode && this->slow_motion){
-		this->eval_key(waitKey(4 * 1000 / this->fps));
+		this->evalKey(waitKey(4 * 1000 / this->fps));
 	}
 	else if (this->play_mode){
-		//this->eval_key(waitKey(1000 / this->fps));
-		this->eval_key(waitKey(1));
+		//this->evalKey(waitKey(1000 / this->fps));
+		this->evalKey(waitKey(1));
 	}
 	else{
-		this->eval_key(waitKey(0));
+		this->evalKey(waitKey(0));
 	}
 }
 
 
-void Sequencer::visualize_image_next(Mat &img){
+void Sequencer::visualizeImageNext(Mat &img){
 	Mat img_resized;
 	resize(img, img_resized, Size(this->scale, this->scale));
 	imshow(this->path, img_resized);
 	//moveWindow("img_current", this->origin_offset.x, this->origin_offset.y + img_resized.cols + 120);
 }
 
-void Sequencer::record_image(Mat &img)
+void Sequencer::recordImage(Mat &img)
 {
 	/* Function adds <img> to the video recording
 	   NOTE: if recording is activated this function will throw a warning at program startup */
@@ -289,9 +289,9 @@ void Sequencer::show(){
 	//setMouseCallback
 }
 
-//void Sequencer::eval_mouse(string event, int x, int y);
+//void Sequencer::evalMouse(string event, int x, int y);
 
-void Sequencer::eval_key(char key){
+void Sequencer::evalKey(char key){
 
 	/* Handles the hotkeybased UI given a keypress input */
 
@@ -334,7 +334,7 @@ void Sequencer::eval_key(char key){
 		this->current_index = this->max_index;
 	}
 }
-void Sequencer::iterate_to_new_frame(){
+void Sequencer::iterateToNewFrame(){
 
 	/* Given different methods of playback, shift current index to the
 	 new frame*/
@@ -354,7 +354,7 @@ void Sequencer::iterate_to_new_frame(){
 	}
 }
 
-void Sequencer::setup_gui(){
+void Sequencer::setupGui(){
 	string img_path = this->path + this->img_seq[this->current_index];
 	Mat img = imread(img_path, cv::IMREAD_GRAYSCALE);
 	this->width = img.cols;

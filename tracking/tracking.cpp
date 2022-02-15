@@ -203,7 +203,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoint
     shared_ptr<Pose> rel_pose = calculateRelativePose(frame1, frame2, K_matrix, this->getPoseCalcuationType());
     
     rel_pose->updateParametrization();
-    //this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
+    this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
 
 
     auto rel_pose_calc_end_time = high_resolution_clock::now();
