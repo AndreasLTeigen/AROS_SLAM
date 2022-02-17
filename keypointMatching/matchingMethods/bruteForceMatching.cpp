@@ -9,15 +9,15 @@ using cv::DMatch;
 using std::vector;
 using std::shared_ptr;
 
-void doBruteForceMatchingMono( shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
-//--Performing brute force matching without cross check and normalized hamming distance
+
+void BFMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
+    //--Performing brute force matching without cross check and normalized hamming distance
     vector<vector<DMatch>> matches, matches_temp;
     Mat queryDesc = frame1->compileCVDescriptors();
     Mat trainDesc = frame2->compileCVDescriptors();
 
-    cv::BFMatcher matcher(cv::NORM_HAMMING, false);
-    matcher.knnMatch(queryDesc, trainDesc, matches_temp, 2);
+    this->matcher.knnMatch(queryDesc, trainDesc, matches_temp, 2);
 
     //--Lowes ratio test
     for( int i = 0; i < matches_temp.size(); i++)

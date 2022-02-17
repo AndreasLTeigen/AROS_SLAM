@@ -27,8 +27,7 @@ Camera.cy: 185.2157
 
 # -----Algorithms-----
 Method.motion_prior: none
-Method.detector: orb
-Method.descriptor: orb
+Method.extractor: orb
 Method.matcher: bf_mono
 Method.pose_calculator: 5-point + outlier removal
 Method.point_reg_3D: all
@@ -78,4 +77,3 @@ Seq.frame_buffer_size: 5
 
 # -----Tracker parameter config-----
 Trck.tracking_window_length: 50
-Trck.nKeypoints_per_image: 500

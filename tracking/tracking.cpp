@@ -12,7 +12,7 @@
 
 #include "tracking.hpp"
 #include "../util/util.hpp"
-#include "../keypointExtraction/findKeypoints.hpp"
+#include "../keypointExtraction/keypointExtraction.hpp"
 #include "../motionPrior/motionPrior.hpp"
 #include "../keypointMatching/matchKeypoints.hpp"
 #include "../poseCalculation/poseCalculation.hpp"
@@ -37,13 +37,14 @@ using json = nlohmann::json;
 FTracker::FTracker(YAML::Node config){
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
-    this->detec_type = getDetectionMethod( config["Method.detector"].as<std::string>() );
-    this->descr_type = getDescriptionMethod( config["Method.descriptor"].as<std::string>() );
-    this->matcher_type = getMatchingMethod( config["Method.matcher"].as<std::string>() );
-    this->motion_prior_type = getMotionPriorMethod( config["Method.motion_prior"].as<std::string>() );
     this->pose_calculation_type = getRelativePoseCalculationMethod( config["Method.pose_calculator"].as<std::string>() );
     this->point_reg_3D_type = get3DPointRegistrationMethod( config["Method.point_reg_3D"].as<std::string>() );
     this->point_cull_3D_type = get3DPointCullingMethod( config["Method.point_cull_3D"].as<std::string>() );
+
+    this->motion_prior = getMotionPrior( config["Method.motion_prior"].as<std::string>() );
+    this->extractor = getExtractor( config["Method.extractor"].as<std::string>() );
+    this->matcher = getMatcher( config["Method.matcher"].as<std::string>() );
+
     this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
     this->show_timings = config["UI.timing_show"].as<bool>();
     this->show_tracking_log = config["UI.tracking_log_show"].as<bool>();
@@ -70,26 +71,6 @@ int FTracker::getFrameListLength()
 {
     std::shared_lock lock(this->mutex_frame_list);
     return this->frame_list.size();
-}
-
-Detector FTracker::getDetectorType()
-{
-    return this->detec_type;
-}
-
-Descriptor FTracker::getDescriptorType()
-{
-    return this->descr_type;
-}
-
-MotionPrior FTracker::getMotionPriorType()
-{
-    return this->motion_prior_type;
-}
-
-Matcher FTracker::getMatcherType()
-{
-    return this->matcher_type;
 }
 
 PoseCalculator FTracker::getPoseCalcuationType()
@@ -154,26 +135,26 @@ void FTracker::updateGlobalPose(cv::Mat T_rel, shared_ptr<FrameData> current_fra
     current_frame->setGlobalPose(this->getGlobalPose());
 }
 
-void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoints)
+void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix)
 {
     /* Creates a new initalization frame. Currently just extracts the 
        keypoints with descriptor*/
 
-    shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix, n_keypoints));
+    shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
 
-    findKeypoints( img, frame, this->getMap3D(), this->getDetectorType(), this->getDescriptorType());
+    this->extractor->extract( img, frame, this->getMap3D() );
     this->appendTrackingFrame(frame);
 }
 
 
 
-void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoints, int comparison_frame_spacing)
+void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_frame_spacing)
 {
     /* Core function of FTracker, recieves new image, extracts information
        with chosen methods and redirects to matching / pose prediction
        funcitons */
 
-    shared_ptr<FrameData> frame1 = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix, n_keypoints));
+    shared_ptr<FrameData> frame1 = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
     shared_ptr<FrameData> frame2 = this->getFrame(-comparison_frame_spacing);
 
 
@@ -182,18 +163,19 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int n_keypoint
     auto kpts_start_time = high_resolution_clock::now();
 
     // Motion prior
-    calculateMotionPrior( frame1, frame2, this->getMotionPriorType() );
+    //calculateMotionPrior( frame1, frame2, this->getMotionPriorType() );
+    this->motion_prior->calculate( frame1, frame2 );
 
 
     // Keypoint identification
-    findKeypoints( img, frame1, this->getMap3D(), this->getDetectorType(), this->getDescriptorType() );
+    this->extractor->extract( img, frame1, this->getMap3D() );
 
 
     auto kpts_end_time = high_resolution_clock::now(); 
 
 
     //Keypoint matching
-    matchKeypoints( frame1, frame2, this->getMatcherType() );
+    this->matcher->matchKeypoints( frame1, frame2 );
 
 
     auto match_end_time = high_resolution_clock::now();

@@ -7,46 +7,27 @@
 #include "../util/util.hpp"
 
 
-MotionPrior getMotionPriorMethod( std::string motion_prior_method )
+std::shared_ptr<MotionPrior> getMotionPrior( std::string motion_prior_method )
 {
-    /* Retrieve the right motion prior class from the corresponding config string */
-
     if ( motion_prior_method == "constant" )
     {
-        return MotionPrior::CONSTANT;
+        //return std::make_shared<ConstantMP>();
     }
     else if ( motion_prior_method == "gt" )
     {
-        return MotionPrior::GT;
+        return std::make_shared<GroundTruthMP>();
     }
     else
     {
-        std::cout << "ERROR: MOTION PRIOR METHOD NOT FOUND" << std::endl;
-        return MotionPrior::NONE;
+        std::cerr << "ERROR: MOTION PRIOR METHOD NOT FOUND" << std::endl;
+        return std::make_shared<NoneMP>();
     }
 }
 
-void calculateMotionPrior( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, MotionPrior motion_prior_method )
+
+
+
+void NoneMP::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
-    switch(motion_prior_method)
-    {
-        case MotionPrior::CONSTANT:
-        {
-            std::cout << "ERROR: MOTION PRIOR METHOD NOT IMPLEMENTED" << std::endl;
-        } break;
-
-        case MotionPrior::GT:
-        {
-            cv::Mat T_wc = globalMotionPriorGT(frame1);
-            frame1->setGlobalPose( T_wc );
-            cv::Mat rel_T = relTfromglobalTx2(T_wc, frame2->getGlobalPose());
-            FrameData::registerGTRelPose(T_wc, frame1, frame2);
-
-        } break;
-
-        default:
-        {
-            std::cout << "ERROR: MOTION PRIOR ALGORITHM NOT IMPLEMENTED" << std::endl;
-        }
-    }
+    std::cerr << "ERROR: MOTION PRIOR ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

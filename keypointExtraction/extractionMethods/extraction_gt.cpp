@@ -11,7 +11,16 @@
 
 using std::vector;
 
-void depthGTwBucketing( cv::Mat& img, std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, std::shared_ptr<Map3D> map_3d, int h_n_buckets, int w_n_buckets )
+void ORBNaiveBucketingGTExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+{
+    vector<cv::KeyPoint> kpts;
+    cv::Mat desc;
+
+    this->detector->detect( img, kpts );
+    this->depthGTwBucketing( img, frame, kpts, map_3d, 20, 20 );
+}
+
+void ORBNaiveBucketingGTExtractor::depthGTwBucketing( cv::Mat& img, std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, std::shared_ptr<Map3D> map_3d, int h_n_buckets, int w_n_buckets )
 {   
     // Find <MapPoints> visible from current frame.
     bool pt_in_image_bounds;

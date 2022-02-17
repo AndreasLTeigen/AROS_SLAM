@@ -23,7 +23,9 @@ using std::chrono::high_resolution_clock;
 
 int AVGSlam()
 {
-    // ###################### Parameter Initialization ######################
+    // =====================================================
+    //              Parameter Initialization 
+    // =====================================================
 
     // Load config file
     YAML::Node config = YAML::LoadFile("config/dev_config.yaml");
@@ -64,8 +66,6 @@ int AVGSlam()
     int Seq_starting_frame_nr = config["Seq.starting_frame_nr"].as<int>();
     int Seq_frame_buffer_size = config["Seq.frame_buffer_size"].as<int>();
 
-    int n_keypoints = config["Trck.nKeypoints_per_image"].as<int>();
-
     // Initializing other parameters
     int idx_current;
     std::string name_current;
@@ -74,7 +74,10 @@ int AVGSlam()
     K_matrix = compileKMatrix( fx, fy, cx, cy );
     
 
-    // ###################### Sequencer and frame tracker Initialization ######################
+
+    // ==================================================================
+    //          Sequencer and frame tracker Initialization 
+    //  =================================================================
 
     // Initialize sequencer and frame tracker
     std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
@@ -87,7 +90,7 @@ int AVGSlam()
         idx_current = seq.getCurrentIndex();
         name_current = seq.getCurrentName();
         seq.preLoadFrameBufferFrame(img_current);
-        tracker->initializeTracking(img_current, idx_current, K_matrix, n_keypoints);
+        tracker->initializeTracking(img_current, idx_current, K_matrix);
         T_0 = cv::Mat::eye(4,4,CV_64F);
         if ( Log_save )
         {
@@ -95,7 +98,11 @@ int AVGSlam()
         }
     }
 
-    // ###################### GUI Intialization and thread start ######################
+
+    // =====================================================
+    //          GUI Intialization and thread start 
+    // =====================================================
+
     #ifdef PANGOLIN_ACTIVE
         std::thread GUI_thread;
         std::shared_ptr<GUI> viewer = std::make_shared<GUI>();
@@ -107,7 +114,9 @@ int AVGSlam()
     #endif
 
 
-    // ###################### Image loop ######################
+    // =====================================================
+    //                  Image loop 
+    // =====================================================
 
     // Start reading image sequence
 	while ( seq.hasNextFrame() ){
@@ -122,7 +131,7 @@ int AVGSlam()
 
         // Computing based on image
         auto computing_start_time = high_resolution_clock::now();
-        tracker->trackFrame(img_current, idx_current, K_matrix, n_keypoints);
+        tracker->trackFrame(img_current, idx_current, K_matrix);
         auto computing_end_time = high_resolution_clock::now();
 
 

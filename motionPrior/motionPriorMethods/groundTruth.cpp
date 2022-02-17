@@ -8,7 +8,15 @@
 #include "groundTruth.hpp"
 #include "../../util/util.hpp"
 
-cv::Mat globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
+void GroundTruthMP::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+{
+    cv::Mat T_wc = this->globalMotionPriorGT(frame1);
+    frame1->setGlobalPose( T_wc );
+    cv::Mat rel_T = relTfromglobalTx2(T_wc, frame2->getGlobalPose());
+    FrameData::registerGTRelPose(T_wc, frame1, frame2);
+}
+
+cv::Mat GroundTruthMP::globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
 {
     YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
 

@@ -3,9 +3,28 @@
 
 #include "../dataStructures/frameData.hpp"
 
-enum class Matcher {brute_force_mono, NONE};
 
-Matcher getMatchingMethod( std::string matching_method );
-void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, Matcher matcher_type );
+class Matcher
+{
+    public:
+        Matcher(){};
+        ~Matcher(){};
+
+        virtual void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )=0;
+};
+
+std::shared_ptr<Matcher> getMatcher( std::string matching_method );
+
+
+
+
+class NoneMatcher : public Matcher
+{
+    public:
+        NoneMatcher(){};
+        ~NoneMatcher(){};
+
+        void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+};
 
 #endif

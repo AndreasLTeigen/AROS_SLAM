@@ -25,11 +25,6 @@ FrameData::~FrameData()
 }
 
 // ----------- Write functions -------------
-void FrameData::setNumKeypoints( int n_keypoints )
-{
-    std::unique_lock lock(this->mutex_n_keypoints);
-    this->n_keypoints = n_keypoints;
-}
 
 void FrameData::setKMatrix( Mat K_matrix )
 {
@@ -303,12 +298,6 @@ int FrameData::getNumKeypoints()
 {
     std::shared_lock lock(this->mutex_kpts);
     return this->kpts.size();
-}
-
-int FrameData::getTargetNumKeypoints()
-{
-    std::shared_lock lock(this->mutex_n_keypoints);
-    return this->n_keypoints;
 }
 
 Mat FrameData::getKMatrix()
