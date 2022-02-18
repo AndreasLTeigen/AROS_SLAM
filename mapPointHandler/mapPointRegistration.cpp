@@ -12,43 +12,24 @@ using cv::KeyPoint;
 using std::vector;
 using std::shared_ptr;
 
-PointReg3D get3DPointRegistrationMethod(std::string point_reg_3D_method)
+std::shared_ptr<MapPointRegistrator> getMapPointRegistrator( std::string map_point_reg_method )
 {
-    if ( point_reg_3D_method == "all" )
+    if ( map_point_reg_method == "all" )
     {
-        // All points that are matched are registered as 3D points.
-        return PointReg3D::ALL;
+        return std::make_shared<LinIncMPReg>();
     }
-    else if ( "depth_gt")
+    else if ( map_point_reg_method == "depth_gt" )
     {
-        // Points from the most recent frame is triangulated with a ground truth depth value.
-        return PointReg3D::DEPTH_GT;
+        return std::make_shared<depthGTMPReg>();
     }
     else
     {
-        std::cout << "ERROR: 3D POINT REGISTRATION METHOD NOT FOUND" << std::endl;
-        return PointReg3D::NONE;
+        std::cerr << "ERROR: MAP POINT REGISTRATION METHOD NOT FOUND" << std::endl;
+        return nullptr;
     }
 }
 
-
-void register3DPoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d, PointReg3D point_reg_3D)
+void NoneMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )
 {
-    switch(point_reg_3D)
-    {
-        case PointReg3D::ALL:
-        {
-            linearInclusiveMPReg(frame1, frame2, map_3d);
-        } break;
-
-        case PointReg3D::DEPTH_GT:
-        {
-            depthGTMPReg( frame1, map_3d );
-        } break;
-        
-        default:
-        {
-            std::cout << "ERROR: MAP POINT REGISTRATION ALGORITHM NOT IMPLEMENTED" << std::endl;
-        }
-    }
+    std::cerr << "ERROR: MAP POINT REGISTRATION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

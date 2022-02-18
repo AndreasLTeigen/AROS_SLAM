@@ -15,13 +15,13 @@ class FTracker
     private:
         bool show_timings, show_tracking_log;
         cv::Mat T_global;
-        PoseCalculator pose_calculation_type;
-        PointReg3D point_reg_3D_type;
-        PointCull3D point_cull_3D_type;
 
         std::shared_ptr<MotionPrior> motion_prior;
         std::shared_ptr<Extractor> extractor;
         std::shared_ptr<Matcher> matcher;
+        std::shared_ptr<PoseCalculator> pose_calculator;
+        std::shared_ptr<MapPointRegistrator> map_point_reg;
+        std::shared_ptr<MapPointCuller> map_point_cull; 
 
         int curr_frame_nr, tracking_window_length;
         std::vector<std::shared_ptr<FrameData>> frame_list;  // TODO:Change this to something like <frame_window_list>
@@ -40,8 +40,6 @@ class FTracker
         int getCurrentFrameNr();
         int getTrackingWindowLength();
         int getFrameListLength();
-        PoseCalculator getPoseCalcuationType();
-        PointReg3D getPointReg3DType();
         cv::Mat getGlobalPose();
         std::vector<std::shared_ptr<FrameData>> getTrackingFrames();
         std::shared_ptr<FrameData> getFrame(int index);

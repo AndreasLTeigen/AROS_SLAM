@@ -29,7 +29,7 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
     else
     {
         std::cerr << "ERROR: EXTRACTION METHOD NOT FOUND" << std::endl;
-        return std::make_shared<NoneExtractor>();
+        return nullptr;
     }
 }
 

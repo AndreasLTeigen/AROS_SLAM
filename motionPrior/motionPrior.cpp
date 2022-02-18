@@ -12,6 +12,7 @@ std::shared_ptr<MotionPrior> getMotionPrior( std::string motion_prior_method )
     if ( motion_prior_method == "constant" )
     {
         //return std::make_shared<ConstantMP>();
+        return nullptr;
     }
     else if ( motion_prior_method == "gt" )
     {

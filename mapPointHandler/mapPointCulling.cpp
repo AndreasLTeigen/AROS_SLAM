@@ -1,18 +1,26 @@
 #include <string>
+#include <memory>
 #include <iostream>
 
 #include "mapPointCulling.hpp"
 
-PointCull3D get3DPointCullingMethod(std::string point_cull_3D_method)
+
+std::shared_ptr<MapPointCuller> getMapPointCuller( std::string map_point_cull_method )
 {
-    if ( point_cull_3D_method == "OoW" )
+    if ( map_point_cull_method == "OoW" )
     {
-        // All points that are not visible any frame in the local window is culled (Outside of Window)
-        return PointCull3D::OoW;
+        std::cerr << "ERROR: MAP POINT CULLING METHOD: 'OoW' NOT IMPLEMENTED" << std::endl;
+        return nullptr;
     }
     else
     {
-        std::cout << "ERROR: 3D POINT CULLING METHOD NOT FOUND" << std::endl;
-        return PointCull3D::NONE;
+        std::cerr << "ERROR: MAP POINT CULLING METHOD NOT FOUND" << std::endl;
+        return nullptr;
     }
+}
+
+
+void NoneMPCull::cullMP()
+{
+    std::cerr << "ERROR: MAP POINT REGISTRATION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

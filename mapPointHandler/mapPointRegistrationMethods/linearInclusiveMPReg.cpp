@@ -12,7 +12,8 @@
 using std::vector;
 using std::shared_ptr;
 
-void linearInclusiveMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )
+
+void LinIncMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )
 {
     /*
     Arguments:

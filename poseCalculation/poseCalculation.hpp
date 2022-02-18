@@ -6,13 +6,28 @@
 #include "../dataStructures/frameData.hpp"
 #include "../dataStructures/pose.hpp"
 
+class PoseCalculator
+{
+    public:
+        PoseCalculator(){};
+        ~PoseCalculator(){};
 
-// P5OR - 5 point + outlier removal
+        virtual std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix )=0;
+};
 
-enum class PoseCalculator {P5OR, MP, NONE};
+std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_method );
 
-PoseCalculator getRelativePoseCalculationMethod( std::string pose_calculation_method );
 
-std::shared_ptr<Pose> calculateRelativePose(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix, PoseCalculator pose_calculation_type);
+
+
+class NonePC : public PoseCalculator
+{
+    public:
+        NonePC(){};
+        ~NonePC(){};
+
+        std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix )override;
+};
+
 
 #endif

@@ -37,13 +37,13 @@ using json = nlohmann::json;
 FTracker::FTracker(YAML::Node config){
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
-    this->pose_calculation_type = getRelativePoseCalculationMethod( config["Method.pose_calculator"].as<std::string>() );
-    this->point_reg_3D_type = get3DPointRegistrationMethod( config["Method.point_reg_3D"].as<std::string>() );
-    this->point_cull_3D_type = get3DPointCullingMethod( config["Method.point_cull_3D"].as<std::string>() );
 
     this->motion_prior = getMotionPrior( config["Method.motion_prior"].as<std::string>() );
     this->extractor = getExtractor( config["Method.extractor"].as<std::string>() );
     this->matcher = getMatcher( config["Method.matcher"].as<std::string>() );
+    this->pose_calculator = getPoseCalculator( config["Method.pose_calculator"].as<std::string>() );
+    this->map_point_reg = getMapPointRegistrator( config["Method.point_reg_3D"].as<std::string>() );
+    this->map_point_cull = getMapPointCuller( config["Method.point_cull_3D"].as<std::string>() );
 
     this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
     this->show_timings = config["UI.timing_show"].as<bool>();
@@ -71,16 +71,6 @@ int FTracker::getFrameListLength()
 {
     std::shared_lock lock(this->mutex_frame_list);
     return this->frame_list.size();
-}
-
-PoseCalculator FTracker::getPoseCalcuationType()
-{
-    return this->pose_calculation_type;
-}
-
-PointReg3D FTracker::getPointReg3DType()
-{
-    return this->point_reg_3D_type;
 }
 
 Mat FTracker::getGlobalPose()
@@ -160,52 +150,61 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     std::cout << "Frame nr: " << frame1->getFrameNr() << std::endl;
 
-    auto kpts_start_time = high_resolution_clock::now();
+    auto kpts_start_time = high_resolution_clock::now();            // Timer
 
-    // Motion prior
-    //calculateMotionPrior( frame1, frame2, this->getMotionPriorType() );
+    // ==================================== 
+    //          Motion prior
+    // ====================================
     this->motion_prior->calculate( frame1, frame2 );
 
 
-    // Keypoint identification
+    // ==================================== 
+    //      Keypoint identification
+    // ==================================== 
     this->extractor->extract( img, frame1, this->getMap3D() );
 
 
-    auto kpts_end_time = high_resolution_clock::now(); 
+    auto kpts_end_time = high_resolution_clock::now();              // Timer
 
 
-    //Keypoint matching
+    // ==================================== 
+    //          Keypoint matching
+    // ==================================== 
     this->matcher->matchKeypoints( frame1, frame2 );
 
 
-    auto match_end_time = high_resolution_clock::now();
+    auto match_end_time = high_resolution_clock::now();             // Timer
 
 
-    // Relative pose calculation
-    shared_ptr<Pose> rel_pose = calculateRelativePose(frame1, frame2, K_matrix, this->getPoseCalcuationType());
+    // ==================================== 
+    //      Relative pose calculation
+    // ==================================== 
+    shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, K_matrix );
     
     rel_pose->updateParametrization();
     this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
 
 
-    auto rel_pose_calc_end_time = high_resolution_clock::now();
+    auto rel_pose_calc_end_time = high_resolution_clock::now();     // Timer
 
 
-    // Map update
-    register3DPoints( frame1, frame2, this->getMap3D(), this->getPointReg3DType() );
+    // ==================================== 
+    //              Map update
+    // ==================================== 
+    this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
 
-    std::cout << "Frame num keypoints: " << frame1->getNumKeypoints() << std::endl;
-    std::cout << "Total num mappoints: " << map_3d->getNumMapPoints() << std::endl;
 
-    auto map_update_end_time = high_resolution_clock::now();
+    auto map_update_end_time = high_resolution_clock::now();        // Timer
 
 
     this->appendTrackingFrame(frame1);
 
-    // Cleanup
+    // ====================================
+    //              Cleanup
+    // ====================================
     this->frameListPruning();
 
-    auto cleanup_end_time = high_resolution_clock::now();
+    auto cleanup_end_time = high_resolution_clock::now();           // Timer
 
     if (show_tracking_log)
     {

@@ -10,7 +10,9 @@
 #include "../../util/util.hpp"
 
 
-void depthGTMPReg( std::shared_ptr<FrameData> frame1, std::shared_ptr<Map3D> map_3d)
+
+
+void depthGTMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )
 {
     YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
 

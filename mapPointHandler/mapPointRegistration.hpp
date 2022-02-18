@@ -4,10 +4,25 @@
 #include "../dataStructures/frameData.hpp"
 #include "../dataStructures/map3D.hpp"
 
-enum class PointReg3D {ALL, DEPTH_GT, NONE};
+class MapPointRegistrator
+{
+    public:
+        MapPointRegistrator(){};
+        ~MapPointRegistrator(){};
 
-PointReg3D get3DPointRegistrationMethod(std::string point_reg_3D_method);
+        virtual void registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )=0;
+};
 
-void register3DPoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d, PointReg3D point_reg_3D );
+std::shared_ptr<MapPointRegistrator> getMapPointRegistrator( std::string map_point_reg_method );
+
+
+class NoneMPReg : public MapPointRegistrator
+{
+    public:
+        NoneMPReg(){};
+        ~NoneMPReg(){};
+
+        void registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )override;
+};
 
 #endif

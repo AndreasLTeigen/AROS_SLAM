@@ -6,8 +6,25 @@
 
 
 
-std::shared_ptr<Pose> do5pointAlgOutlierRejection(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix)
+std::shared_ptr<Pose> P5ORPC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix )
 {
+    return this->do5pointAlgOutlierRejection( frame1, frame2, K_matrix );
+}
+
+std::shared_ptr<Pose> P5ORPC::do5pointAlgOutlierRejection(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix)
+{
+    /*  Arguments:
+            frame1:                 Current frame.
+            frame2:                 Previous frame.
+            K_matrix:               Camera calibration matrix of both cameras.
+            pose_calculation_type:  Method of calculating relative pose.
+        Returns:
+            rel_pose:               Copy of the relative pose.
+
+        Explanation:
+            Calculates relative pose and references the new pose object in frame 1 and frame 2.
+    */
+
     cv::Mat E_matrix, inliers;
     std::vector<cv::Point> pts1, pts2;
 
