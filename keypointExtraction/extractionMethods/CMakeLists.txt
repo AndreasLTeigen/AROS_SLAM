@@ -2,10 +2,12 @@ add_library(KeypointExtractionMethodsLib)
 target_sources(KeypointExtractionMethodsLib #${PROJECT_NAME}_lib 
 	PRIVATE 
 		orb.cpp
+		orbOS.cpp
 		bucketing.cpp
 		extraction_gt.cpp
 	PUBLIC
 		orb.hpp
+		orbOS.hpp
 		bucketing.hpp
 		extraction_gt.hpp	
 )

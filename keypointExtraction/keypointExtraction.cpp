@@ -2,6 +2,7 @@
 
 #include "keypointExtraction.hpp"
 #include "extractionMethods/orb.hpp"
+#include "extractionMethods/orbOS.hpp"
 #include "extractionMethods/bucketing.hpp"
 #include "extractionMethods/extraction_gt.hpp"
 
@@ -21,6 +22,10 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
     if ( extractor_method == "orb" )
     {
         return std::make_shared<ORBExtractor>();
+    }
+    else if ( extractor_method == "orb_os" )
+    {
+        return std::make_shared<ORBOSExtractor>();
     }
     else if ( extractor_method == "orb_nb_gt" )
     {
