@@ -10,8 +10,8 @@
 class ORBExtractor : public Extractor
 {
     private:
-        cv::Ptr<cv::ORB> detector = cv::ORB::create(500);
-        cv::Ptr<cv::ORB> descriptor = cv::ORB::create();
+        cv::Ptr<cv::ORB> orb = cv::ORB::create(500);
+        //cv::Ptr<cv::ORB> descriptor = cv::ORB::create();
 
     public:
         ORBExtractor(){};

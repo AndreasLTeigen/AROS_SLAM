@@ -82,7 +82,8 @@ int AVGSlam()
     // Initialize sequencer and frame tracker
     std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
     Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VOut_rec_name, VIn_fps);
-	
+	//Sequencer2 seq = Sequencer2(VIn_path, VIn_file_format);
+
     seq.setCurrentIndex(Seq_starting_frame_nr);
     for ( int i = 0; i < seq.getFrameBufferSize(); i++)
     {

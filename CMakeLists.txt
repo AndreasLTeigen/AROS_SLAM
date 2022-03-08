@@ -108,8 +108,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${CONAN_LIBS})
 
 
 
-find_package(OpenMP REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX)
+#find_package(OpenMP REQUIRED)
+#target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX)
+
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message("OpenMP found")
+    target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 
 # Including packages manually if needed

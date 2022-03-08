@@ -44,7 +44,7 @@ class FrameData
         void demoteFromKeyframe();
         void addKeypoint( std::shared_ptr<KeyPoint2> kpt );
         void registerKeypoints(std::vector<std::shared_ptr<KeyPoint2>> kpts);
-        void registerKeypoints( std::vector<cv::KeyPoint> kpts, cv::Mat descrs );
+        void registerKeypoints( std::vector<cv::KeyPoint>& kpts, cv::Mat& descrs );
         void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list );
         std::vector<int> removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> connecting_frame );
         void addKptToMatchList( std::shared_ptr<KeyPoint2> kpt, std::shared_ptr<FrameData> connecting_frame );
