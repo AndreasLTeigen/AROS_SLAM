@@ -5,6 +5,7 @@
 #include "extractionMethods/orbOS.hpp"
 #include "extractionMethods/bucketing.hpp"
 #include "extractionMethods/extraction_gt.hpp"
+#include "extractionMethods/descriptorDistribution.hpp"
 
 using std::string;
 using std::vector;
@@ -30,6 +31,10 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
     else if ( extractor_method == "orb_nb_gt" )
     {
         return std::make_shared<ORBNaiveBucketingGTExtractor>();
+    }
+    else if ( extractor_method == "dd")
+    {
+        return std::make_shared<DescrDistribExtractor>();
     }
     else
     {

@@ -1,7 +1,7 @@
 
 # -----Video In-----
-#VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
-VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
+VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
+#VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/A/
 VIn.file_format: png
@@ -27,7 +27,7 @@ Camera.cy: 185.2157
 
 # -----Algorithms-----
 Method.motion_prior: none
-Method.extractor: orb #orb_os
+Method.extractor: dd #orb #orb_os
 Method.matcher: bf_mono
 Method.pose_calculator: 5-point + outlier removal
 Method.point_reg_3D: all

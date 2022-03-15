@@ -82,13 +82,13 @@ void FrameData::registerKeypoints(vector<cv::KeyPoint>& kpts, Mat& descrs)
     /* Converts and registers vector<cv::KeyPoint> into the AVG Keypoint class
        and saves it in the frameData class. For more details, see design document*/
 
-    #pragma omp parallel for num_threads(4)
+    #pragma omp parallel for
     for( int i = 0; i < kpts.size(); i++ )
     {
         shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(i, kpts[i], this->getFrameNr(), descrs.row(i));
         this->addKeypoint(keypoint);
-        std::cout << "NUm threads: " << omp_get_num_threads() << std::endl;
-        std::cout << "This is thread num: " << omp_get_thread_num() << std::endl;
+        //std::cout << "NUm threads: " << omp_get_num_threads() << std::endl;
+        //std::cout << "This is thread num: " << omp_get_thread_num() << std::endl;
     }
 }
 

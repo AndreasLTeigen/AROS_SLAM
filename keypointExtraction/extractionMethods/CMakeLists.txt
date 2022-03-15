@@ -5,10 +5,12 @@ target_sources(KeypointExtractionMethodsLib #${PROJECT_NAME}_lib
 		orbOS.cpp
 		bucketing.cpp
 		extraction_gt.cpp
+		descriptorDistribution.cpp
 	PUBLIC
 		orb.hpp
 		orbOS.hpp
 		bucketing.hpp
-		extraction_gt.hpp	
+		extraction_gt.hpp
+		descriptorDistribution.hpp
 )
 target_include_directories(KeypointExtractionMethodsLib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
