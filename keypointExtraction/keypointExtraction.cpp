@@ -34,7 +34,7 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
     }
     else if ( extractor_method == "dd")
     {
-        return std::make_shared<DescrDistribExtractor>();
+        return std::make_shared<DescDistribExtractor>();
     }
     else
     {
