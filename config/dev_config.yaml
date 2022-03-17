@@ -27,7 +27,7 @@ Camera.cy: 185.2157
 
 # -----Algorithms-----
 Method.motion_prior: none
-Method.extractor: dd #orb #orb_os
+Method.extractor: orb #dd #orb #orb_os
 Method.matcher: bf_mono
 Method.pose_calculator: 5-point + outlier removal
 Method.point_reg_3D: all

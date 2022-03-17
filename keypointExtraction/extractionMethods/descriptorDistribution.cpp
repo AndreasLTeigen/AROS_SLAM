@@ -1,4 +1,6 @@
 #include <cmath>
+#include <string>
+#include <algorithm>
 #include <opencv2/opencv.hpp>
 
 #include"descriptorDistribution.hpp"
@@ -15,42 +17,23 @@ using cv::Mat;
 using cv::KeyPoint;
 using cv::Ptr;
 
-std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( cv::KeyPoint kpt, int reg_size )
+bool DescDistribExtractor::validDescriptorRegion( int x, int y, int W, int H, int border )
 {
-    /*
-    Arguments:
-        kpt:        Detected keypoint, center of the local neighbourhood.
-        reg_size:   Length of edge in the local neighbourhood (square).
-    Returns:
-        local_kpts: Keypoints in neighbourhood around <kpt>
-    */
-    //TODO: Check how the descriptor is computed for keypoints with no orientation in the orb detector. This might cause a problem.
-    int idx;
-    float ref_x, ref_y, x, y, size;
-    vector<cv::KeyPoint> local_kpts(reg_size*reg_size);
-
-    ref_x = kpt.pt.x - reg_size/2; 
-    ref_y = kpt.pt.y - reg_size/2;
-    
-    #pragma omp parallel for
-    for ( int row_i = 0; row_i < reg_size; ++row_i )
+    if ( x < border || x >= W - border )
     {
-        y = ref_y + row_i;
-        for ( int col_j = 0; col_j < reg_size; ++col_j )
-        {
-            idx = row_i*reg_size + col_j;
-            x = ref_x + col_j;
-            size = kpt.size;
-            local_kpts[idx] = cv::KeyPoint(x, y, size);
-        }
+        return false;
     }
-
-    local_kpts.erase(local_kpts.begin()+int(reg_size/2));       // Removing the central keypoint already calculated
-    
-    return local_kpts;
+    else if ( y < border || y >= H - border )
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
-std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vector<cv::KeyPoint> kpts, int reg_size )
+std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vector<cv::KeyPoint> kpts, Mat& img )
 {
     /*
     Arguments:
@@ -60,14 +43,23 @@ std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vecto
         local_kpts: Keypoints in neighbourhoods around all <kpt>s.
     */
     //TODO: Check how the descriptor is computed for keypoints with no orientation in the orb detector. This might cause a problem.
-    int idx;
+
+    int idx, W, H, desc_radius;
     float ref_x, ref_y, x, y, size;
-    //vector<cv::KeyPoint> local_kpts((reg_size*reg_size-1)*kpts.size());
     vector<cv::KeyPoint> local_kpts;
+    W = img.cols;
+    H = img.rows;
     
     #pragma omp parallel for
     for ( cv::KeyPoint kpt : kpts )
     {
+        // Skips keypoints if local region will not produce all valid descriptors.
+        desc_radius = std::max(this->patchSize, int(std::ceil(kpt.size)/2));
+        if ( !validDescriptorRegion(kpt.pt.x, kpt.pt.y, W, H, desc_radius + this->reg_size) )
+        {
+            continue;
+        }
+
         ref_x = kpt.pt.x - reg_size/2; 
         ref_y = kpt.pt.y - reg_size/2;
         for ( int row_i = 0; row_i < reg_size; ++row_i )
@@ -75,18 +67,23 @@ std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vecto
             y = ref_y + row_i;
             for ( int col_j = 0; col_j < reg_size; ++col_j )
             {
-                if (row_i != int(reg_size/2) || col_j != int(reg_size/2)) // Let every keypoint but the one we already have be added to the list
+
+                // If keypoint is the center keypoint add it directly.
+                /*
+                if (row_i != int(reg_size/2) || col_j != int(reg_size/2)) 
                 {
-                    idx = row_i*reg_size + col_j;
                     x = ref_x + col_j;
                     size = kpt.size;
                     local_kpts.push_back(cv::KeyPoint(x,y,size));
-                    //local_kpts[idx] = cv::KeyPoint(x, y, size);
                 }
                 else
                 {
                     local_kpts.push_back(kpt);
                 }
+                */
+                x = ref_x + col_j;
+                size = kpt.size;
+                local_kpts.push_back(cv::KeyPoint(x,y,size));
             }
         }
     }
@@ -94,22 +91,7 @@ std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vecto
     return local_kpts;
 }
 
-std::vector<cv::KeyPoint> DescDistribExtractor::generateDenseKeypoints(cv::Mat& img, float kpt_size)
-{
-    int border = kpt_size/2 + 1;
-    vector<cv::KeyPoint> dense_kpts;
-
-    for (int y = border; y < img.rows-border; y++)
-    {
-        for (int x = border; x < img.cols-border; x++)
-        {
-            dense_kpts.push_back(cv::KeyPoint(float(x), float(y), kpt_size));
-        }
-    }
-    return dense_kpts;
-}
-
-vector<Mat> DescDistribExtractor::sortDescs( vector<cv::KeyPoint>& kpts, vector<cv::KeyPoint>& dummy_kpts, Mat& desc, int reg_size )
+vector<Mat> DescDistribExtractor::sortDescsN2( vector<cv::KeyPoint>& kpts, vector<cv::KeyPoint>& dummy_kpts, Mat& desc, int reg_size )
 {
     // TODO: INCREASE THE SPEED OF THIS ALGORITHM WITH RANGE SEARCH PROBLEM SOLUTION
     int x_c, y_c, x_d, y_d, x_dist, y_dist;
@@ -144,7 +126,44 @@ vector<Mat> DescDistribExtractor::sortDescs( vector<cv::KeyPoint>& kpts, vector<
     return region_desc;
 }
 
-Mat DescDistribExtractor::computeHammingDistance( Mat& target_desc, Mat& region_descs, int N )
+void DescDistribExtractor::sortDescsOrdered(Mat& desc, vector<Mat>& desc_ordered, int reg_size)
+{
+    /*
+    Arguments:
+        desc:       Descriptors for all keypoints in all local regions, stored in reg_size*reg_size chunks.
+        reg_size:   Size of the local neighbourhood.
+    Returns:
+        desc_ordered:   All descriptors belonging to neighbourhood[i] stored as vector element i.
+    Assumption:
+        <desc> is ordered in chunks of size reg_size*reg_size belonging to each keypoint.
+    */
+    int K = reg_size*reg_size;
+
+    for ( int n = 0; n < desc.rows/K; n++)
+    {
+        Mat neighborhood_desc;
+        for ( int i = 0; i < reg_size; i++ )
+        {
+            for ( int j = 0; j < reg_size; j++ )
+            {
+                neighborhood_desc.push_back(desc.row( n*K + i*reg_size + j ));
+            }
+        }
+        desc_ordered.push_back(neighborhood_desc);
+    }
+}
+
+void DescDistribExtractor::getCenterDesc( vector<Mat>& desc_ordered, Mat& desc_center )
+{
+    int K = desc_ordered[0].rows;
+    for (int i = 0; i < desc_ordered.size(); i++)
+    {
+        desc_center.push_back(desc_ordered[i].row(int(K/2)));
+    }
+
+}
+
+Mat DescDistribExtractor::computeHammingDistance( Mat& target_desc, Mat& region_descs )
 {
     /*
     Arguments:
@@ -155,12 +174,104 @@ Mat DescDistribExtractor::computeHammingDistance( Mat& target_desc, Mat& region_
         desc_dists:         Hamming distance between <target_desc> and all descriptors in <descs>
     */
 
+    int N = region_descs.rows;
     Mat hamming_dists = Mat::zeros(1, N, CV_64F);
     for ( int i = 0; i < N; ++i )
     {
-        hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i));
+        hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i), cv::NORM_HAMMING);
     }
     return hamming_dists;
+}
+
+Mat DescDistribExtractor::computeHammingDistanceAnalysis( cv::KeyPoint target_kpt, Mat& target_desc, vector<cv::KeyPoint> region_kpt, Mat& region_descs )
+{
+    /*
+    Arguments:
+        target_desc:        Descriptor all other descriptors should be calculated the distance to.
+        descs:              All other descriptors.
+        N:                  Number of descriptors.
+    Returns:
+        desc_dists:         Hamming distance between <target_desc> and all descriptors in <descs>
+    */
+
+    int N = region_descs.rows;
+    Mat hamming_dists = Mat::zeros(1, N, CV_64F);
+    for ( int i = 0; i < N; ++i )
+    {
+        std::cout << "Kpt sub nr: " << i << std::endl;
+        std::cout << "Target kpt: " << target_kpt.pt << std::endl;
+        std::cout << "region kpt: " << region_kpt[i].pt << std::endl;
+        hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i), cv::NORM_HAMMING);
+        std::cout << "target_desc: " << target_desc << std::endl;
+        std::cout << "reg_desc: " << region_descs.row(i) << std::endl;
+        std::cout << "Hamming dist: " << hamming_dists.at<double>(0, i) << std::endl;
+        std::cout << cv::norm(target_desc, region_descs.row(i)) << std::endl;
+    }
+    std::cout << "##############################################" << std::endl;
+    return hamming_dists;
+}
+
+std::vector<cv::KeyPoint> DescDistribExtractor::generateDenseKeypoints(cv::Mat& img, float kpt_size)
+{
+    int border = kpt_size/2 + 1;
+    vector<cv::KeyPoint> dense_kpts;
+
+    for (int y = border; y < img.rows-border; y++)
+    {
+        for (int x = border; x < img.cols-border; x++)
+        {
+            dense_kpts.push_back(cv::KeyPoint(float(x), float(y), kpt_size));
+        }
+    }
+    return dense_kpts;
+}
+
+void DescDistribExtractor::testPrintKeypointOrdering(vector<cv::KeyPoint> dummy_kpts, int kpt_nr)
+{
+    int N = this->reg_size*this->reg_size;
+    cv::KeyPoint kpt;
+
+    std::cout << "Kpt nr: " << kpt_nr << std::endl;
+    for ( int i = 0; i < this->reg_size; i++ )
+    {
+        for ( int j = 0; j < this->reg_size; j++ )
+        {
+            kpt = dummy_kpts[kpt_nr*N + i*this->reg_size + j];
+            std::cout << "|" << kpt.pt.y << ", " << kpt.pt.x << "|";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "//////////////////////////////////////////////////////////////" << std::endl;
+}
+
+void DescDistribExtractor::printLocalHammingDist( vector<Mat> hamming_dists, int reg_size )
+{
+    for ( int n = 0; n < hamming_dists.size(); n++ )
+    {
+        for ( int i = 0; i < reg_size; i++ )
+        {
+            for ( int j = 0; j < reg_size; j++ )
+            {
+                std::cout << " | " << hamming_dists[n].col(i*reg_size + j);
+            }
+            std::cout << " | " << std::endl;
+        }
+        std::cout << "####################################" << std::endl;
+    }
+}
+
+Mat DescDistribExtractor::generateKeypointCoverageMap(vector<cv::KeyPoint> kpts, int H, int W)
+{
+    int x, y;
+    Mat c_map = Mat::zeros(H, W, CV_8UC1);
+
+    for ( cv::KeyPoint kpt : kpts )
+    {
+        x = kpt.pt.x;
+        y = kpt.pt.y;
+        c_map.at<uchar>(y,x) = c_map.at<uchar>(y,x) + 256/4;
+    }
+    return c_map;
 }
 
 void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
@@ -179,20 +290,39 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
     */
     cv::KeyPoint kpt;
     vector<cv::KeyPoint> kpts;
-    Mat desc, center_desc, hamming_dists;
+    Mat desc, center_desc;
 
     auto detect_start = high_resolution_clock::now();
 
-    int N_region_descs = this->reg_size*this->reg_size;
+    int N = this->reg_size*this->reg_size;
 
     orb->detect( img, kpts );
+    orb->compute( img, kpts, center_desc );  // Remove later
 
     //Generate all dummy keypoints
-    vector<cv::KeyPoint> dummy_kpts = generateNeighbourhoodKpts(kpts, this->reg_size);
+    //std::cout << "Predicted Dummy points: " << kpts.size() * N << std::endl;
+    vector<cv::KeyPoint> dummy_kpts = this->generateNeighbourhoodKpts(kpts, img);
+
     std::cout << "Dummy points: " << dummy_kpts.size() << std::endl;
     orb->compute( img, dummy_kpts, desc );
-    //std::cout << "Dummy points: " << dummy_kpts.size() << std::endl;
-    //vector<Mat> region_descs = sortDescs( kpts, dummy_kpts, center_desc, desc, this->reg_size);
+    std::cout << "Dummy points: " << dummy_kpts.size() << std::endl;
+
+    vector<Mat> desc_ordered;
+    this->sortDescsOrdered(desc, desc_ordered, this->reg_size);
+
+    Mat desc_center;
+    this->getCenterDesc( desc_ordered, desc_center );
+
+    Mat target_desc;
+    vector<Mat> hamming_dists(desc_ordered.size());
+    for ( int i = 0; i < desc_ordered.size(); i++)
+    {
+        target_desc = desc_center.row(i);
+        hamming_dists[i] = computeHammingDistance(target_desc, desc_ordered[i]);
+    }
+
+    //this->printLocalHammingDist(hamming_dists, this->reg_size);
+    
 
     //orb->compute( img, kpts, desc );
     std::cout << "Num descriptors: " << desc.size() << std::endl;
