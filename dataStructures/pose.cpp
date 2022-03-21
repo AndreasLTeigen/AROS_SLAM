@@ -286,6 +286,12 @@ Mat Pose::getEMatrix()
     return this->E_matrix;
 }
 
+Mat Pose::calculateFMatrix(Mat K_inv)
+{
+    std::shared_lock lock(this->mutex_pose);
+    return K_inv.t() * this->getEMatrix() * K_inv;
+}
+
 shared_ptr<FrameData> Pose::getConnectingFrame(int connecting_frame_nr)
 {
     std::shared_ptr<FrameData> temp_frame1, temp_frame2;

@@ -407,7 +407,7 @@ vector<cv::KeyPoint> FrameData::compileCVKeypoints()
     return kpts_cv;
 }
 
-Mat FrameData::compileCVDescriptors()
+Mat FrameData::compileCVDescriptors(std::string descr_type)
 {
     /* 
     Returns: 
@@ -422,16 +422,16 @@ Mat FrameData::compileCVDescriptors()
     std::shared_ptr<KeyPoint2> temp_kpt;
     int N = this->getKeypoints().size();
     temp_kpt = this->getKeypoints()[0];
-    int len_descr = temp_kpt->getDescriptor().cols;
-    int descr_type = temp_kpt->getDescriptor().type();
+    int len_descr = temp_kpt->getDescriptor(descr_type).cols;
+    int descr_value_type = temp_kpt->getDescriptor(descr_type).type();
 
-    Mat descrs_cv = Mat::zeros(N, len_descr, descr_type);
+    Mat descrs_cv = Mat::zeros(N, len_descr, descr_value_type);
     
     #pragma omp parallel for
     for (int i = 0; i < N; i++)
     {
         temp_kpt = this->getKeypoints()[i];
-        temp_kpt->getDescriptor().copyTo(descrs_cv.row(i));
+        temp_kpt->getDescriptor(descr_type).copyTo(descrs_cv.row(i));
     }
 
     return descrs_cv;

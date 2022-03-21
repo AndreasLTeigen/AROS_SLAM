@@ -57,6 +57,7 @@ class Pose
         cv::Mat getRMatrix();
         cv::Mat gettvector();
         cv::Mat getEMatrix();
+        cv::Mat calculateFMatrix(cv::Mat K_inv);
         std::shared_ptr<FrameData> getConnectingFrame( int connecting_frame_nr );
         std::shared_ptr<Parametrization> getParametrization( ParamID parametrization_id=ParamID::STDPARAM );
         void decomposeEMatrixSlow( cv::Mat &E_matrix, cv::Mat &R, cv::Mat &t);

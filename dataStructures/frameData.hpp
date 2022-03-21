@@ -68,7 +68,7 @@ class FrameData
         std::shared_ptr<Pose> getRelPose( int rel_frame_nr );
         std::shared_ptr<Pose> getRelPose( std::shared_ptr<FrameData> rel_frame );
         std::vector<cv::KeyPoint> compileCVKeypoints();
-        cv::Mat compileCVDescriptors();
+        cv::Mat compileCVDescriptors(std::string descr_type="orb");
         std::vector<cv::Point> compileCV2DPoints();
         cv::Mat compileMatchedCVPointCoords( int matched_frame_nr);
         std::vector<cv::Point> compileMatchedCVPoints( int matched_frame_nr);
