@@ -231,6 +231,49 @@ void dehomogenizeMatrix(cv::Mat& X)
     }
 }
 
+cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
+{
+
+    /*
+    Arguments:
+        x:      List of x coordinates,  [N x 1].
+        y:      List of y coordinates,  [N x 1].
+        z:      List of z coordinates,  [N x 1].
+    Returns:
+        A:      Quadratic form fitted to (x, y, 1).T * A * (x, y, 1) = z, [3 x 3].
+                   [[a11,   a12/2,  a1/2],
+                    [a12/2, a22     a2/2],
+                    [a1/2,  a2/2,   a0  ]]
+    */
+
+    // Reconstructing the problem into a linear least squares problem: z = D * a
+    // D_i = [x^2, y^2, x*y, x, y, 1] and a = [a11, a22, a12, a1, a2, a0].T
+
+    int N = z.rows;
+    double x_i, y_i;
+    cv::Mat D = cv::Mat::ones(N,6,CV_64F);
+
+    for ( int i = 0; i < N; ++i )
+    {
+        x_i = x.at<double>(i,0);
+        y_i = y.at<double>(i,0);
+        D.at<double>(i, 0) = x_i*x_i;
+        D.at<double>(i, 1) = y_i*y_i;
+        D.at<double>(i, 2) = x_i*y_i;
+        D.at<double>(i, 3) = x_i;
+        D.at<double>(i, 4) = y_i;
+    }
+
+    cv::Mat a;
+    cv::solve(D, z, a, cv::DECOMP_SVD);
+    //std::cout << "Quadratic form fitted: " << a << std::endl;
+    cv::Mat A = (cv::Mat_<double>(3,3)<<a.at<double>(0,0),      a.at<double>(0,2)/2,    a.at<double>(0,3)/2,
+                                    a.at<double>(0,2)/2,    a.at<double>(0,1),      a.at<double>(0,4)/2,
+                                    a.at<double>(0,3)/2,    a.at<double>(0,4)/2,    a.at<double>(0,5));
+
+    return A;
+}
+
 cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T_wc, cv::Mat K)
 {
     /*

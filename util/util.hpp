@@ -36,6 +36,8 @@ void homogenizeArray(cv::Mat& xy);
 
 void dehomogenizeMatrix(cv::Mat& X);
 
+cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z);
+
 cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K);
 
 cv::Mat projectKpt( cv::Mat XYZ1, cv::Mat T, cv::Mat K );

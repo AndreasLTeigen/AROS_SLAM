@@ -34,6 +34,7 @@ class DescDistribExtractor : public Extractor
 
         bool validDescriptorRegion( int x, int y, int W, int H, int border );
         std::vector<cv::KeyPoint> generateNeighbourhoodKpts( std::vector<cv::KeyPoint>& kpts, cv::Mat& img );
+        void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
         std::vector<cv::Mat> sortDescsN2( std::vector<cv::KeyPoint>& kpts, std::vector<cv::KeyPoint>& dummy_kpts, cv::Mat& desc, int reg_size );
         void sortDescsOrdered( cv::Mat& desc, std::vector<cv::Mat>& desc_ordered, int reg_size );
         void getCenterDesc( std::vector<cv::Mat>& desc_ordered, cv::Mat& desc_center );
@@ -45,7 +46,7 @@ class DescDistribExtractor : public Extractor
         void printLocalHammingDist( std::vector<cv::Mat> hamming_dists, int reg_size );
         cv::Mat generateKeypointCoverageMap(std::vector<cv::KeyPoint> kpts, int H, int W);
 
-        void registerFrameKeypoints( std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, cv::Mat& desc, std::vector<cv::Mat>& desc_hamming_dist );
+        void registerFrameKeypoints( std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, cv::Mat& desc, cv::Mat& center_desc, std::vector<cv::Mat>& desc_hamming_dist );
 
     public:
         DescDistribExtractor(){};

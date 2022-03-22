@@ -4,7 +4,8 @@
 #include <algorithm>
 #include <opencv2/opencv.hpp>
 
-#include"descriptorDistribution.hpp"
+#include "../../util/util.hpp"
+#include "descriptorDistribution.hpp"
 
 using std::string;
 using std::vector;
@@ -84,6 +85,41 @@ std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vecto
     }
     
     return local_kpts;
+}
+
+void DescDistribExtractor::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
+{
+    /*
+    Argument:
+        x_c:    x coordinate of region center.
+        y_c:    y coordinate of region center.
+        size:   Size of the region (length of side).
+    
+    Returns:
+        x:      x vector of coordinates that constitutes region, [size*size, 1].
+        y:      y vector of coordinates that constitutes region, [size*size, 1].
+    */
+
+    // ref_x and ref_y are the top left coordinates of the region.
+    int ref_x, ref_y, idx;
+    Mat x_ret(size*size, 1, CV_64F);
+    Mat y_ret(size*size, 1, CV_64F);
+
+    ref_x = x_c - int(size/2);
+    ref_y = y_c - int(size/2);
+
+    for ( int i = 0; i < size; ++i )
+    {
+        for ( int j = 0; j < size; ++j )
+        {
+            idx = i*size + j;
+            y_ret.at<double>(idx, 0) = ref_y + i;
+            x_ret.at<double>(idx, 0) = ref_x + j;
+        }
+    }
+
+    x = x_ret;
+    y = y_ret;
 }
 
 vector<Mat> DescDistribExtractor::sortDescsN2( vector<cv::KeyPoint>& kpts, vector<cv::KeyPoint>& dummy_kpts, Mat& desc, int reg_size )
@@ -269,7 +305,7 @@ Mat DescDistribExtractor::generateKeypointCoverageMap(vector<cv::KeyPoint> kpts,
     return c_map;
 }
 
-void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> frame, vector<cv::KeyPoint>& kpts, Mat& desc, vector<Mat>& desc_hamming_dist )
+void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> frame, vector<cv::KeyPoint>& kpts, Mat& desc, Mat& center_desc, vector<Mat>& desc_hamming_dist )
 {
     /* Converts and registers vector<cv::KeyPoint> into the AVG Keypoint class
        and saves it in the frameData class. For more details, see design document*/
@@ -284,6 +320,7 @@ void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> fr
         keypoint->setDescriptor(hamming_dist, "desc_hamming_dist");
         Mat center_loc = (cv::Mat_<double>(2,1) << kpts[n].pt.y, kpts[n].pt.x);
         keypoint->setDescriptor(center_loc, "center_loc");
+        keypoint->setDescriptor(center_desc, "center_desc");
         frame->addKeypoint(keypoint);
     }
 }
@@ -304,7 +341,7 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
     */
     cv::KeyPoint kpt;
     vector<cv::KeyPoint> kpts;
-    Mat desc;
+    Mat desc, rot_desc;
 
     auto detect_start = high_resolution_clock::now();
 
@@ -326,21 +363,27 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
     Mat desc_center;
     this->getCenterDesc( desc_ordered, desc_center );
 
+    Mat x, y, z, A;
     Mat target_desc;
     vector<Mat> hamming_dists(desc_ordered.size());
     for ( int i = 0; i < desc_ordered.size(); i++)
     {
         target_desc = desc_center.row(i);
         hamming_dists[i] = computeHammingDistance(target_desc, desc_ordered[i]);
+        this->generateCoordinateVectors(kpts[i].pt.x, kpts[i].pt.y, this->reg_size, x, y);
+        z = hamming_dists[i].t();
+        A = fitQuadraticForm(x, y, z);
+        //std::cout << A << std::endl;
     }
 
     //this->printLocalHammingDist(hamming_dists, this->reg_size);
     
-    //orb->compute( img, kpts, desc );
+    orb->compute( img, kpts, rot_desc );
+    
     std::cout << "Num descriptors: " << desc.rows << std::endl;
     auto register_start = high_resolution_clock::now();
 
-    this->registerFrameKeypoints( frame, kpts, desc_center, hamming_dists );
+    this->registerFrameKeypoints( frame, kpts, rot_desc, desc_center, hamming_dists );
     //frame->registerKeypoints( kpts, desc_center );
 
     auto full_end = high_resolution_clock::now();
