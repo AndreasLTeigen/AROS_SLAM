@@ -7,6 +7,7 @@ void reduceImgContrast(cv::Mat img, int lower_level=128, int upper_level=255);
 void drawCircle(cv::Mat &img, cv::Point point, int radius=15);
 void drawCircle(cv::Mat &img, cv::Mat point, int radius=15);
 cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K_matrix);
+cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2_matrix);
 cv::Mat calculateEpipole(cv::Mat E_matrix);
 void drawEpipolarLines(cv::Mat F, cv::Mat &img_disp2,
                         std::vector<cv::Point> points1,

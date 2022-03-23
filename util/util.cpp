@@ -50,10 +50,79 @@ void drawCircle(cv::Mat &img, cv::Mat point_mat, int radius)
     drawCircle(img, point, radius);
 }
 
+cv::Mat invertKMatrix( cv::Mat K )
+{
+    /*
+    Arguments:
+        K:  Camera matrix: [[fx, s,  cx]
+                            [0,  fy, cy]
+                            [0,  0,  1]]
+    */
+    //TODO: Implement inversion for other "configurations" of the K_matrix.
+    double fx, fy, cx, cy, s;
+    cv::Mat K_inv;
+
+    fx = K.at<double>(0,0);
+    fy = K.at<double>(1,1);
+    cx = K.at<double>(0,2);
+    cy = K.at<double>(1,2);
+    s = K.at<double>(0,1);
+
+    if ( fx == fy && s == 0 )
+    {
+        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     0,      -cx/fx,
+                                            0,      1/fx,   -cy/fx,
+                                            0,      0,      1);
+    }
+    else if ( fx != fy && s == 0 )
+    {
+        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     0,      -cx/fx,
+                                            0,      1/fy,   -cy/fy,
+                                            0,      0,      1);
+    }
+    else if ( fx == fy && s != 0 )
+    {
+        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     -s/(fx*fx), (-fx*cx + s*cy)/(fx*fx),
+                                            0,      1/fx,       -cy/fx,
+                                            0,      0,          1);
+    }
+    else if ( fx != fy && s != 0 )
+    {
+        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     -s/(fx*fy), (-fy*cx + s*cy)/(fx*fy),
+                                            0,      1/fy,       -cy/fy,
+                                            0,      0,          1);
+    }
+    else
+    {
+        std::cout << "ERROR: K^(-1) not defined for this configuration of K" << std::endl;
+    }
+    return K_inv;
+}
+
 cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K_matrix)
 {
-    cv::Mat K_inv = K_matrix.inv();
+    /*
+    Effect:
+        Calculates the Fundamental matrix given the Essential matrix and a single camera matrix.
+    */
+
+    //cv::Mat K_inv = K_matrix.inv();
+    cv::Mat K_inv = invertKMatrix(K_matrix);
     cv::Mat F = K_inv.t()*E_matrix*K_inv;
+    return F;
+}
+
+cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2_matrix)
+{
+    /*
+    Effect:
+        Calculates the Fundamental matrix given the Essential matrix and a two different camera matrices.
+    */
+    
+    //cv::Mat K_inv = K_matrix.inv();
+    cv::Mat K1_inv = invertKMatrix(K1_matrix);
+    cv::Mat K2_inv = invertKMatrix(K2_matrix);
+    cv::Mat F = K2_inv.t()*E_matrix*K1_inv;
     return F;
 }
 
@@ -266,11 +335,14 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
 
     cv::Mat a;
     cv::solve(D, z, a, cv::DECOMP_SVD);
-    //std::cout << "Quadratic form fitted: " << a << std::endl;
     cv::Mat A = (cv::Mat_<double>(3,3)<<a.at<double>(0,0),      a.at<double>(0,2)/2,    a.at<double>(0,3)/2,
                                     a.at<double>(0,2)/2,    a.at<double>(0,1),      a.at<double>(0,4)/2,
                                     a.at<double>(0,3)/2,    a.at<double>(0,4)/2,    a.at<double>(0,5));
 
+    //double error = cv::norm(z-D*a);
+    //std::cout << "Error of the least-squares solution: ||b-A*x|| = " << error << std::endl;
+    //std::cout << D*a << std::endl;
+    //std::cout << z << std::endl;
     return A;
 }
 

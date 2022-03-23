@@ -305,7 +305,7 @@ Mat DescDistribExtractor::generateKeypointCoverageMap(vector<cv::KeyPoint> kpts,
     return c_map;
 }
 
-void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> frame, vector<cv::KeyPoint>& kpts, Mat& desc, Mat& center_desc, vector<Mat>& desc_hamming_dist )
+void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, cv::Mat& desc, cv::Mat& center_desc, std::vector<cv::Mat>& A, std::vector<cv::Mat>& desc_hamming_dist )
 {
     /* Converts and registers vector<cv::KeyPoint> into the AVG Keypoint class
        and saves it in the frameData class. For more details, see design document*/
@@ -316,11 +316,12 @@ void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> fr
     for ( int n = 0; n < kpts.size(); ++n )
     {
         std::shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(n, kpts[n], frame->getFrameNr(), desc.row(n));
-        hamming_dist = desc_hamming_dist[n].reshape(this->reg_size, this->reg_size);
-        keypoint->setDescriptor(hamming_dist, "desc_hamming_dist");
         Mat center_loc = (cv::Mat_<double>(2,1) << kpts[n].pt.y, kpts[n].pt.x);
+        hamming_dist = desc_hamming_dist[n].reshape(this->reg_size, this->reg_size);
         keypoint->setDescriptor(center_loc, "center_loc");
         keypoint->setDescriptor(center_desc, "center_desc");
+        keypoint->setDescriptor(hamming_dist, "desc_hamming_dist");
+        keypoint->setDescriptor(A[n], "quad_fit");
         frame->addKeypoint(keypoint);
     }
 }
@@ -363,17 +364,17 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
     Mat desc_center;
     this->getCenterDesc( desc_ordered, desc_center );
 
-    Mat x, y, z, A;
+    Mat x, y, z;
     Mat target_desc;
-    vector<Mat> hamming_dists(desc_ordered.size());
-    for ( int i = 0; i < desc_ordered.size(); i++)
+    vector<Mat> hamming_dists(kpts.size());
+    vector<Mat> A(kpts.size());                     // Quadratic fittings for each keypoint neighbourhood.
+    for ( int i = 0; i < kpts.size(); i++)
     {
         target_desc = desc_center.row(i);
         hamming_dists[i] = computeHammingDistance(target_desc, desc_ordered[i]);
         this->generateCoordinateVectors(kpts[i].pt.x, kpts[i].pt.y, this->reg_size, x, y);
         z = hamming_dists[i].t();
-        A = fitQuadraticForm(x, y, z);
-        //std::cout << A << std::endl;
+        A[i] = fitQuadraticForm(x, y, z);
     }
 
     //this->printLocalHammingDist(hamming_dists, this->reg_size);
@@ -383,7 +384,7 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
     std::cout << "Num descriptors: " << desc.rows << std::endl;
     auto register_start = high_resolution_clock::now();
 
-    this->registerFrameKeypoints( frame, kpts, rot_desc, desc_center, hamming_dists );
+    this->registerFrameKeypoints( frame, kpts, rot_desc, desc_center, A, hamming_dists );
     //frame->registerKeypoints( kpts, desc_center );
 
     auto full_end = high_resolution_clock::now();

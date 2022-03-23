@@ -2,6 +2,7 @@
 
 #include "poseCalculation.hpp"
 #include "poseCalculationMethods/point5OutlierRejection.hpp"
+#include "poseCalculationMethods/GJET.hpp"
 #include "poseCalculationMethods/copyMotionPrior.hpp"
 
 
@@ -10,6 +11,10 @@ std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_
     if ( pose_calculation_method == "5-point + outlier removal" )
     {
         return std::make_shared<P5ORPC>();
+    }
+    else if ( pose_calculation_method == "G_JET")
+    {
+        return std::make_shared<GJET>();
     }
     else if ( pose_calculation_method == "motion prior" )
     {

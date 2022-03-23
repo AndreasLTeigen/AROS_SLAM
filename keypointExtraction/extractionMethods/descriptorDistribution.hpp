@@ -46,7 +46,7 @@ class DescDistribExtractor : public Extractor
         void printLocalHammingDist( std::vector<cv::Mat> hamming_dists, int reg_size );
         cv::Mat generateKeypointCoverageMap(std::vector<cv::KeyPoint> kpts, int H, int W);
 
-        void registerFrameKeypoints( std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, cv::Mat& desc, cv::Mat& center_desc, std::vector<cv::Mat>& desc_hamming_dist );
+        void registerFrameKeypoints( std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, cv::Mat& desc, cv::Mat& center_desc, std::vector<cv::Mat>& A, std::vector<cv::Mat>& desc_hamming_dist );
 
     public:
         DescDistribExtractor(){};
