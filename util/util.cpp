@@ -118,7 +118,7 @@ cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2
     Effect:
         Calculates the Fundamental matrix given the Essential matrix and a two different camera matrices.
     */
-    
+
     //cv::Mat K_inv = K_matrix.inv();
     cv::Mat K1_inv = invertKMatrix(K1_matrix);
     cv::Mat K2_inv = invertKMatrix(K2_matrix);
@@ -346,6 +346,24 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
     return A;
 }
 
+cv::Mat reprojectionError( cv::Mat& xyz1, cv::Mat& uv1, cv::Mat& T, cv::Mat& K )
+{
+    /*
+    Arguments:
+        xyz1:   3D location of keypoint, dehomogenized [4 x 1].
+        uv1:    Keypoint location in homogeneous pixel coordinates [shape 3 x 1].
+        T:      Camera global transformation matrix [shape 4 x 4].
+        K:      Camera intrinsic paramters [shape 3 x 3].
+    Returns:
+        uv_err: Reprojection error in individual directions, homogeneous coordinates [3 x 1].
+    */
+    cv::Mat uv1_proj, uv1_err;
+
+    uv1_proj = projectKpt( xyz1, T, K );
+    uv1_err = uv1_proj - uv1;
+    return uv1_err;
+}
+
 cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T_wc, cv::Mat K)
 {
     /*
@@ -393,6 +411,42 @@ cv::Mat projectKpt(cv::Mat XYZ1, cv::Mat T, cv::Mat K )
     dehomogenizeMatrix(xy1);
     return xy1;
     //return cv::Mat::zeros(3, 1, CV_64F);
+}
+
+void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, cv::Mat& uv1, cv::Mat& uv2, cv::Mat& XYZ_I2 )
+{
+    /*
+    Arguments:
+        rel_T:      Relative transformation from image 2 to image 1 [3 x 4].
+        K1:         Intrinsic camera matrix for image 1 [3 x 3].
+        K2:         Intrinsic camera matrix for image 2 [3 x 3].
+        uv1:        Non-normalized coordinates of keypoints in image 1 [2 x N]/[3 x N].
+        uv2:        Non-normalized coordinates of keypoints in image 2 [2 x N]/[3 x N].
+    Returns:
+        XYZ_I2:     Triangulated points in 3D coordinates with respect to image 2, homogenized [3xN].
+    */
+    cv::Mat_<double> coord_3D;
+
+    uv1 = uv1.rowRange(0,2);
+    uv2 = uv2.rowRange(0,2);
+
+    double fx1 = K1.at<double>(0,0);
+    double fy1 = K1.at<double>(1,1);
+    double cx1 = K1.at<double>(0,2);
+    double cy1 = K1.at<double>(1,2);
+
+    double fx2 = K2.at<double>(0,0);
+    double fy2 = K2.at<double>(1,1);
+    double cx2 = K2.at<double>(0,2);
+    double cy2 = K2.at<double>(1,2);
+
+    uv1.row(0) = (uv1.row(0) - cx1) / fx1;
+    uv2.row(0) = (uv2.row(0) - cx2) / fx2;
+    uv1.row(1) = (uv1.row(1) - cy1) / fy1;
+    uv2.row(1) = (uv2.row(1) - cy2) / fy2;
+
+    cv::triangulatePoints(cv::Mat::eye(3,4, CV_64F), rel_T, uv1, uv2, coord_3D);
+    XYZ_I2 = coord_3D;
 }
 
 cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2)

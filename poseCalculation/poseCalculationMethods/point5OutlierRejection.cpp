@@ -6,9 +6,10 @@
 
 
 
-std::shared_ptr<Pose> P5ORPC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix )
+std::shared_ptr<Pose> P5ORPC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
-    return this->do5pointAlgOutlierRejection( frame1, frame2, K_matrix );
+    // Assumes K_matrix is equal for both frames.
+    return this->do5pointAlgOutlierRejection( frame1, frame2, frame1->getKMatrix() );
 }
 
 std::shared_ptr<Pose> P5ORPC::do5pointAlgOutlierRejection(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix)

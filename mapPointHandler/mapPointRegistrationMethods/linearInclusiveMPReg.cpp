@@ -36,28 +36,10 @@ void LinIncMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr
     uv1 = FrameData::compileCVPointCoords( kpts1 );
     uv2 = FrameData::compileCVPointCoords( kpts2 );
 
-    uv1 = uv1.rowRange(0,2);
-    uv2 = uv2.rowRange(0,2);
-
-    double fx1 = K1.at<double>(0,0);
-    double fy1 = K1.at<double>(1,1);
-    double cx1 = K1.at<double>(0,2);
-    double cy1 = K1.at<double>(1,2);
-
-    double fx2 = K2.at<double>(0,0);
-    double fy2 = K2.at<double>(1,1);
-    double cx2 = K2.at<double>(0,2);
-    double cy2 = K2.at<double>(1,2);
-
-    uv1.row(0) = (uv1.row(0) - cx1) / fx1;
-    uv2.row(0) = (uv2.row(0) - cx2) / fx2;
-    uv1.row(1) = (uv1.row(1) - cy1) / fy1;
-    uv2.row(1) = (uv2.row(1) - cy2) / fy2;
-
-
     std::shared_ptr<Pose> rel_pose = frame1->getRelPose(frame2);
     cv::Mat rel_T = rel_pose->getTMatrix().rowRange(0,3).colRange(0,4);
-    cv::triangulatePoints(cv::Mat::eye(3,4, CV_64F), rel_T, uv1, uv2, coordinates_3D);
+
+    triangulatePointsLinear( rel_T, K1, K2, uv1, uv2, coordinates_3D );
     coordinates_3D = T1 * coordinates_3D;
     dehomogenizeMatrix( coordinates_3D );
 

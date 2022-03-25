@@ -178,6 +178,16 @@ double KeyPoint2::getCoordY()
     return this->y;
 }
 
+cv::Mat KeyPoint2::getLoc()
+{
+    /*
+    Returns:
+        loc:    Location of keypoint (y, x).T [2 x 1].
+    */
+    cv::Mat loc = (cv::Mat_<double>(2,1) << this->getCoordY(), this->getCoordX());
+    return loc;
+}
+
 int KeyPoint2::getOctave()
 {
     std::shared_lock lock(this->mutex_octave);

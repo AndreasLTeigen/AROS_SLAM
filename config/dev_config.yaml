@@ -29,7 +29,7 @@ Camera.cy: 185.2157
 Method.motion_prior: none
 Method.extractor: dd #dd #orb #orb_os
 Method.matcher: bf_mono
-Method.pose_calculator: G_JET #5-point + outlier removal
+Method.pose_calculator: reproOpt #G_JET #5-point + outlier removal
 Method.point_reg_3D: all
 Method.point_cull_3D: OoW
 
@@ -48,7 +48,7 @@ VOut.rec_name: avg_slam_recording.avi
 VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
 
 # -----Log out----
-Log.save: false
+Log.save: true
 Log.name: poses.txt
 Log.path: output/
 

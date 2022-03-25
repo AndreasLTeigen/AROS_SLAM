@@ -68,6 +68,7 @@ class KeyPoint2
         int getKptId();
         double getCoordX();
         double getCoordY();
+        cv::Mat getLoc();
         int getOctave();
         int getObservationFrameNr();
         double getAngle();

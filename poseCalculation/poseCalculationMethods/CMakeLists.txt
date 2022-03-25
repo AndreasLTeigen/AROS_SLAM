@@ -2,10 +2,12 @@ add_library(PoseCalculationMethodsLib)
 target_sources(PoseCalculationMethodsLib #${PROJECT_NAME}_lib 
 	PRIVATE 
 		point5OutlierRejection.cpp
+		nonLinReproOpt.cpp
 		GJET.cpp
 		copyMotionPrior.cpp
 	PUBLIC
 		point5OutlierRejection.hpp
+		nonLinReproOpt.hpp
 		GJET.hpp
 		copyMotionPrior.hpp
 )
