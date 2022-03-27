@@ -46,10 +46,10 @@ std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vecto
     */
     //TODO: Check how the descriptor is computed for keypoints with no orientation in the orb detector. This might cause a problem.
 
-    int idx, W, H, desc_radius;
+    int W, H, desc_radius;
     float ref_x, ref_y, x, y, size;
     vector<int> removal_kpts;
-    vector<cv::KeyPoint> local_kpts;
+    vector<cv::KeyPoint> center_kpts, local_kpts;
     W = img.cols;
     H = img.rows;
     
@@ -64,25 +64,25 @@ std::vector<cv::KeyPoint> DescDistribExtractor::generateNeighbourhoodKpts( vecto
             removal_kpts.push_back(n);
             continue;
         }
-
-        ref_x = kpt.pt.x - reg_size/2; 
-        ref_y = kpt.pt.y - reg_size/2;
-        for ( int row_i = 0; row_i < reg_size; ++row_i )
+        else
         {
-            y = ref_y + row_i;
-            for ( int col_j = 0; col_j < reg_size; ++col_j )
+            center_kpts.push_back(kpt);
+            ref_x = kpt.pt.x - reg_size/2; 
+            ref_y = kpt.pt.y - reg_size/2;
+            for ( int row_i = 0; row_i < reg_size; ++row_i )
             {
-                x = ref_x + col_j;
-                size = kpt.size;
-                local_kpts.push_back(cv::KeyPoint(x,y,size));
+                y = ref_y + row_i;
+                for ( int col_j = 0; col_j < reg_size; ++col_j )
+                {
+                    x = ref_x + col_j;
+                    size = kpt.size;
+                    local_kpts.push_back(cv::KeyPoint(x,y,size));
+                }
             }
         }
     }
 
-    for ( int remove_idx : removal_kpts )
-    {
-        kpts.erase(kpts.begin() + remove_idx);
-    }
+    kpts = center_kpts;
     
     return local_kpts;
 }
@@ -275,19 +275,49 @@ void DescDistribExtractor::testPrintKeypointOrdering(vector<cv::KeyPoint> dummy_
     std::cout << "//////////////////////////////////////////////////////////////" << std::endl;
 }
 
-void DescDistribExtractor::printLocalHammingDist( vector<Mat> hamming_dists, int reg_size )
+void DescDistribExtractor::printSortKptsOrdered(vector<cv::KeyPoint>& kpts, int reg_size, int idx)
+{
+    int K = reg_size*reg_size;
+    cv::KeyPoint kpt;
+
+    for ( int n = 0; n < kpts.size()/K; n++)
+    {
+        if (idx == n)
+        {
+            std::cout << "IDX: " << idx << std::endl;
+            std::cout << "n: " << n << std::endl;
+            for ( int i = 0; i < reg_size; i++ )
+            {
+                for ( int j = 0; j < reg_size; j++ )
+                {
+                    kpt = kpts[n*K + i*reg_size + j];
+                    std::cout << "[" << int(kpt.pt.y) << ", " << int(kpt.pt.x) << "]" << "\t";
+                }
+                std::cout << " | " << std::endl;
+            }
+            std::cout << "####################################" << std::endl;
+        }
+    }
+}
+
+void DescDistribExtractor::printLocalHammingDist( Mat hamming_dist, int reg_size )
+{
+    for ( int i = 0; i < reg_size; i++ )
+    {
+        for ( int j = 0; j < reg_size; j++ )
+        {
+            std::cout << hamming_dist.col(i*reg_size + j) << "\t";
+        }
+        std::cout << " | " << std::endl;
+    }
+    std::cout << "####################################" << std::endl;
+}
+
+void DescDistribExtractor::printLocalHammingDists( vector<Mat> hamming_dists, int reg_size )
 {
     for ( int n = 0; n < hamming_dists.size(); n++ )
     {
-        for ( int i = 0; i < reg_size; i++ )
-        {
-            for ( int j = 0; j < reg_size; j++ )
-            {
-                std::cout << " | " << hamming_dists[n].col(i*reg_size + j);
-            }
-            std::cout << " | " << std::endl;
-        }
-        std::cout << "####################################" << std::endl;
+        this->printLocalHammingDist(hamming_dists[n], reg_size);
     }
 }
 
@@ -328,6 +358,11 @@ void DescDistribExtractor::registerFrameKeypoints( std::shared_ptr<FrameData> fr
 
 void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
 {
+
+    if ( frame->getImgId() == 10 )
+    {
+        std::cout << "FRAME FOUND!" << std::endl;    
+    }
     /*
     Arguments:
         img:    Target image for keypoint detection.
@@ -364,7 +399,7 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
     Mat desc_center;
     this->getCenterDesc( desc_ordered, desc_center );
 
-    Mat x, y, z;
+    Mat x, y, z, test;
     Mat target_desc;
     vector<Mat> hamming_dists(kpts.size());
     vector<Mat> A(kpts.size());                     // Quadratic fittings for each keypoint neighbourhood.
@@ -375,6 +410,18 @@ void DescDistribExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> fra
         this->generateCoordinateVectors(kpts[i].pt.x, kpts[i].pt.y, this->reg_size, x, y);
         z = hamming_dists[i].t();
         A[i] = fitQuadraticForm(x, y, z);
+
+        /*
+        if ( frame->getImgId() == 10 && int(kpts[i].pt.x) == 625 && int(kpts[i].pt.y) == 163 )
+        {
+            this->printSortKptsOrdered(dummy_kpts, this->reg_size, i);
+            std::cout << "KEYPOINT FOUND!" << std::endl;
+            std::cout << "Keypoint loc: " << int(kpts[i].pt.y) << ", " << int(kpts[i].pt.x) << std::endl;
+            test = hamming_dists[i];
+            this->printLocalHammingDist(hamming_dists[i], this->reg_size);
+            std::cout << "A:\n" << A[i] << std::endl;
+        }
+        */
     }
 
     //this->printLocalHammingDist(hamming_dists, this->reg_size);

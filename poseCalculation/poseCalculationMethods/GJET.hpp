@@ -10,6 +10,7 @@ class GJET : public PoseCalculator    // 5-Point with Outlier Rejection Pose Cal
 {
     private:
         double solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, cv::Mat& v_k );
+        cv::Mat solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h );
         double epipolarConstrainedOptimization( cv::Mat& F_matrix, cv::Mat& A_d_k, cv::Mat& x_k, cv::Mat& y_k, cv::Mat& v_k_opt );
         void jointEpipolarOptimization( cv::Mat& F_matrix, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2 );
 

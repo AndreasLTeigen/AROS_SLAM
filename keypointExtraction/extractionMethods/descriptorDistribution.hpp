@@ -12,7 +12,7 @@
 class DescDistribExtractor : public Extractor
 {
     private:
-        int reg_size = 5;                                   // Size of local region of interest (around each keypoint)
+        int reg_size = 7;                                   // Size of local region of interest (around each keypoint)
         
         int nfeatures = 500;
         float scaleFactor = 1.2f;
@@ -28,7 +28,7 @@ class DescDistribExtractor : public Extractor
                                                 edgeThreshold,
                                                 firstLevel,
                                                 WTA_K,
-                                                cv::ORB::FAST_SCORE,
+                                                cv::ORB::HARRIS_SCORE,
                                                 patchSize,
                                                 fastThreshold);
 
@@ -43,7 +43,9 @@ class DescDistribExtractor : public Extractor
         cv::Mat computeHammingDistanceAnalysis( cv::KeyPoint target_kpt, cv::Mat& target_desc, std::vector<cv::KeyPoint> region_kpt, cv::Mat& region_descs );
         std::vector<cv::KeyPoint> generateDenseKeypoints(cv::Mat& img, float kpt_size=31);
         void testPrintKeypointOrdering(std::vector<cv::KeyPoint> dummy_kpts, int kpt_nr);
-        void printLocalHammingDist( std::vector<cv::Mat> hamming_dists, int reg_size );
+        void printSortKptsOrdered( std::vector<cv::KeyPoint>& kpts, int reg_size, int idx);
+        void printLocalHammingDist( cv::Mat hamming_dists, int reg_size );
+        void printLocalHammingDists( std::vector<cv::Mat> hamming_dists, int reg_size );
         cv::Mat generateKeypointCoverageMap(std::vector<cv::KeyPoint> kpts, int H, int W);
 
         void registerFrameKeypoints( std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, cv::Mat& desc, cv::Mat& center_desc, std::vector<cv::Mat>& A, std::vector<cv::Mat>& desc_hamming_dist );

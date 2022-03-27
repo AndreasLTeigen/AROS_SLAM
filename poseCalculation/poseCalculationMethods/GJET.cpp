@@ -21,19 +21,50 @@ double GJET::solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, c
     return g.at<double>(0,0);
 }
 
+cv::Mat GJET::solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h )
+{
+    /*
+    Effect:
+        Solves the KKT matrix with a 2D vector optimization:
+                [[A,    g],   *     [x1, x2, lambda].t()    =   [b, h]
+                 [g.t(),0]]
+        where:
+                A = [[a11, a12],    g = [g1 ,g2].t(),   b = [b1, b2].t()
+                     [a12, a22]]
+            and x1, x2, lambda and h are scalars.
+    */
+
+    double a11, a12, a22, g1, g2, b1, b2, h1, x1, x2;
+    a11 =   A.at<double>(0,0);
+    a12 =   A.at<double>(0,1);
+    a22 =   A.at<double>(1,1);
+    g1 =    g.at<double>(0,0);
+    g2 =    g.at<double>(1,0);
+    b1 =    b.at<double>(0,0);
+    b2 =    b.at<double>(1,0);
+    h1 =    h.at<double>(0,0);
+
+    x1 = (g1*g2*b2 - a22*g1*h1 - b1*g2*g2 + a12*g2*h1)/(2*a12*g1*g2 - a22*g1*g1 - a11*g2*g2);
+    x2 = (h1 - g1*x1)/g2;
+    
+    cv::Mat x = (cv::Mat_<double>(2,1)<< x1,
+                                         x2);
+    return x;
+}
+
 double GJET::epipolarConstrainedOptimization( cv::Mat& F_matrix, cv::Mat& A_d_k, cv::Mat& x_k, cv::Mat& y_k, cv::Mat& v_k_opt )
 {
     /*
     Arguements: 
         A_d_k:      Image information based loss function in quadratic form (y_k.T*A_d_k*y_k) for keypoint 'k' [3 x 3].
         F_matrix:   Fundamental matrix between image 1 and image 2 [3 x 3].
-        x_k:        Location of keypoint k in image 1, corresponding to y_k [2 x 1].
-        y_k:        Location of keypoint k in image 2, corresponding to x_k [2 x 1].
+        y_k:        Location of keypoint k in image 1, corresponding to y_k [2 x 1].
+        x_k:        Location of keypoint k in image 2, corresponding to x_k [2 x 1].
     Returns:
         v_k_opt:    Perturbation off of y_k in image 2, optimized for A_k and constrained by the epipolar line [2 x 1].
         ret:        Value of 'y_k + v_k_opt' on the quadratic function.
     */
-    cv::Mat A_k, b_k, c_k, F_d, F_d_x, KKT, q, q_31;
+    cv::Mat A_k, b_k, c_k, F_d, F_d_x, KKT, q, q_31, b_k_neg;
     cv::Mat I_s = cv::Mat::eye(2, 3, CV_64F);
 
     homogenizeArray(y_k);
@@ -50,6 +81,7 @@ double GJET::epipolarConstrainedOptimization( cv::Mat& F_matrix, cv::Mat& A_d_k,
     c_k = y_k.t() * A_d_k * y_k;
 
 
+    /*
     KKT = (cv::Mat_<double>(3,3)<<  A_k.at<double>(0,0),    A_k.at<double>(0,1),    F_d_x.at<double>(0,0),
                                     A_k.at<double>(1,0),    A_k.at<double>(1,1),    F_d_x.at<double>(1,0),
                                     F_d_x.at<double>(0,0),  F_d_x.at<double>(1.0),  0);
@@ -58,10 +90,11 @@ double GJET::epipolarConstrainedOptimization( cv::Mat& F_matrix, cv::Mat& A_d_k,
     q = (cv::Mat_<double>(3,1)<<    -b_k.at<double>(0,0),
                                     -b_k.at<double>(1,0),
                                      q_31.at<double>(0,0));
+    */
 
     //SOLVE KKT Problem KKT*x = q!
-    v_k_opt.at<double>(0,0) = 0;
-    v_k_opt.at<double>(1,0) = 0;
+    b_k_neg = -b_k;
+    v_k_opt = this->solveKKT( A_k, F_d_x, b_k_neg, q_31 );
 
 
     return solveQuadraticFormForV( A_k, b_k, c_k, v_k_opt );
@@ -80,6 +113,7 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
     */
     
     int N = matched_kpts1.size();
+    double loss_n;
     cv::Mat A_d_k, x_k, y_k;
     shared_ptr<KeyPoint2> kpt1, kpt2;
 
@@ -87,14 +121,25 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
     
     for ( int n = 0; n < N; ++n )
     {
-        cv::Mat v_k = cv::Mat::zeros(2,1,CV_64F);
+        cv::Mat v_k;// = cv::Mat::zeros(2,1,CV_64F);
         kpt1 = matched_kpts1[n];
         kpt2 = matched_kpts2[n];
-        x_k = kpt1->getLoc();
-        y_k = kpt2->getLoc();
-        A_d_k = kpt2->getDescriptor("quad_fit");
+        y_k = kpt1->getLoc();
+        x_k = kpt2->getLoc();
+        A_d_k = kpt1->getDescriptor("quad_fit");
 
-        tot_loss += this->epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k );
+        loss_n = this->epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k );
+
+        tot_loss += loss_n;
+        
+        std::cout << "---------------------" << std::endl;
+        std::cout << "Kpt nr: " << n << std::endl;
+        std::cout << y_k.t() * F_matrix * x_k << std::endl;
+        std::cout << "Kpt\n" << y_k << std::endl;
+        std::cout << "v_k: \n" << v_k << std::endl;
+        std::cout << "Loss: " << loss_n << std::endl;
+        std::cout << "A:\n" << A_d_k << std::endl;
+        
     }
 }
 
