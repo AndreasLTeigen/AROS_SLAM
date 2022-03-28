@@ -64,7 +64,7 @@ class Pose
         void write2File( std::string file_name, ParamID parametrization_id=ParamID::STDPARAM );
 
         // Static functions
-        static cv::Mat composeTMatrix( cv::Mat R_matrix, cv::Mat t_vector );
+        static cv::Mat composeTMatrix( cv::Mat R_matrix, cv::Mat t_vector );    //TODO: Change these to input reference
         static cv::Mat composeEMatrix( cv::Mat R, cv::Mat t );
 
         // Operator overload

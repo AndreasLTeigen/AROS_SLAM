@@ -109,16 +109,21 @@ void Pose::updateParametrization(ParamID parametrization_id)
 {
     /* Sets the correct parametrization variables based on pose object internal parameters
         NOTE: Not neccessary in most cases, just for easier human comsumption of parameters */
-    std::unique_lock lock(this->mutex_params_map);
+    std::shared_lock lock(this->mutex_params_map);
     std::shared_ptr<Parametrization> temp_parametrization;
 
     if ( this->params.find(parametrization_id) == this->params.end())
     {
+        lock.unlock();
+        std::unique_lock lock(this->mutex_params_map);
         this->createParametrization( this->getRMatrix(), this->gettvector(), parametrization_id );
     }
     else
     {
         temp_parametrization = this->getParametrization( parametrization_id );
+        lock.unlock();
+
+        std::unique_lock lock(this->mutex_params_map);
         temp_parametrization->setParams( this->getRMatrix(), this->gettvector() );
     }
 }
@@ -130,17 +135,22 @@ void Pose::setParametrization( vector<double> params, ParamID parametrization_id
        exist
        WARNING: This does not make sure that the pose object is also updated, USE WITH CARE */
 
-    std::unique_lock lock(this->mutex_params_map);
+    std::shared_lock lock(this->mutex_params_map);
     std::shared_ptr<Parametrization> temp_parametrization;
 
     if ( this->params.find(parametrization_id) == this->params.end())
     {
+        lock.unlock();
+        std::unique_lock lock(this->mutex_params_map);
         this->createParametrization( params, parametrization_id );
     }
     else
     {
         temp_parametrization = this->getParametrization( parametrization_id );
-        this->getParametrization( parametrization_id )->setParams( params );
+        lock.unlock();
+
+        std::unique_lock lock(this->mutex_params_map);
+        temp_parametrization->setParams( params );
     }
 }
 
@@ -222,11 +232,13 @@ void Pose::updatePoseVariables(ParamID parametrization_id)
     std::unique_lock lock(this->mutex_pose);
     std::shared_ptr<Parametrization> temp_parametrization;
     temp_parametrization = this->getParametrization( parametrization_id );
+    cv::Mat R = temp_parametrization->composeRMatrix();
+    cv::Mat t = temp_parametrization->composeTransVec();
 
-    this->setRMatrix( temp_parametrization->composeRMatrix() );
-    this->settvector( temp_parametrization->composeTransVec() );
-    this->setTMatrix( this->composeTMatrix( this->getRMatrix(), this->gettvector() ) );
-    this->setEmatrix( this->composeEMatrix( this->getRMatrix(), this->gettvector() ) );
+    this->setRMatrix( R );
+    this->settvector( t );
+    this->setTMatrix( this->composeTMatrix( R, t ) );
+    this->setEmatrix( this->composeEMatrix( R, t ) );
 }
 
 void Pose::riseParametrizationInvalidFlags(ParamID exeption)

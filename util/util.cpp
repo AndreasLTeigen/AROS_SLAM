@@ -99,6 +99,19 @@ cv::Mat invertKMatrix( cv::Mat K )
     return K_inv;
 }
 
+cv::Mat composeEMatrix(cv::Mat& R, cv::Mat& t)
+{
+    /* Composes the E matrix from the R and t matrixes */
+    cv::Mat t_skew =    (cv::Mat_<double>(3,3) <<
+                            0,                  -t.at<double>(2,0),  t.at<double>(1,0),
+                            t.at<double>(2,0),   0,                  -t.at<double>(0,0),
+                            -t.at<double>(1,0),  t.at<double>(0,0),   0
+                            );
+    // Matrix multipliation
+    cv::Mat E = t_skew * R;
+    return E;
+}
+
 cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K_matrix)
 {
     /*
@@ -122,7 +135,7 @@ cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2
     //cv::Mat K_inv = K_matrix.inv();
     cv::Mat K1_inv = invertKMatrix(K1_matrix);
     cv::Mat K2_inv = invertKMatrix(K2_matrix);
-    cv::Mat F = K2_inv.t()*E_matrix*K1_inv;
+    cv::Mat F = K1_inv.t()*E_matrix*K2_inv;
     return F;
 }
 
@@ -142,12 +155,14 @@ cv::Mat calculateEpipole(cv::Mat E_matrix)
     return epipole;
 }
 
-void drawEpipolarLines(cv::Mat F, cv::Mat &img_disp2,
-                        std::vector<cv::Point> points1,
-                        std::vector<cv::Point> points2)
+void drawEpipolarLinesOld(cv::Mat F, cv::Mat &img_disp2,
+                        std::vector<cv::Point2f> points1,
+                        std::vector<cv::Point2f> points2)
 {
     std::vector<cv::Vec<double,3>> epilines1;
+    std::cout << "111111" << std::endl;
     cv::computeCorrespondEpilines(points1, 1, F, epilines1); //Index starts with 1
+    std::cout << "!!!!!!" << std::endl;
 
     cv::RNG rng(0);
     for(size_t i=0; i<points1.size(); i++)
@@ -159,6 +174,28 @@ void drawEpipolarLines(cv::Mat F, cv::Mat &img_disp2,
         cv::line(img_disp2,
             cv::Point(0,-epilines1[i][2]/epilines1[i][1]),
             cv::Point(img_disp2.cols,-(epilines1[i][2]+epilines1[i][0]*img_disp2.cols)/epilines1[i][1]),
+            color);
+    }
+}
+
+void drawEpipolarLines(cv::Mat F, cv::Mat &img_disp2,
+                        std::vector<cv::Point2f> points1,
+                        std::vector<cv::Point2f> points2)
+{
+    //std::vector<cv::Vec<double,3>> epilines1;
+    std::vector<cv::Point3f> epilines1;
+    cv::computeCorrespondEpilines(points1, 1, F, epilines1); //Index starts with 1
+
+    cv::RNG rng(0);
+    for(size_t i=0; i<points1.size(); i++)
+    {
+        /*
+        * Epipolar lines of the 1st point set are drawn in the 2nd image and vice-versa
+        */
+        cv::Scalar color(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256));
+        cv::line(img_disp2,
+            cv::Point(0,-epilines1[i].z/epilines1[i].y),
+            cv::Point(img_disp2.cols,-(epilines1[i].z+epilines1[i].x*img_disp2.cols)/epilines1[i].y),
             color);
     }
 }
@@ -287,6 +324,14 @@ void homogenizeArray(cv::Mat& arr)
 {
     cv::Mat row = cv::Mat::ones(1, arr.cols, CV_64F);
     arr.push_back(row);
+}
+
+cv::Mat homogenizeArrayRet(const cv::Mat& arr)
+{
+    cv::Mat ret = arr.clone();
+    cv::Mat row = cv::Mat::ones(1, arr.cols, CV_64F);
+    ret.push_back(row);
+    return ret;
 }
 
 void dehomogenizeMatrix(cv::Mat& X)

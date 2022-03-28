@@ -1,3 +1,4 @@
+#include <math.h>
 #include <vector>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -10,6 +11,7 @@ using cv::Mat;
 
 
 //class Parametrization
+
 Parametrization::Parametrization(ParamID parametrization_id, bool valid)
 {
     this->parametrization_id = parametrization_id;
@@ -60,6 +62,17 @@ std::ostream& operator<<(std::ostream& out, Parametrization& obj)
 
 //--------------------------------STANDARD PARAMETRIZATION-----------------------------------
 
+StdParam::StdParam()
+    :Parametrization(ParamID::STDPARAM, false)
+{
+    this->rx = -1;
+    this->ry = -1;
+    this->rz = -1;
+    this->tx = -1;
+    this->ty = -1;
+    this->tz = -1;
+}
+
 StdParam::StdParam(vector<double> params, bool valid)
     :Parametrization(ParamID::STDPARAM, valid)
 {
@@ -107,12 +120,12 @@ void StdParam::setParams(vector<double> params)
     {
         std::cout << "Warning: Parameter vector not correct length" << std::endl;
     }
-    this->tx = params[0];
-    this->ty = params[1];
-    this->tz = params[2];
-    this->rx = params[3];
-    this->ry = params[4];
-    this->rz = params[5];
+    this->rx = params[0];
+    this->ry = params[1];
+    this->rz = params[2];
+    this->tx = params[3];
+    this->ty = params[4];
+    this->tz = params[5];
     this->setValidFlag(true);
 }
 
@@ -232,4 +245,49 @@ std::ostream& StdParam::print(std::ostream& out)
     return out << paramVector[0] << " " << paramVector[1] << " " 
                 << paramVector[2] << " " << paramVector[3] << " " 
                 << paramVector[4] << " " << paramVector[5];
+}
+
+
+
+//Static functions
+void StdParam::composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, cv::Mat& t)
+{
+    /*
+    Arguments:
+        param:  rx, ry, rz, tx, ty, tz [1 x 6].
+    Returns:
+        R:      Rotation matrix [3 x 3].
+        t:      Translation vector [3 x 1].
+    */
+
+    // Calculate rotation about x axis
+    Mat R_x = (cv::Mat_<double>(3,3) <<
+                1,               0,              0,
+                0,               cos(param[0]),  -sin(param[0]),
+                0,               sin(param[0]),  cos(param[0])
+                );
+
+    // Calculate rotation about y axis
+    Mat R_y = (cv::Mat_<double>(3,3) <<
+                cos(param[1]),   0,              sin(param[1]),
+                0,               1,              0,
+                -sin(param[1]),  0,              cos(param[1])
+                );
+
+    // Calculate rotation about z axis
+    Mat R_z = (cv::Mat_<double>(3,3) <<
+                cos(param[2]),   -sin(param[2]), 0,
+                sin(param[2]),   cos(param[2]),  0,
+                0,               0,              1
+                );
+
+    // Combined rotation matrix
+    R = R_z * R_y * R_x;
+
+
+    t = (cv::Mat_<double>(3,1) <<
+            param[3],
+            param[4],
+            param[5]
+            );
 }

@@ -6,12 +6,13 @@ std::string zeroPad(int num, int pad_n);
 void reduceImgContrast(cv::Mat img, int lower_level=128, int upper_level=255);
 void drawCircle(cv::Mat &img, cv::Point point, int radius=15);
 void drawCircle(cv::Mat &img, cv::Mat point, int radius=15);
+cv::Mat composeEMatrix(cv::Mat& R, cv::Mat& t);
 cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K_matrix);
 cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2_matrix);
 cv::Mat calculateEpipole(cv::Mat E_matrix);
 void drawEpipolarLines(cv::Mat F, cv::Mat &img_disp2,
-                        std::vector<cv::Point> points1,
-                        std::vector<cv::Point> points2);
+                        std::vector<cv::Point2f> points1,
+                        std::vector<cv::Point2f> points2);
 
 cv::Mat compileKMatrix( double fx, double fy, double cx, double cy );
 
@@ -34,6 +35,8 @@ cv::Mat xy2Mat(double x, double y);
 cv::Mat xyToxy1(double x, double y);
 
 void homogenizeArray(cv::Mat& xy);
+
+cv::Mat homogenizeArrayRet(const cv::Mat& arr);
 
 void dehomogenizeMatrix(cv::Mat& X);
 

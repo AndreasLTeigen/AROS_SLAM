@@ -13,6 +13,9 @@ class Parametrization
 
         // Mutexes
         mutable std::shared_mutex mutex_valid_flag;
+    
+    protected:
+        mutable std::shared_mutex mutex_parametrization;
 
     public:
         Parametrization(ParamID parametrization_id, bool valid);
@@ -34,8 +37,10 @@ class Parametrization
         virtual cv::Mat composeTransVec()=0;
         virtual std::ostream& print(std::ostream& out)=0;
 
+
         // Static functions
         static bool isRotationMatrix(cv::Mat &R);
+        virtual void composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, cv::Mat& t)=0;
 
         // Operator overload
         friend std::ostream& operator<<(std::ostream &out, Parametrization &obj);
@@ -46,11 +51,9 @@ class StdParam : public Parametrization
 {
     private:
         double rx, ry, rz, tx, ty, tz;
-
-        // Mutexes
-        mutable std::shared_mutex mutex_parametrization;
     
     public:
+        StdParam();
         StdParam(std::vector<double> params, bool valid=true);
         StdParam(double rx, double ry, double rz, double tx, double ty, double tz, bool valid=true);
         StdParam(cv::Mat R, cv::Mat t, bool valid=true);
@@ -69,6 +72,10 @@ class StdParam : public Parametrization
         cv::Mat composeRMatrix()override;
         cv::Mat composeTransVec()override;
         std::ostream& print(std::ostream& out)override;
+
+        // Static functions
+        void composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, cv::Mat& t)override;
 };
 
+//TODO: Give warning if user tries to use non-valid parameters.
 #endif

@@ -437,7 +437,7 @@ Mat FrameData::compileCVDescriptors(std::string descr_type)
     return descrs_cv;
 }
 
-vector<cv::Point> FrameData::compileCV2DPoints()
+vector<cv::Point2f> FrameData::compileCV2DPoints()
 {
     /*
     Returns: 
@@ -522,7 +522,7 @@ cv::Mat FrameData::compileCVPointCoords( std::vector<std::shared_ptr<KeyPoint2>>
     return uv;
 }
 
-vector<cv::Point> FrameData::compileCV2DPointsN(vector<shared_ptr<KeyPoint2>> kpts)
+vector<cv::Point2f> FrameData::compileCV2DPointsN(vector<shared_ptr<KeyPoint2>> kpts)
 {
     /*
     Arguments:
@@ -530,7 +530,7 @@ vector<cv::Point> FrameData::compileCV2DPointsN(vector<shared_ptr<KeyPoint2>> kp
     Returns:
         points2D_cv:    List of points in the <cv::Point2f> format corresponding to the kpts list.
     */
-    vector<cv::Point> points2D_cv(kpts.size());
+    vector<cv::Point2f> points2D_cv(kpts.size());
     for (int i = 0; i < kpts.size(); i++)
     {
         points2D_cv[i] = cv::Point2f(kpts[i]->compileCV2DPoint());

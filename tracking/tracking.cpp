@@ -331,7 +331,7 @@ void FTracker::drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr)
 
 void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
 {
-    vector<cv::Point> pts1, pts2;
+    vector<cv::Point2f> pts1, pts2;
     cv::Mat E_matrix, F_matrix, epipole;
     std::shared_ptr<FrameData> curr_frame, prev_frame;
 
