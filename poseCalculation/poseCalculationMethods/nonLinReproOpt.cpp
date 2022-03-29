@@ -51,8 +51,6 @@ void ReproOpt::kptTriangulationLinear( std::shared_ptr<FrameData> frame1, std::s
 
     K1 = frame1->getKMatrix();
     K2 = frame2->getKMatrix();
-    T1 = frame1->getGlobalPose();
-    T2 = frame2->getGlobalPose();
     
     copyMatchedKptsLists( frame1, frame2, kpts1, kpts2 );         //TODO: Copying is inneficient and might lead to larger overhead, change it
     uv1_1 = FrameData::compileCVPointCoords( kpts1 );

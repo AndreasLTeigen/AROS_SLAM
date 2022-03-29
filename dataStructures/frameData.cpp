@@ -389,22 +389,9 @@ vector<cv::KeyPoint> FrameData::compileCVKeypoints()
 
     std::shared_lock lock(this->mutex_kpts);
 
-    int N = this->getKeypoints().size();
-    vector<cv::KeyPoint> kpts_cv( N );
+    vector<shared_ptr<KeyPoint2>> kpts = this->getKeypoints();
 
-    shared_ptr<KeyPoint2> kpt;
-    vector<shared_ptr<KeyPoint2>> keypoint_list = this->getKeypoints();
-
-    #pragma omp parallel for
-    for ( int i = 0; i < N; i++ )
-    {
-        kpt = keypoint_list[i];
-        cv::KeyPoint* new_kpt = new cv::KeyPoint(kpt->getCoordX(), kpt->getCoordY(),
-                                            kpt->getSize(), kpt->getAngle(),
-                                            kpt->getResponse(), kpt->getOctave());
-        kpts_cv[i] = *new_kpt;
-    }
-    return kpts_cv;
+    return this->compileCVKeypoints( kpts );
 }
 
 Mat FrameData::compileCVDescriptors(std::string descr_type)
@@ -536,6 +523,23 @@ vector<cv::Point2f> FrameData::compileCV2DPointsN(vector<shared_ptr<KeyPoint2>> 
         points2D_cv[i] = cv::Point2f(kpts[i]->compileCV2DPoint());
     }
     return points2D_cv;
+}
+
+std::vector<cv::KeyPoint> FrameData::compileCVKeypoints( std::vector<std::shared_ptr<KeyPoint2>> kpts )
+{
+    int N = kpts.size();
+    vector<cv::KeyPoint> kpts_cv( N );
+
+    #pragma omp parallel for
+    for ( int i = 0; i < N; i++ )
+    {
+        shared_ptr<KeyPoint2> kpt = kpts[i];
+        cv::KeyPoint* new_kpt = new cv::KeyPoint(kpt->getCoordX(), kpt->getCoordY(),
+                                            kpt->getSize(), kpt->getAngle(),
+                                            kpt->getResponse(), kpt->getOctave());
+        kpts_cv[i] = *new_kpt;
+    }
+    return kpts_cv;
 }
 
 

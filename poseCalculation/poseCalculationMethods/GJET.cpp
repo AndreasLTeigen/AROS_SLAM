@@ -7,6 +7,12 @@
 
 using std::vector;
 using std::shared_ptr;
+using cv::Mat;
+
+using std::chrono::duration;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::high_resolution_clock;
 
 // Epipolar Constrained Optimization Solver
 struct ECOptSolver 
@@ -302,3 +308,245 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
     std::cout << "Total Loss: " << tot_loss << std::endl;
 }
 
+
+// ################ Collecting descriptor differences ####################
+
+void GJET::collectDescriptorDistances( cv::Mat& img, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
+{
+    /*
+    Arguments:
+        img:    Target image for keypoint detection.
+        frame:  <FrameData> to fill with keypoint information.
+        map_3d: Inherited variable, not needed for this function.
+    
+    Effect:
+        Computes the best keypoints in the image, computes the descriptors for every pixel
+            in an area around that keypoint, computes the hemming distance between the central
+            keypoint descriptor and all descriptors in the region, stores this as an extended
+            descriptor for the keypoint.
+    */
+    cv::KeyPoint kpt;
+    vector<cv::KeyPoint> kpts;
+    vector<shared_ptr<KeyPoint2>> matched_kpts;
+    Mat desc, rot_desc;
+
+    auto detect_start = high_resolution_clock::now();
+
+    int N = this->reg_size*this->reg_size;
+
+    // Getting only the matched keypoints and converting them to cv::KeyPoint format.
+    matched_kpts = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    kpts = FrameData::compileCVKeypoints( matched_kpts );
+
+
+
+    //Generate all dummy keypoints
+    vector<cv::KeyPoint> dummy_kpts = this->generateNeighbourhoodKpts(kpts, img);
+
+    orb->compute( img, dummy_kpts, desc );
+
+    vector<Mat> desc_ordered;
+    this->sortDescsOrdered(desc, desc_ordered, this->reg_size);
+
+    Mat desc_center;
+    this->getCenterDesc( desc_ordered, desc_center );
+
+    Mat x, y, z, test;
+    Mat target_desc;
+    vector<Mat> hamming_dists(kpts.size());
+    vector<Mat> A(kpts.size());                     // Quadratic fittings for each keypoint neighbourhood.
+    for ( int i = 0; i < kpts.size(); i++)
+    {
+        target_desc = desc_center.row(i);
+        hamming_dists[i] = this->computeHammingDistance(target_desc, desc_ordered[i]);
+        this->generateCoordinateVectors(kpts[i].pt.x, kpts[i].pt.y, this->reg_size, x, y);
+        z = hamming_dists[i].t();
+        A[i] = fitQuadraticForm(x, y, z);
+    }
+    
+    //orb->compute( img, kpts, rot_desc );
+    
+    std::cout << "Num descriptors: " << desc.rows << std::endl;
+    auto register_start = high_resolution_clock::now();
+
+    //this->registerFrameKeypoints( frame, kpts, rot_desc, desc_center, A, hamming_dists );
+    this->registerDDInfo( frame1, frame2, desc_center, A );
+
+    auto full_end = high_resolution_clock::now();
+
+
+    auto ms1 = duration_cast<milliseconds>(register_start-detect_start);
+    auto ms3 = duration_cast<milliseconds>(full_end-register_start);
+
+    std::cout << "Extract: " << ms1.count() << "ms" << std::endl;
+    std::cout << "Registration: " << ms3.count() << "ms" << std::endl;
+}
+
+std::vector<cv::KeyPoint> GJET::generateNeighbourhoodKpts( vector<cv::KeyPoint>& kpts, Mat& img )
+{
+    /*
+    Arguments:
+        kpt:        List of detected keypoint, centers of the local neighbourhoods.
+        reg_size:   Length of edge in the local neighbourhood (square).
+    Returns:
+        local_kpts: Keypoints in neighbourhoods around all <kpt>s.
+    */
+    //TODO: Check how the descriptor is computed for keypoints with no orientation in the orb detector. This might cause a problem.
+
+    int W, H, desc_radius;
+    float ref_x, ref_y, x, y, size;
+    vector<int> removal_kpts;
+    vector<cv::KeyPoint> center_kpts, local_kpts;
+    W = img.cols;
+    H = img.rows;
+    
+    #pragma omp parallel for
+    for ( int n = 0; n < kpts.size(); ++n )
+    {
+        cv::KeyPoint kpt = kpts[n];
+        // Skips keypoints if local region will not produce all valid descriptors.
+        desc_radius = std::max(this->patchSize, int(std::ceil(kpt.size)/2));
+        if ( !validDescriptorRegion(kpt.pt.x, kpt.pt.y, W, H, desc_radius + this->reg_size) )
+        {
+            continue;
+        }
+        else
+        {
+            center_kpts.push_back(kpt);
+            ref_x = kpt.pt.x - reg_size/2; 
+            ref_y = kpt.pt.y - reg_size/2;
+            for ( int row_i = 0; row_i < reg_size; ++row_i )
+            {
+                y = ref_y + row_i;
+                for ( int col_j = 0; col_j < reg_size; ++col_j )
+                {
+                    x = ref_x + col_j;
+                    size = kpt.size;
+                    local_kpts.push_back(cv::KeyPoint(x,y,size));
+                }
+            }
+        }
+    }
+
+    kpts = center_kpts;
+    
+    return local_kpts;
+}
+
+void GJET::sortDescsOrdered(Mat& desc, vector<Mat>& desc_ordered, int reg_size)
+{
+    /*
+    Arguments:
+        desc:       Descriptors for all keypoints in all local regions, stored in reg_size*reg_size chunks.
+        reg_size:   Size of the local neighbourhood.
+    Returns:
+        desc_ordered:   All descriptors belonging to neighbourhood[i] stored as vector element i.
+    Assumption:
+        <desc> is ordered in chunks of size reg_size*reg_size belonging to each keypoint.
+    */
+    int K = reg_size*reg_size;
+
+    for ( int n = 0; n < desc.rows/K; n++)
+    {
+        Mat neighborhood_desc;
+        for ( int i = 0; i < reg_size; i++ )
+        {
+            for ( int j = 0; j < reg_size; j++ )
+            {
+                neighborhood_desc.push_back(desc.row( n*K + i*reg_size + j ));
+            }
+        }
+        desc_ordered.push_back(neighborhood_desc);
+    }
+}
+
+void GJET::getCenterDesc( vector<Mat>& desc_ordered, Mat& desc_center )
+{
+    int K = desc_ordered[0].rows;
+    for (int i = 0; i < desc_ordered.size(); i++)
+    {
+        desc_center.push_back(desc_ordered[i].row(int(K/2)));
+    }
+}
+
+Mat GJET::computeHammingDistance( Mat& target_desc, Mat& region_descs )
+{
+    /*
+    Arguments:
+        target_desc:        Descriptor all other descriptors should be calculated the distance to.
+        descs:              All other descriptors.
+        N:                  Number of descriptors.
+    Returns:
+        desc_dists:         Hamming distance between <target_desc> and all descriptors in <descs>
+    */
+
+    int N = region_descs.rows;
+    Mat hamming_dists = Mat::zeros(1, N, CV_64F);
+    for ( int i = 0; i < N; ++i )
+    {
+        hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i), cv::NORM_HAMMING);
+    }
+    return hamming_dists;
+}
+
+void GJET::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
+{
+    /*
+    Argument:
+        x_c:    x coordinate of region center.
+        y_c:    y coordinate of region center.
+        size:   Size of the region (length of side).
+    
+    Returns:
+        x:      x vector of coordinates that constitutes region, [size*size, 1].
+        y:      y vector of coordinates that constitutes region, [size*size, 1].
+    */
+
+    // ref_x and ref_y are the top left coordinates of the region.
+    int ref_x, ref_y, idx;
+    Mat x_ret(size*size, 1, CV_64F);
+    Mat y_ret(size*size, 1, CV_64F);
+
+    ref_x = x_c - int(size/2);
+    ref_y = y_c - int(size/2);
+
+    for ( int i = 0; i < size; ++i )
+    {
+        for ( int j = 0; j < size; ++j )
+        {
+            idx = i*size + j;
+            y_ret.at<double>(idx, 0) = ref_y + i;
+            x_ret.at<double>(idx, 0) = ref_x + j;
+        }
+    }
+
+    x = x_ret;
+    y = y_ret;
+}
+
+void GJET::registerDDInfo( shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, cv::Mat& center_desc, std::vector<cv::Mat>& A )
+{
+    vector<shared_ptr<KeyPoint2>> kpts = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+
+    #pragma omp parallel for
+    for ( int i = 0; i < kpts.size(); ++i )
+    {
+        kpts[i]->setDescriptor( A[i], "quad_fit" );
+    }
+}
+
+bool GJET::validDescriptorRegion( int x, int y, int W, int H, int border )
+{
+    if ( x < border || x >= W - border )
+    {
+        return false;
+    }
+    else if ( y < border || y >= H - border )
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}

@@ -191,7 +191,6 @@ void DescDistribExtractor::getCenterDesc( vector<Mat>& desc_ordered, Mat& desc_c
     {
         desc_center.push_back(desc_ordered[i].row(int(K/2)));
     }
-
 }
 
 Mat DescDistribExtractor::computeHammingDistance( Mat& target_desc, Mat& region_descs )
