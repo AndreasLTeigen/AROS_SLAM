@@ -140,10 +140,10 @@ int AVGSlam()
         {
             // Visualizing sequencer frame
             tracker->drawKeypoints(img_current, img_disp);
-            //reduceImgContrast(img_disp);
-            tracker->drawEpipolarLinesWithPrev(img_disp);
-            tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
+            reduceImgContrast(img_disp);
+            //tracker->drawEpipolarLinesWithPrev(img_disp);
             tracker->drawEpipoleWithPrev(img_disp);
+            tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
             seq.visualizeImage(img_disp);
         }
 

@@ -220,7 +220,7 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
         v_k_opt:    Perturbation off of y_k in image 2, optimized for A_k and constrained by the epipolar line [2 x 1].
         ret:        Value of 'y_k + v_k_opt' on the quadratic function.
     */
-    cv::Mat A_k, b_k, c_k, F_d, F_d_x, KKT, q, q_31, b_k_neg, y1_k, x1_k;
+    cv::Mat A_k, b_k, c_k, F_d, F_d_x, KKT, q_31, b_k_neg, y1_k, x1_k;
     cv::Mat I_s = cv::Mat::eye(2, 3, CV_64F);
 
     y1_k = homogenizeArrayRet(y_k);

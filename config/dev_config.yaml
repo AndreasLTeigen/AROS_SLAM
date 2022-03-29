@@ -75,4 +75,4 @@ Seq.starting_frame_nr: 0
 Seq.frame_buffer_size: 5
 
 # -----Tracker parameter config-----
-Trck.tracking_window_length: 50
+Trck.tracking_window_length: 2 #50
