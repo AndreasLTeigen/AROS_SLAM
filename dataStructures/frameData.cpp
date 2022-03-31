@@ -527,6 +527,7 @@ vector<cv::Point2f> FrameData::compileCV2DPointsN(vector<shared_ptr<KeyPoint2>> 
 
 std::vector<cv::KeyPoint> FrameData::compileCVKeypoints( std::vector<std::shared_ptr<KeyPoint2>> kpts )
 {
+    // TODO: Move the inner part of this for loop to the KeyPoint2 function
     int N = kpts.size();
     vector<cv::KeyPoint> kpts_cv( N );
 

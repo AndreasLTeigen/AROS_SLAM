@@ -260,6 +260,14 @@ Mat KeyPoint2::compileHomogeneousCV2DPoint()
     return (cv::Mat_<double>(3,1) << this->getCoordX(), this->getCoordY(), 1);
 }
 
+cv::KeyPoint KeyPoint2::compileCVKeyPoint()
+{
+    cv::KeyPoint kpt_cv = cv::KeyPoint(this->getCoordX(), this->getCoordY(),
+                                        this->getSize(), this->getAngle(),
+                                        this->getResponse(), this->getOctave());
+    return kpt_cv;
+}
+
 // Static functions
 double KeyPoint2::calculateKeypointDistance(shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2)
 {

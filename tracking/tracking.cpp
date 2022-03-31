@@ -179,7 +179,8 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //      Relative pose calculation
     // ==================================== 
-    shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2 );
+    cv::Mat img_copy = img.clone();
+    shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, img_copy );
     
     rel_pose->updateParametrization();
     this->updateGlobalPose(rel_pose->getTMatrix(), frame1);

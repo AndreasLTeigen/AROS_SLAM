@@ -14,24 +14,25 @@ using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
 
+
 // Epipolar Constrained Optimization Solver
 struct ECOptSolver 
 {
-    ECOptSolver(const cv::Mat x_k, const cv::Mat y_k, const cv::Mat A_k, const cv::Mat K1, const cv::Mat K2, 
-                            const shared_ptr<Parametrization> parametrization)
+    ECOptSolver( const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
+                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<DDNormal> paraboloidNormal )
                 {
-                    x_k_ = x_k;
-                    y_k_ = y_k;
-                    A_k_ = A_k;
                     K1_ = K1;
                     K2_ = K2;
+                    img_ = img;
+                    kpt1_ = kpt1;
+                    kpt2_ = kpt2;
                     parametrization_ = parametrization;
+                    paraboloidNormal_ = paraboloidNormal;
                 }
-                    //: x_k(x_k), y_k(y_k), K1(K1), K2(K2), parametrization(parametrization) {}
     
     bool operator()( const double* p, double* residual ) const
     {
-        cv::Mat R, t, E_matrix, F_matrix, v_k_opt;
+        cv::Mat R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
 
         vector<double> p_vec;
         for ( int i = 0; i < 6; ++i )
@@ -45,25 +46,40 @@ struct ECOptSolver
         }
         std::cout << "\n";
         */
+
+        y_k = kpt1_->getLoc();
+        x_k = kpt2_->getLoc();
         
         parametrization_->composeRMatrixAndTParam( p_vec, R, t );
         E_matrix = composeEMatrix( R, t );
         F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
-        residual[0] = GJET::epipolarConstrainedOptimization( F_matrix, A_k_, x_k_, y_k_, v_k_opt );
+
+        // Re-linearizing
+        paraboloidNormal_->collectDescriptorDistance( img_, kpt1_, kpt2_ );
+        //A_k_ = kpt1_->getDescriptor("quad_fit");
+
+        residual[0] = GJET::epipolarConstrainedOptimization( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+
+        //Updating the keypoint
+        kpt1_->setDescriptor(v_k_opt, "v_k_opt");
+        paraboloidNormal_->updateKeypoint(kpt1_, img_);
+
         return true;
     }
 
 
-    cv::Mat K1_, K2_, x_k_, y_k_, A_k_;
+    cv::Mat K1_, K2_, A_k_, img_;
+    shared_ptr<KeyPoint2> kpt1_, kpt2_;
     shared_ptr<Parametrization> parametrization_;
+    shared_ptr<DDNormal> paraboloidNormal_;
 };
 
 struct GJETSolver
 {
-    GJETSolver(const cv::Mat x_k, const cv::Mat y_k, const cv::Mat A_k, const cv::Mat K1, const cv::Mat K2, 
-                        const shared_ptr<Parametrization> parametrization)
+    GJETSolver(const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
+                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<DDNormal> paraboloidNormal)
                     : ecopt_solver(new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6>(
-                                                new ECOptSolver(x_k, y_k, A_k, K1, K2, parametrization))) {}
+                                                new ECOptSolver(K1, K2, kpt1, kpt2, img, parametrization, paraboloidNormal))) {}
     
     template <typename T>
     bool operator()(const T* p, T* residual) const
@@ -77,7 +93,7 @@ struct GJETSolver
 
 
 
-std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     // Assumes K_matrix is equal for both frames.
     cv::Mat E_matrix, F_matrix, inliers;
@@ -86,12 +102,28 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
     FrameData::removeOutlierMatches( inliers, frame1, frame2 );
 
+    shared_ptr<DDNormal> paraboloidNormal = std::make_shared<DDNormal>();
+    //this->collectDescriptorDistancesNew( img, frame1, frame2 );
+
     vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+
+
+    // Remove these later when we are only dealing with rotated keypoints
+    paraboloidNormal->registerNonRotDescs(matched_kpts1, img);
+    paraboloidNormal->registerNonRotDescs(matched_kpts2, img);
+
 
     std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
     rel_pose->updateParametrization();
 
+
+
+    paraboloidNormal->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
+    //F_matrix = fundamentalFromEssential( E_matrix, frame1->getKMatrix(), frame2->getKMatrix() );
+    //this->jointEpipolarOptimization( F_matrix, matched_kpts1, matched_kpts2 );
+
+    
     // ------ CERES test -------------
     ceres::Problem problem;
     int N = matched_kpts1.size();
@@ -101,9 +133,6 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     vector<double> p_init = rel_pose->getParametrization( this->paramId )->getParamVector();
     std::cout << *rel_pose->getParametrization() << "\n";
     double p[p_init.size()];// = p_init.data();
-
-    F_matrix = fundamentalFromEssential( E_matrix, frame1->getKMatrix(), frame2->getKMatrix() );
-    this->jointEpipolarOptimization( F_matrix, matched_kpts1, matched_kpts2 );
     
     //Filling p with values from p_init
     for ( int i = 0; i < p_init.size(); ++i )
@@ -118,20 +147,18 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
     std::cout << "\n";
     std::cout << sizeof(p)/sizeof(p[0]) << std::endl;
-
     
     for ( int n = 0; n < N; ++n )
     {
-        cv::Mat v_k;
         kpt1 = matched_kpts1[n];
-        kpt2 = matched_kpts2[n];
-        y_k = kpt1->getLoc();
-        x_k = kpt2->getLoc();
         A_d_k = kpt1->getDescriptor("quad_fit");
-
-        ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
-            new GJETSolver(x_k, y_k, A_d_k, frame1->getKMatrix(), frame2->getKMatrix(), parametrization));
-        problem.AddResidualBlock(cost_function, nullptr, p);
+        if (!A_d_k.empty())
+        {
+            kpt2 = matched_kpts2[n];
+            ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
+                new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, img, parametrization, paraboloidNormal));
+            problem.AddResidualBlock(cost_function, nullptr, p);
+        }
     }
 
     ceres::Solver::Options options;
@@ -165,7 +192,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
     this->jointEpipolarOptimization( F_matrix, matched_kpts1, matched_kpts2 );
     //--------------------------------------
-
+    
     return rel_pose;
 }
 
@@ -284,34 +311,207 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
     
     for ( int n = 0; n < N; ++n )
     {
-        cv::Mat v_k;// = cv::Mat::zeros(2,1,CV_64F);
         kpt1 = matched_kpts1[n];
-        kpt2 = matched_kpts2[n];
-        y_k = kpt1->getLoc();
-        x_k = kpt2->getLoc();
         A_d_k = kpt1->getDescriptor("quad_fit");
+        if (!A_d_k.empty())
+        {
+            cv::Mat v_k;// = cv::Mat::zeros(2,1,CV_64F);
+            kpt2 = matched_kpts2[n];
+            y_k = kpt1->getLoc();
+            x_k = kpt2->getLoc();
 
-        loss_n = GJET::epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k );
+            loss_n = GJET::epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k );
 
-        tot_loss += loss_n*loss_n;
-        
-        /*
-        std::cout << "---------------------" << std::endl;
-        std::cout << "Kpt nr: " << n << std::endl;
-        std::cout << homogenizeArrayRet(y_k).t() * F_matrix * homogenizeArrayRet(x_k) << std::endl;
-        std::cout << "Kpt\n" << y_k << std::endl;
-        std::cout << "v_k: \n" << v_k << std::endl;
-        std::cout << "Loss: " << loss_n << std::endl;
-        std::cout << "A:\n" << A_d_k << std::endl;
-        */
+            tot_loss += loss_n*loss_n;
+            /*
+            std::cout << "---------------------" << std::endl;
+            std::cout << "Kpt nr: " << n << std::endl;
+            std::cout << homogenizeArrayRet(y_k).t() * F_matrix * homogenizeArrayRet(x_k) << std::endl;
+            std::cout << "Kpt\n" << y_k << std::endl;
+            std::cout << "v_k: \n" << v_k << std::endl;
+            std::cout << "Loss: " << loss_n << std::endl;
+            std::cout << "A:\n" << A_d_k << std::endl;
+            */
+        }
     }
     std::cout << "Total Loss: " << tot_loss << std::endl;
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ################ Collecting descriptor differences ####################
 
-void GJET::collectDescriptorDistances( cv::Mat& img, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
+void DDNormal::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
+{
+    cv::Mat local_descs, target_desc, A, hamming_dists, x, y, z;
+    vector<cv::KeyPoint> local_kpts;
+
+    local_kpts = this->generateLocalKpts( kpt1, img );
+    this->orb->compute( img, local_kpts, local_descs );
+
+    //target_desc = kpt1->getDescriptor(orb_non_rot);
+    target_desc = kpt2->getDescriptor(this->orb_non_rot);
+    hamming_dists = this->computeHammingDistance(target_desc, local_descs);
+    this->generateCoordinateVectors(kpt1->getCoordX(), kpt1->getCoordY(), this->reg_size, x, y);
+    z = hamming_dists.t();
+
+    //std::cout << "[" << int(kpt1->getCoordY()) << ", " << int(kpt1->getCoordX()) << "]\n";
+    //this->printKptLoc( local_kpts, this->reg_size, this->reg_size );
+    //this->printLocalHammingDists( z, this->reg_size );
+
+    A = fitQuadraticForm(x, y, z);
+    kpt1->setDescriptor( A, "quad_fit" );
+}
+
+void DDNormal::collectDescriptorDistancesNew( cv::Mat& img, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
+{
+    vector<shared_ptr<KeyPoint2>> matched_kpts;
+    vector<cv::KeyPoint> kpts;
+    cv::Mat non_rot_desc;
+
+    int N = this->reg_size*this->reg_size;
+
+    // Getting only the matched keypoints and converting them to cv::KeyPoint format.
+    matched_kpts = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    kpts = FrameData::compileCVKeypoints( matched_kpts );
+
+    // Remove rotation on all descriptors, remove this later
+    non_rot_desc = getNonRotatedDescriptors( img, kpts );
+    registerNewDescriptors( matched_kpts, non_rot_desc );
+    vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    vector<cv::KeyPoint> kpts2 = FrameData::compileCVKeypoints( matched_kpts2 );
+    cv::Mat non_rot_desc2 = getNonRotatedDescriptors( img, kpts2 );
+    registerNewDescriptors( matched_kpts2, non_rot_desc2 );
+    // -----------------------------------------------------
+
+    Mat x, y, z, test;
+    Mat target_desc, local_descs;
+    vector<cv::KeyPoint> local_kpts;
+    vector<Mat> hamming_dists(matched_kpts.size());
+    vector<Mat> A(matched_kpts.size());                     // Quadratic fittings for each keypoint neighbourhood.
+    for ( int i = 0; i < matched_kpts.size(); i++)
+    {
+        //std::cout << "Kpt nr: " << i << std::endl;
+        local_kpts = this->generateLocalKpts( matched_kpts[i], img );
+        if ( local_kpts.empty() ) // If Out of Bounds
+        {
+            //std::cout << "EMpty!\n";
+            continue;
+        }
+        else
+        {
+            this->orb->compute( img, local_kpts, local_descs );
+
+            //target_desc = local_descs.row(int(N/2));
+            //target_desc = matched_kpts[i]->getDescriptor("orb_non_rot");
+            target_desc = matched_kpts[i]->getHighestConfidenceMatch( frame2->getFrameNr() )->getConnectingKpt( frame2->getFrameNr() )->getDescriptor(this->orb_non_rot);
+
+            hamming_dists[i] = this->computeHammingDistance(target_desc, local_descs);
+            this->generateCoordinateVectors(matched_kpts[i]->getCoordX(), matched_kpts[i]->getCoordY(), this->reg_size, x, y);
+            z = hamming_dists[i].t();
+
+            //std::cout << "[" << int(matched_kpts[i]->getCoordY()) << ", " << int(matched_kpts[i]->getCoordX()) << "]\n";
+            //this->printKptLoc( local_kpts, this->reg_size, this->reg_size );
+            //this->printLocalHammingDists( z, this->reg_size );
+            
+            A[i] = fitQuadraticForm(x, y, z);
+            matched_kpts[i]->setDescriptor( A[i], "quad_fit" );
+        }
+    }
+}
+
+vector<cv::KeyPoint> DDNormal::generateLocalKpts( shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
+{
+
+    int W, H, desc_radius;
+    double ref_x, ref_y, x, y, kpt_x, kpt_y, kpt_size;
+    vector<int> removal_kpts;
+    vector<cv::KeyPoint> local_kpts;
+    W = img.cols;
+    H = img.rows;
+
+    kpt_x = kpt->getCoordX();
+    kpt_y = kpt->getCoordY();
+    kpt_size = kpt->getSize();
+
+    // Skips keypoints if local region will not produce all valid descriptors.
+    desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
+    if ( !validDescriptorRegion(kpt_x, kpt_y, W, H, desc_radius + this->reg_size) )
+    {
+        return local_kpts;
+    }
+    else
+    {
+        ref_x = kpt_x - reg_size/2; 
+        ref_y = kpt_y - reg_size/2;
+        for ( int row_i = 0; row_i < reg_size; ++row_i )
+        {
+            y = ref_y + row_i;
+            for ( int col_j = 0; col_j < reg_size; ++col_j )
+            {
+                x = ref_x + col_j;
+                local_kpts.push_back(cv::KeyPoint(x,y,kpt_size));
+            }
+        }
+    }
+    
+    return local_kpts;
+}
+
+void DDNormal::printKptLoc( vector<cv::KeyPoint> kpts, int rows, int cols )
+{
+    cv::KeyPoint kpt;
+
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            kpt = kpts[i*rows + j];
+            std::cout << "(" << int(kpt.pt.y) << ", " << int(kpt.pt.x) << ") , ";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "----------------------" << std::endl;
+}
+
+void DDNormal::printLocalHammingDists( cv::Mat& hamming_dist_arr, int s )
+{
+    for (int row = 0; row < s; row++){
+        for (int col = 0; col < s; col++)
+        {
+            std::cout << hamming_dist_arr.at<double>(row*s + col, 0) << ", ";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "--------------------" << std::endl;
+}
+
+void DDNormal::collectDescriptorDistances( cv::Mat& img, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
 {
     /*
     Arguments:
@@ -328,9 +528,7 @@ void GJET::collectDescriptorDistances( cv::Mat& img, shared_ptr<FrameData> frame
     cv::KeyPoint kpt;
     vector<cv::KeyPoint> kpts;
     vector<shared_ptr<KeyPoint2>> matched_kpts;
-    Mat desc, rot_desc;
-
-    auto detect_start = high_resolution_clock::now();
+    Mat desc, non_rot_desc;
 
     int N = this->reg_size*this->reg_size;
 
@@ -338,51 +536,86 @@ void GJET::collectDescriptorDistances( cv::Mat& img, shared_ptr<FrameData> frame
     matched_kpts = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     kpts = FrameData::compileCVKeypoints( matched_kpts );
 
-
+    // Remove rotation on all descriptors, remove this later
+    non_rot_desc = getNonRotatedDescriptors( img, kpts );
+    registerNewDescriptors( matched_kpts, non_rot_desc );
+    vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    vector<cv::KeyPoint> kpts2 = FrameData::compileCVKeypoints( matched_kpts2 );
+    cv::Mat non_rot_desc2 = getNonRotatedDescriptors( img, kpts2 );
+    registerNewDescriptors( matched_kpts2, non_rot_desc2 );
+    // -----------------------------------------------------
 
     //Generate all dummy keypoints
-    vector<cv::KeyPoint> dummy_kpts = this->generateNeighbourhoodKpts(kpts, img);
+    vector<cv::KeyPoint> dummy_kpts = this->generateNeighbourhoodKpts(matched_kpts, img);
 
-    orb->compute( img, dummy_kpts, desc );
+    std::cout << "dummy_kpts.size(): " << dummy_kpts.size() << std::endl;
+    int num_valid_kpts = dummy_kpts.size() / N;
+    std::cout << "num_valid_kpts: " << num_valid_kpts << std::endl;
+
+    this->orb->compute( img, dummy_kpts, desc );
+
+    //------DESCRIPTOR EXPERIMENT ---------
+    std::cout << "Descriptor experiement" << std::endl;
+    int num = 135;
+    cv::Mat single_desc;
+    std::cout << matched_kpts.size() << std::endl;
+    std::cout << "Orignial kpt desc:\n" << matched_kpts[num]->getDescriptor() << std::endl;
+    this->orb->compute( img, kpts, single_desc );
+    std::cout << kpts.size() << std::endl;
+    std::cout << "Converted kpt desc:\n" << single_desc.row(num) << std::endl;
+    std::cout << kpts[num].angle << std::endl;
+    // -------------------------------------
 
     vector<Mat> desc_ordered;
     this->sortDescsOrdered(desc, desc_ordered, this->reg_size);
 
     Mat desc_center;
-    this->getCenterDesc( desc_ordered, desc_center );
+    this->getCenterDesc( desc_ordered, desc_center ); //This is only needed if we are not capable of using rotated descriptors
+                                                        //  turning this off as we want to operate completly on un-rotated keypoints.
 
+    int n = 0;
     Mat x, y, z, test;
     Mat target_desc;
-    vector<Mat> hamming_dists(kpts.size());
-    vector<Mat> A(kpts.size());                     // Quadratic fittings for each keypoint neighbourhood.
-    for ( int i = 0; i < kpts.size(); i++)
+    vector<Mat> hamming_dists(num_valid_kpts);
+    vector<Mat> A(num_valid_kpts);                     // Quadratic fittings for each keypoint neighbourhood.
+    for ( int i = 0; i < matched_kpts.size(); i++)
     {
-        target_desc = desc_center.row(i);
-        hamming_dists[i] = this->computeHammingDistance(target_desc, desc_ordered[i]);
-        this->generateCoordinateVectors(kpts[i].pt.x, kpts[i].pt.y, this->reg_size, x, y);
-        z = hamming_dists[i].t();
-        A[i] = fitQuadraticForm(x, y, z);
+        if ( matched_kpts[i]->getDescriptor("OoB").at<double>(0,0) == 1 ) // If Out of Bounds
+        {
+            continue;
+        }
+        else
+        {
+            std::cout << i << std::endl;
+            //target_desc = matched_kpts[i]->getHighestConfidenceMatch( frame2->getFrameNr() )->getConnectingKpt( frame2->getFrameNr() )->getDescriptor();
+            target_desc = matched_kpts[i]->getDescriptor();
+            //target_desc = desc_center.row(n);
+            hamming_dists[n] = this->computeHammingDistance(target_desc, desc_ordered[n]);
+            //this->generateCoordinateVectors(kpts[i].pt.x, kpts[i].pt.y, this->reg_size, x, y);
+            this->generateCoordinateVectors(matched_kpts[i]->getCoordX(), matched_kpts[i]->getCoordY(), this->reg_size, x, y);
+            z = hamming_dists[n].t();
+            //std::cout << z << std::endl;
+            for (int row = 0; row < this->reg_size; row++){
+                for (int col = 0; col < this->reg_size; col++)
+                {
+                    std::cout << z.at<double>(row*this->reg_size + col, 0) << ", ";
+                }
+                std::cout << "\n";
+            }
+            std::cout << "--------------------" << std::endl;
+            
+            A[n] = fitQuadraticForm(x, y, z);
+            n += 1;
+        }
     }
     
-    //orb->compute( img, kpts, rot_desc );
-    
+    std::cout << "n: " << n << std::endl;
     std::cout << "Num descriptors: " << desc.rows << std::endl;
-    auto register_start = high_resolution_clock::now();
 
-    //this->registerFrameKeypoints( frame, kpts, rot_desc, desc_center, A, hamming_dists );
-    this->registerDDInfo( frame1, frame2, desc_center, A );
-
-    auto full_end = high_resolution_clock::now();
-
-
-    auto ms1 = duration_cast<milliseconds>(register_start-detect_start);
-    auto ms3 = duration_cast<milliseconds>(full_end-register_start);
-
-    std::cout << "Extract: " << ms1.count() << "ms" << std::endl;
-    std::cout << "Registration: " << ms3.count() << "ms" << std::endl;
+    this->registerDDInfo( matched_kpts, A );
 }
 
-std::vector<cv::KeyPoint> GJET::generateNeighbourhoodKpts( vector<cv::KeyPoint>& kpts, Mat& img )
+std::vector<cv::KeyPoint> DDNormal::generateNeighbourhoodKpts( vector<shared_ptr<KeyPoint2>>& kpts, Mat& img )
 {
     /*
     Arguments:
@@ -394,46 +627,47 @@ std::vector<cv::KeyPoint> GJET::generateNeighbourhoodKpts( vector<cv::KeyPoint>&
     //TODO: Check how the descriptor is computed for keypoints with no orientation in the orb detector. This might cause a problem.
 
     int W, H, desc_radius;
-    float ref_x, ref_y, x, y, size;
+    double ref_x, ref_y, x, y, kpt_x, kpt_y, kpt_size;
     vector<int> removal_kpts;
-    vector<cv::KeyPoint> center_kpts, local_kpts;
+    vector<cv::KeyPoint> local_kpts;
     W = img.cols;
     H = img.rows;
     
     #pragma omp parallel for
     for ( int n = 0; n < kpts.size(); ++n )
     {
-        cv::KeyPoint kpt = kpts[n];
+        kpt_x = kpts[n]->getCoordX();
+        kpt_y = kpts[n]->getCoordY();
+        kpt_size = kpts[n]->getSize();
         // Skips keypoints if local region will not produce all valid descriptors.
-        desc_radius = std::max(this->patchSize, int(std::ceil(kpt.size)/2));
-        if ( !validDescriptorRegion(kpt.pt.x, kpt.pt.y, W, H, desc_radius + this->reg_size) )
+        desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
+        if ( !validDescriptorRegion(kpt_x, kpt_y, W, H, desc_radius + this->reg_size) )
         {
+            kpts[n]->setDescriptor((cv::Mat_<double>(1,1) << 1), "OoB"); // Out of Bounds
             continue;
         }
         else
         {
-            center_kpts.push_back(kpt);
-            ref_x = kpt.pt.x - reg_size/2; 
-            ref_y = kpt.pt.y - reg_size/2;
+            std::cout << n << std::endl;
+            kpts[n]->setDescriptor((cv::Mat_<double>(1,1) << 0), "OoB"); // Out of Bounds
+            ref_x = kpt_x - reg_size/2; 
+            ref_y = kpt_y - reg_size/2;
             for ( int row_i = 0; row_i < reg_size; ++row_i )
             {
                 y = ref_y + row_i;
                 for ( int col_j = 0; col_j < reg_size; ++col_j )
                 {
                     x = ref_x + col_j;
-                    size = kpt.size;
-                    local_kpts.push_back(cv::KeyPoint(x,y,size));
+                    local_kpts.push_back(cv::KeyPoint(x,y,kpt_size));
                 }
             }
         }
     }
-
-    kpts = center_kpts;
     
     return local_kpts;
 }
 
-void GJET::sortDescsOrdered(Mat& desc, vector<Mat>& desc_ordered, int reg_size)
+void DDNormal::sortDescsOrdered(Mat& desc, vector<Mat>& desc_ordered, int reg_size)
 {
     /*
     Arguments:
@@ -460,7 +694,7 @@ void GJET::sortDescsOrdered(Mat& desc, vector<Mat>& desc_ordered, int reg_size)
     }
 }
 
-void GJET::getCenterDesc( vector<Mat>& desc_ordered, Mat& desc_center )
+void DDNormal::getCenterDesc( vector<Mat>& desc_ordered, Mat& desc_center )
 {
     int K = desc_ordered[0].rows;
     for (int i = 0; i < desc_ordered.size(); i++)
@@ -469,7 +703,7 @@ void GJET::getCenterDesc( vector<Mat>& desc_ordered, Mat& desc_center )
     }
 }
 
-Mat GJET::computeHammingDistance( Mat& target_desc, Mat& region_descs )
+Mat DDNormal::computeHammingDistance( Mat& target_desc, Mat& region_descs )
 {
     /*
     Arguments:
@@ -489,7 +723,7 @@ Mat GJET::computeHammingDistance( Mat& target_desc, Mat& region_descs )
     return hamming_dists;
 }
 
-void GJET::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
+void DDNormal::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
 {
     /*
     Argument:
@@ -524,18 +758,26 @@ void GJET::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, M
     y = y_ret;
 }
 
-void GJET::registerDDInfo( shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, cv::Mat& center_desc, std::vector<cv::Mat>& A )
+void DDNormal::registerDDInfo( vector<shared_ptr<KeyPoint2>>& kpts, std::vector<cv::Mat>& A )
 {
-    vector<shared_ptr<KeyPoint2>> kpts = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    //vector<shared_ptr<KeyPoint2>> kpts = frame1->getMatchedKeypoints( frame2->getFrameNr() );
 
-    #pragma omp parallel for
+    int n = 0;
     for ( int i = 0; i < kpts.size(); ++i )
     {
-        kpts[i]->setDescriptor( A[i], "quad_fit" );
+        if (kpts[i]->getDescriptor("OoB").at<double>(0,0) == 1 )
+        {
+            continue;
+        }
+        else
+        {
+            kpts[i]->setDescriptor( A[n], "quad_fit" );
+            n += 1;
+        }
     }
 }
 
-bool GJET::validDescriptorRegion( int x, int y, int W, int H, int border )
+bool DDNormal::validDescriptorRegion( double x, double y, int W, int H, int border )
 {
     if ( x < border || x >= W - border )
     {
@@ -550,3 +792,181 @@ bool GJET::validDescriptorRegion( int x, int y, int W, int H, int border )
         return true;
     }
 }
+
+cv::Mat DDNormal::getNonRotatedDescriptors( cv::Mat& img, vector<cv::KeyPoint>& kpts )
+{
+    cv::Mat desc;
+    for ( int i = 0; i < kpts.size(); i++ )
+    {
+        kpts[i].angle = -1;
+        kpts[i].response = 0;
+        kpts[i].octave = 0;
+        kpts[i].class_id = -1;
+    }
+    this->orb->compute( img, kpts, desc );
+    return desc;
+}
+
+void DDNormal::registerNewDescriptors( vector<shared_ptr<KeyPoint2>> kpts, cv::Mat& desc)
+{
+    #pragma omp parallel for
+    for ( int i = 0; i < kpts.size(); i++ )
+    {
+        kpts[i]->setDescriptor(desc.row(i), this->orb_non_rot);
+    }
+}
+
+void DDNormal::registerNonRotDescs( vector<shared_ptr<KeyPoint2>> kpts, cv::Mat& img )
+{
+    vector<cv::KeyPoint> kpts_cv;
+    cv::Mat non_rot_desc;
+
+    // Getting only the matched keypoints and converting them to cv::KeyPoint format.
+    kpts_cv = FrameData::compileCVKeypoints( kpts );
+    non_rot_desc = this->getNonRotatedDescriptors( img, kpts_cv );
+    registerNewDescriptors( kpts, non_rot_desc );
+    // -----------------------------------------------------
+}
+
+void DDNormal::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matched_kpts1, vector<shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img )
+{
+    int W, H, desc_radius;
+    double kpt_x, kpt_y, kpt_size;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+
+    W = img.cols;
+    H = img.rows;
+
+    for ( int i = 0; i < matched_kpts1.size(); i++ )
+    {
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
+        kpt_x = kpt1->getCoordX();
+        kpt_y = kpt1->getCoordY();
+        kpt_size = kpt1->getSize();
+        // Skips keypoints if local region will not produce all valid descriptors.
+        desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
+        if (validDescriptorRegion(kpt_x, kpt_y, W, H, desc_radius + this->reg_size))
+        {
+            this->collectDescriptorDistance( img, kpt1, kpt2 );
+        }
+    }
+}
+
+double DDNormal::calculateScale(cv::Mat& v_k_opt)
+{
+    double v_norm = cv::norm(v_k_opt);
+    if ( v_norm < this->step_size )
+    {
+        return 1;
+    }
+    else
+    {
+        return (this->step_size)/v_norm;
+    }
+}
+
+bool DDNormal::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
+{   
+    // There is no continuity, the original descriptor is being kept to match with next image!!!
+    int W, H;
+    double x_update, y_update, scale, desc_radius;
+    cv::Mat desc, v_k_opt;
+
+    W = img.cols;
+    H = img.rows;
+
+    v_k_opt = kpt->getDescriptor("v_k_opt");
+    scale = this->calculateScale(v_k_opt);
+    x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(1,0);
+    y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(0,0);
+
+    desc_radius = std::max(this->patchSize, int(std::ceil(kpt->getSize())/2));
+    if ( validDescriptorRegion( x_update, y_update, W, H, desc_radius + this->reg_size ) )
+    {
+        kpt->setCoordx(x_update);
+        kpt->setCoordy(y_update);
+        cv::KeyPoint kpt_cv = cv::KeyPoint(x_update, y_update, kpt->getSize());
+        vector<cv::KeyPoint> kpt_cv_vec{kpt_cv};
+
+        this->orb->compute( img, kpt_cv_vec, desc );
+
+        kpt->setDescriptor(desc.row(0), this->orb_non_rot);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+cv::Mat DDNormalPrecomp::generateDescriptorMap( const cv::Mat& img )
+{
+    cv::Mat dense_descs;
+    vector<cv::KeyPoint> dense_kpts;
+
+    this->generateDenseKeypoints(img, dense_kpts);
+    this->orb->compute( img, dense_kpts, dense_descs );
+    
+    
+
+}
+
+
+vector<cv::KeyPoint> DDNormalPrecomp::generateDenseKeypoints( const cv::Mat& img, vector<cv::KeyPoint>& kpts )
+{
+    int H, W;
+
+    H = img.rows;
+    W = img.cols;
+
+    for ( int row_i = 0; row_i < H; ++row_i )
+    {
+        for ( int col_j = 0; col_j < W; ++col_j )
+        {
+            kpts.push_back(cv::KeyPoint(col_j, row_i, this->patch_size));
+        }
+    }
+    return kpts;
+}
+
+void DDNormalPrecomp::sortDescTo2DMat( const cv::Mat& img, vector<cv::KeyPoint>& dense_kpts, cv::Mat& dense_descs )
+{
+    int H, W;
+
+    H = img.rows;
+    W = img.cols;
+
+    vector<vector<cv::Mat>> descriptorMap(H, std::vector<cv::Mat>(W));
+
+}
+
+*/

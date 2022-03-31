@@ -35,7 +35,7 @@ std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_
 
 
 
-std::shared_ptr<Pose> NonePC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+std::shared_ptr<Pose> NonePC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     std::cerr << "ERROR: POSE CALCULATION ALGORITHM NOT IMPLEMENTED" << std::endl;
     return nullptr;

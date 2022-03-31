@@ -4,7 +4,7 @@
 
 
 
-std::shared_ptr<Pose> CopyMPPC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+std::shared_ptr<Pose> CopyMPPC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     return frame1->getRelPose( frame2 );
 }

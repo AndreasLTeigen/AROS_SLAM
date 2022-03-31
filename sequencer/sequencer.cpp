@@ -24,7 +24,7 @@ void checkFrameIntegrity(cv::Mat frame)
 using namespace std;
 using namespace cv;
 
-Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file_format, bool recording, string record_dst_path, string record_name, int fps){
+Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file_format, bool recording, string record_dst_path, int fps){
 	this->frame_buffer_size = frame_buffer_size;
 	this->pressed_key = -1;
 	this->fps = fps;
@@ -36,7 +36,6 @@ Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file
 	this->finished = false;
 	this->recording = recording;
 	this->record_dst_path = record_dst_path;
-	this->record_name = record_name;
 	
 	// @TODO: add visualization parameters
 	this->scale = 1;
@@ -237,16 +236,12 @@ void Sequencer::visualizeImageNext(Mat &img){
 
 void Sequencer::recordImage(Mat &img)
 {
-	/* Function adds <img> to the video recording
-	   NOTE: if recording is activated this function will throw a warning at program startup */
-	if (!this->recorder.isOpened())
+	std::string record_path = this->record_dst_path + this->img_seq[this->current_index];
+	bool check = imwrite(record_path, img);
+	if (check == false) 
 	{
-		// Initialize recorder as image size is needed
-		this->recorder = cv::VideoWriter(this->record_dst_path+"/"+this->record_name, 
-						cv::VideoWriter::fourcc('M','J','P','G'), 
-						this->fps, cv::Size(img.cols, img.rows));
+        cout << "Mission - Saving the image, FAILED" << endl;
 	}
-	this->recorder.write(img);
 }
 
 void Sequencer::show(){
@@ -311,7 +306,6 @@ void Sequencer::evalKey(char key){
 	else if (key == 'q' || key == 27){
 		this->play_mode = false;
 		this->current_index = this->max_index + 1;
-		if (this->recording) this->recorder.release();
 		cv::destroyAllWindows();
 	}
 	else if (key == 'r'){

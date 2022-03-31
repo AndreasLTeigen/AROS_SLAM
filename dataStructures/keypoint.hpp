@@ -77,9 +77,11 @@ class KeyPoint2
         cv::Mat getDescriptor(std::string descr_type="orb");
         std::shared_ptr<MapPoint> getMapPoint();
         std::vector<std::shared_ptr<Match>> getMatches(int matched_frame_nr);
+        //std::vector<std::shared_ptr<KeyPoint2>> getBestMatchedKpt( int matched_frame_nr ) TODO: Implement this function.
         std::shared_ptr<Match> getHighestConfidenceMatch(int matched_frame_nr);
-        cv::Point compileCV2DPoint();
+        cv::Point compileCV2DPoint();   //TODO: Make this into a cv::Point2f return value
         cv::Mat compileHomogeneousCV2DPoint();
+        cv::KeyPoint compileCVKeyPoint();
 
         // Static funtions
         static double calculateKeypointDistance(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2);

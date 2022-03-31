@@ -1,7 +1,7 @@
 
 # -----Video In-----
-VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
-#VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
+#VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
+VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/A/
 VIn.file_format: png
@@ -29,7 +29,7 @@ Camera.cy: 185.2157
 Method.motion_prior: none
 Method.extractor: orb_os #dd #orb #orb_os
 Method.matcher: bf_mono
-Method.pose_calculator: 5-point + outlier removal #reproOpt #G_JET #5-point + outlier removal
+Method.pose_calculator: G_JET #reproOpt #G_JET #5-point + outlier removal
 Method.point_reg_3D: all
 Method.point_cull_3D: OoW
 
@@ -43,9 +43,9 @@ Method.point_cull_3D: OoW
 
 # -----Video Out-----
 VOut.show: true
-VOut.record: false
-VOut.rec_name: avg_slam_recording.avi
-VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
+VOut.record: true
+#VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
+VOut.rec_path: /mnt/d/andreas/AROS/Results/Video/
 
 # -----Log out----
 Log.save: true

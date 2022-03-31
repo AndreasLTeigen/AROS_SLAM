@@ -29,13 +29,11 @@ private:
 	int height;
 	cv::Mat control_panel;
 	bool recording;
-	cv::VideoWriter recorder;
 	std::string record_dst_path;
-	std::string record_name;
 
 
 public:
-	Sequencer(std::string folder_path, int frame_buffer_size, std::string file_format = "png", bool recording=false, std::string record_dst_path=nullptr, std::string record_name=nullptr, int fps = 1);
+	Sequencer(std::string folder_path, int frame_buffer_size, std::string file_format = "png", bool recording=false, std::string record_dst_path=nullptr, int fps = 1);
 	~Sequencer();
 
 	int getFrameBufferSize();

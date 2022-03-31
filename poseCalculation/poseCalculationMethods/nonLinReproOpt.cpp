@@ -101,7 +101,7 @@ double ReproOpt::residual( cv::Mat& T_rel, cv::Mat& K1, cv::Mat& K2, cv::Mat& XY
     return res;
 }
 
-std::shared_ptr<Pose> ReproOpt::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+std::shared_ptr<Pose> ReproOpt::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     // Function is copying out uv1_1 and uv1_2 two separate times, this will cause some significant slowdown of the
     //  process.

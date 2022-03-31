@@ -45,9 +45,7 @@ int AVGSlam()
     // Initializing video output parameters
     bool VOut_show = config["VOut.show"].as<bool>();
     bool VOut_record = config["VOut.record"].as<bool>();
-    std::string VOut_rec_name = config["VOut.rec_name"].as<std::string>();
     std::string VOut_rec_path = config["VOut.rec_path"].as<std::string>();
-    std::string VOut_full_dst = VOut_rec_path + VOut_rec_name;
 
     // Initializing output log parameters
     bool Log_save = config["Log.save"].as<bool>();
@@ -81,7 +79,7 @@ int AVGSlam()
 
     // Initialize sequencer and frame tracker
     std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
-    Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VOut_rec_name, VIn_fps);
+    Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VIn_fps);
 	//Sequencer2 seq = Sequencer2(VIn_path, VIn_file_format);
 
     seq.setCurrentIndex(Seq_starting_frame_nr);

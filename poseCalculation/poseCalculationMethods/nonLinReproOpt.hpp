@@ -16,7 +16,7 @@ class ReproOpt: public PoseCalculator
         ReproOpt(){};
         ~ReproOpt(){};
 
-        std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+        std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
 };
 
 #endif
