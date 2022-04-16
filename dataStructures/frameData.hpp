@@ -17,6 +17,7 @@ class FrameData
         const int frame_nr, img_id;
         int n_keypoints;
         bool is_keyframe = false;
+        cv::Mat img;
         cv::Mat K_matrix;
         cv::Mat global_pose = cv::Mat::eye(4,4,CV_64F);
         std::vector<std::shared_ptr<KeyPoint2>> kpts;
@@ -24,6 +25,7 @@ class FrameData
         std::map<int, std::vector<std::shared_ptr<KeyPoint2>>> matched_kpts;
 
         // Mutexes
+        mutable std::shared_mutex mutex_img;
         mutable std::shared_mutex mutex_K_matrix;
         mutable std::shared_mutex mutex_global_pose;
         mutable std::shared_mutex mutex_is_keyframe;
@@ -37,6 +39,7 @@ class FrameData
         ~FrameData();
 
         // Write functions
+        void setImg( cv::Mat& img );
         void setKMatrix( cv::Mat K_matrix );
         void setGlobalPose( cv::Mat global_pose);
         void setAllKeypoints( std::vector<std::shared_ptr<KeyPoint2>> kpts );
@@ -61,6 +64,7 @@ class FrameData
         int getFrameNr();
         int getImgId();
         int getNumKeypoints();
+        cv::Mat getImg();
         cv::Mat getKMatrix();
         cv::Mat getGlobalPose();
         std::vector<std::shared_ptr<KeyPoint2>> getKeypoints();

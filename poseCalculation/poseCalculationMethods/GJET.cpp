@@ -1,3 +1,4 @@
+#include <cmath>
 #include <memory>
 #include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
@@ -47,22 +48,32 @@ struct ECOptSolver
         std::cout << "\n";
         */
 
+        //std::cout << "Kpt nr: " << kpt1_->getKptId() << std::endl;
         y_k = kpt1_->getLoc();
         x_k = kpt2_->getLoc();
+        //std::cout << "y_k: " << y_k.t() << std::endl;
+        //std::cout << "x_k: " << x_k.t() << std::endl;
         
         parametrization_->composeRMatrixAndTParam( p_vec, R, t );
         E_matrix = composeEMatrix( R, t );
+        //std::cout << "E_matrix: " << E_matrix << std::endl;
         F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
+        //std::cout << "F_matrix: " << F_matrix << std::endl;
 
-        // Re-linearizing
-        paraboloidNormal_->collectDescriptorDistance( img_, kpt1_, kpt2_ );
-        //A_k_ = kpt1_->getDescriptor("quad_fit");
+        //std::cout << "A: " << kpt1_->getDescriptor("quad_fit") << std::endl;
 
         residual[0] = GJET::epipolarConstrainedOptimization( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
 
         //Updating the keypoint
-        kpt1_->setDescriptor(v_k_opt, "v_k_opt");
-        paraboloidNormal_->updateKeypoint(kpt1_, img_);
+        //std::cout << "v_k_opt: " << v_k_opt.t() << std::endl;
+        //kpt1_->setDescriptor(v_k_opt, "v_k_opt");
+        //std::cout << "1111" << std::endl;
+        //paraboloidNormal_->updateKeypoint(kpt1_, img_);
+        //std::cout << "y_k: " << kpt1_->getLoc().t() << std::endl;
+
+        // Re-linearizing
+        //paraboloidNormal_->collectDescriptorDistance( img_, kpt1_, kpt2_ );
+        //std::cout << "####################################################" << std::endl;
 
         return true;
     }
@@ -93,6 +104,24 @@ struct GJETSolver
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     // Assumes K_matrix is equal for both frames.
@@ -101,21 +130,18 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     compileMatchedCVPoints( frame1, frame2, pts1, pts2 );
     E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
     FrameData::removeOutlierMatches( inliers, frame1, frame2 );
+    std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
+    rel_pose->updateParametrization();
 
     shared_ptr<DDNormal> paraboloidNormal = std::make_shared<DDNormal>();
-    //this->collectDescriptorDistancesNew( img, frame1, frame2 );
 
     vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
 
 
     // Remove these later when we are only dealing with rotated keypoints
-    paraboloidNormal->registerNonRotDescs(matched_kpts1, img);
-    paraboloidNormal->registerNonRotDescs(matched_kpts2, img);
-
-
-    std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
-    rel_pose->updateParametrization();
+    //paraboloidNormal->registerNonRotDescs(matched_kpts1, img);
+    //paraboloidNormal->registerNonRotDescs(matched_kpts2, img);
 
 
 
@@ -125,13 +151,13 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
     
     // ------ CERES test -------------
-    ceres::Problem problem;
     int N = matched_kpts1.size();
     cv::Mat A_d_k, x_k, y_k;
     shared_ptr<KeyPoint2> kpt1, kpt2;
-    shared_ptr<StdParam> parametrization = std::make_shared<StdParam>();
+
+    // Initializing parameter vector
     vector<double> p_init = rel_pose->getParametrization( this->paramId )->getParamVector();
-    std::cout << *rel_pose->getParametrization() << "\n";
+    std::cout << *rel_pose->getParametrization( this->paramId ) << "\n";
     double p[p_init.size()];// = p_init.data();
     
     //Filling p with values from p_init
@@ -139,6 +165,13 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     {
         p[i] = p_init[i];
     }
+
+    shared_ptr<StdParam> parametrization = std::make_shared<StdParam>();
+
+    IterationUpdate itUpdate( img, p, frame1->getKMatrix(), frame2->getKMatrix(), paraboloidNormal, parametrization );  
+    ceres::Problem::Options problem_options;
+    problem_options.evaluation_callback = &itUpdate; 
+    ceres::Problem problem(problem_options);
 
     for ( int i = 0; i < p_init.size(); ++i )
     {
@@ -158,8 +191,10 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
             ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
                 new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, img, parametrization, paraboloidNormal));
             problem.AddResidualBlock(cost_function, nullptr, p);
+
+            itUpdate.addEvalKpt(kpt1, kpt2);
         }
-    }
+    }             
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
@@ -187,8 +222,13 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
         p_vec.push_back(p[i]);
     }
     rel_pose->setPose( p_vec, this->paramId );
+
     std::cout << *rel_pose->getParametrization() << "\n";
     std::cout << rel_pose->getTMatrix() << std::endl;
+    cv::Mat R_matrix = rel_pose->getRMatrix();
+    cv::Mat t_vector = rel_pose->gettvector();
+    t_vector = normalizeMat(t_vector);
+    rel_pose->updatePoseVariables( R_matrix, t_vector );
     F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
     this->jointEpipolarOptimization( F_matrix, matched_kpts1, matched_kpts2 );
     //--------------------------------------
@@ -362,8 +402,6 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
 
 
 
-
-
 // ################ Collecting descriptor differences ####################
 
 void DDNormal::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
@@ -386,6 +424,16 @@ void DDNormal::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoin
 
     A = fitQuadraticForm(x, y, z);
     kpt1->setDescriptor( A, "quad_fit" );
+    kpt1->setDescriptor( z.reshape(this->reg_size, this->reg_size), "hamming");
+
+    if (kpt1->getKptId() == this->inspect_kpt_nr && this->print_log)
+    {   std::cout << "x_k" << "[" << std::round(kpt2->getCoordY()) << ", " << std::round(kpt2->getCoordX()) << "]\n";
+        std::cout << "y_k" << "[" << std::round(kpt1->getCoordY()) << ", " << std::round(kpt1->getCoordX()) << "]\n";
+        this->printKptLoc( local_kpts, this->reg_size, this->reg_size );
+        std::cout << "Kpt nr: " << kpt1->getKptId() << "\n" << kpt1->getDescriptor("hamming") << std::endl;
+        std::cout << kpt1->getDescriptor("quad_fit") << std::endl;
+        std::cout << "######################################################################" << std::endl;
+    }
 }
 
 void DDNormal::collectDescriptorDistancesNew( cv::Mat& img, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
@@ -492,7 +540,7 @@ void DDNormal::printKptLoc( vector<cv::KeyPoint> kpts, int rows, int cols )
         for (int j = 0; j < cols; j++)
         {
             kpt = kpts[i*rows + j];
-            std::cout << "(" << int(kpt.pt.y) << ", " << int(kpt.pt.x) << ") , ";
+            std::cout << "(" << std::round(kpt.pt.y) << ", " << std::round(kpt.pt.x) << ") , ";
         }
         std::cout << "\n";
     }
@@ -799,9 +847,9 @@ cv::Mat DDNormal::getNonRotatedDescriptors( cv::Mat& img, vector<cv::KeyPoint>& 
     for ( int i = 0; i < kpts.size(); i++ )
     {
         kpts[i].angle = -1;
-        kpts[i].response = 0;
-        kpts[i].octave = 0;
-        kpts[i].class_id = -1;
+        //kpts[i].response = 0;
+        //kpts[i].octave = 0;
+        //kpts[i].class_id = -1;
     }
     this->orb->compute( img, kpts, desc );
     return desc;
@@ -818,6 +866,7 @@ void DDNormal::registerNewDescriptors( vector<shared_ptr<KeyPoint2>> kpts, cv::M
 
 void DDNormal::registerNonRotDescs( vector<shared_ptr<KeyPoint2>> kpts, cv::Mat& img )
 {
+    std::cout << "WARNING: Use of function 'registerNonRotDesc' might not result in wanted behaviour, there are still bugs" << std::endl;
     vector<cv::KeyPoint> kpts_cv;
     cv::Mat non_rot_desc;
 
@@ -848,6 +897,11 @@ void DDNormal::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matc
         desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
         if (validDescriptorRegion(kpt_x, kpt_y, W, H, desc_radius + this->reg_size))
         {
+            if (this->inspect_kpt_nr == -1)
+            {
+                this->inspect_kpt_nr = kpt1->getKptId();
+                std::cout << this->inspect_kpt_nr << std::endl;
+            }
             this->collectDescriptorDistance( img, kpt1, kpt2 );
         }
     }
@@ -906,6 +960,105 @@ bool DDNormal::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& im
 
 
 
+
+
+
+
+
+
+
+IterationUpdate::IterationUpdate(   cv::Mat& img, double* p, cv::Mat K1, cv::Mat K2, 
+                                    shared_ptr<DDNormal> solver, 
+                                    shared_ptr<Parametrization> parametrization)
+{
+    this->p = p;
+    this->img = img;
+    this->solver = solver;
+    this->K1 = K1;
+    this->K2 = K2;
+    this->parametrization = parametrization;
+}
+
+void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point)
+{
+    std::cout << "PREPARE FOR EVALUATION" << std::endl;
+    if (new_evaluation_point)
+    {
+        std::cout << "Re-linearizing" << std::endl;
+        cv::Mat v_k_opt;
+        shared_ptr<KeyPoint2> kpt1, kpt2;
+        /*
+        for ( int i = 0; i < 6; ++i )
+        {
+            std::cout << this->p[i] << ", ";
+        }
+        */
+
+        for (int i = 0; i < this->m_kpts1.size(); ++i)
+        {
+            kpt1 = m_kpts1[i];
+            kpt2 = m_kpts2[i];
+
+            cv::Mat R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
+
+            vector<double> p_vec;
+            for ( int i = 0; i < 6; ++i )
+            {
+                p_vec.push_back(p[i]);
+            }
+            
+            /*
+            for ( double val : p_vec )
+            {
+                std::cout << val << ", ";
+            }
+            std::cout << "\n";
+            */
+            y_k = kpt1->getLoc();
+            x_k = kpt2->getLoc();
+
+            if (kpt1->getKptId() == this->solver->inspect_kpt_nr && solver->print_log)
+            {
+                std::cout << "Kpt nr: " << kpt1->getKptId() << std::endl;
+                std::cout << "y_k: " << kpt1->getLoc().t() << std::endl;
+            }
+
+
+            parametrization->composeRMatrixAndTParam( p_vec, R, t );
+            //std::cout << "R_matrix: " << R << std::endl;
+            E_matrix = composeEMatrix( R, t );
+            //std::cout << "E_matrix: " << E_matrix << std::endl;
+            F_matrix = fundamentalFromEssential( E_matrix, this->K1, this->K2 );
+            //std::cout << "F_matrix: " << F_matrix << std::endl;
+            //std::cout << "A: " << kpt1->getDescriptor("quad_fit") << std::endl;
+
+            GJET::epipolarConstrainedOptimization( F_matrix, kpt1->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+
+            //Updating the keypoint
+            kpt1->setDescriptor(v_k_opt, "v_k_opt");
+            //std::cout << "1111" << std::endl;
+            solver->updateKeypoint(kpt1, this->img);
+
+            if (kpt1->getKptId() == this->solver->inspect_kpt_nr && solver->print_log)
+            {
+                std::cout << "v_k_opt: " << v_k_opt.t() << std::endl;
+                std::cout << "new y_k: " << kpt1->getLoc().t() << std::endl;
+            }
+
+            // Re-linearizing
+            solver->collectDescriptorDistance( this->img, kpt1, kpt2 );
+            //std::cout << "############" << std::endl;
+        }
+    }
+}
+
+
+void IterationUpdate::addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
+                                    std::shared_ptr<KeyPoint2> kpt2)
+{
+    this->m_kpts1.push_back(kpt1);
+    this->m_kpts2.push_back(kpt2);
+}
 
 
 

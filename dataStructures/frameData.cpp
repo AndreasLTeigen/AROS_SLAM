@@ -29,6 +29,12 @@ FrameData::~FrameData()
 
 // ----------- Write functions -------------
 
+void FrameData::setImg( Mat &img )
+{
+    std::unique_lock lock(this->mutex_img);
+    this->img = img;
+}
+
 void FrameData::setKMatrix( Mat K_matrix )
 {
     std::unique_lock lock(this->mutex_K_matrix);
@@ -305,6 +311,16 @@ int FrameData::getNumKeypoints()
 {
     std::shared_lock lock(this->mutex_kpts);
     return this->kpts.size();
+}
+
+Mat FrameData::getImg()
+{
+    /*
+    Returns:
+        this->img:     image of <this> frame.
+    */
+    std::shared_lock lock(this->mutex_img);
+    return this->img.clone();
 }
 
 Mat FrameData::getKMatrix()

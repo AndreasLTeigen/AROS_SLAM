@@ -120,12 +120,15 @@ class ORBOSExtractor : public Extractor
     private:
         int nfeatures = 500;
         float scaleFactor = 1.2f;
-        int nlevels = 8;
+        int nlevels = 1;//8;
         int fIniThFAST = 20;
         int fMinThFAST = 7;
 
-        ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORB_SLAM2::ORBextractor(500,1.2,8,20,7); // ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORB_SLAM2::ORBextractor(this->nfeatures,this->scaleFactor,this->nlevels,this->fIniThFAST,this->fMinThFAST); // ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
         //ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORBextractor(nFeatures,scaleFactor,nLevels,fIniThFAST,fMinThFAST);
+    
+        //Test for GJET
+        bool non_rot_desc = true;
     public:
         ORBOSExtractor(){};
         ~ORBOSExtractor(){};

@@ -1,6 +1,8 @@
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
@@ -48,6 +50,93 @@ void drawCircle(cv::Mat &img, cv::Mat point_mat, int radius)
 {
     cv::Point point = cv::Point(point_mat.at<double>(0), point_mat.at<double>(1));
     drawCircle(img, point, radius);
+}
+
+void drawIndicator(cv::Mat& img, double percentage, cv::Point pos)
+{
+    percentage = std::max(double(0), percentage);
+
+    // config
+    int levels = 10;
+    int indicator_width = 80;
+    int indicator_height = 180;
+    int border_w = 20;
+    int level_width = indicator_width - border_w;
+    int level_height = int((indicator_height - border_w) / levels - 5);
+    // draw
+    int img_levels = int(percentage / levels);
+    int top = pos.y;
+    int left = pos.x;
+    int bottom = pos.y + indicator_height;
+    int right = pos.x + indicator_width;
+    cv::rectangle(img, pos, cv::Point(right, bottom), (0, 0, 0), cv::FILLED);
+
+    int level_y_b;
+    for (int i = 0; i < levels; ++i)
+    {
+        if ( i <= img_levels )
+        {
+            level_y_b = int(bottom - (border_w + i * (level_height + 5)));
+            cv::rectangle(img, cv::Point(left + border_w, level_y_b - level_height), cv::Point(left + border_w + level_width, level_y_b), percentage2Color(double(i) / double(levels)), cv::FILLED);
+        }
+    }
+}
+/*
+void drawIndicator(cv::Mat& img, double percentage, cv::Point pos)
+{
+    // config
+    int levels = 10;
+    int indicator_width = 80;
+    int indicator_height = 180;
+    int level_width = indicator_width - 20;
+    int level_height = int((indicator_height - 20) / levels - 5);
+    // draw
+    int img_levels = int(percentage * levels);
+    cv::rectangle(img, cv::Point(10, img.rows - (indicator_height + 10)), cv::Point(10 + indicator_width, img.rows - 10), (0, 0, 0), cv::FILLED);
+
+    int level_y_b;
+    for (int i = 0; i < levels; ++i)
+    {
+        level_y_b = int(img.rows - (20 + i * (level_height + 5)));
+        cv::rectangle(img, cv::Point(20, level_y_b - level_height), cv::Point(20 + level_width, level_y_b), percentage2Color(double(i) / double(levels)), cv::FILLED);
+    }
+}
+*/
+
+cv::Scalar percentage2Color(double p)
+{
+    cv::Scalar color(0, int(255 * p), int(255 - (255 * p)));
+    return color;
+}
+
+cv::Mat composeRMatrix( double x_rot, double y_rot, double z_rot )
+{
+
+    // Calculate rotation about x axis
+    cv::Mat R_x = (cv::Mat_<double>(3,3) <<
+               1,               0,              0,
+               0,               cos(x_rot),  -sin(x_rot),
+               0,               sin(x_rot),  cos(x_rot)
+               );
+    
+    // Calculate rotation about y axis
+    cv::Mat R_y = (cv::Mat_<double>(3,3) <<
+               cos(y_rot),   0,              sin(y_rot),
+               0,               1,              0,
+               -sin(y_rot),  0,              cos(y_rot)
+               );
+    
+    // Calculate rotation about z axis
+    cv::Mat R_z = (cv::Mat_<double>(3,3) <<
+               cos(z_rot),   -sin(z_rot), 0,
+               sin(z_rot),   cos(z_rot),  0,
+               0,               0,              1
+               );
+    
+    // Combined rotation matrix
+    cv::Mat R = R_z * R_y * R_x;
+
+    return R;
 }
 
 cv::Mat invertKMatrix( cv::Mat K )
@@ -343,6 +432,17 @@ void dehomogenizeMatrix(cv::Mat& X)
     {
         X.col(i) = X.col(i) / X.at<double>(num_rows-1,i);
     }
+}
+
+cv::Mat normalizeMat(cv::Mat& vec)
+{
+    cv::Mat ret;
+    std::cout << "Input: " << vec << std::endl;
+    double norm = cv::norm(vec, cv::NORM_L1);
+    ret = vec/norm;
+    std::cout << "Output: " << ret << std::endl;
+    std::cout << "Norm: " << norm << std::endl;
+    return ret;
 }
 
 cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)

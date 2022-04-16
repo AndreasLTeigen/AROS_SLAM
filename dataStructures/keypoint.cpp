@@ -2,6 +2,7 @@
 #include <math.h>
 #include <memory>
 #include <vector>
+#include <algorithm>
 #include <shared_mutex>
 #include <opencv2/opencv.hpp>
 
@@ -272,4 +273,81 @@ cv::KeyPoint KeyPoint2::compileCVKeyPoint()
 double KeyPoint2::calculateKeypointDistance(shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2)
 {
     return sqrt((kpt1->getCoordX() - kpt2->getCoordX())*(kpt1->getCoordX() - kpt2->getCoordX()) + (kpt1->getCoordY() - kpt2->getCoordY())*(kpt1->getCoordY() - kpt2->getCoordY()));
+}
+
+/*
+void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, cv::Point loc_canvas, cv::Size size )
+{
+    int reg_w, reg_h, top, bottom, left, right;
+    cv::Mat img_sec, roi;
+
+    reg_w = size.width;
+    reg_h = size.height;
+    
+    top = std::max(int(kpt->getCoordY() - reg_h/2), 0);
+    left = std::max(int(kpt->getCoordX() - reg_w/2), 0);
+    reg_w = std::min(reg_w, img.cols - int(kpt->getCoordX()));
+    reg_h = std::min(reg_h, img.rows - int(kpt->getCoordY()));
+
+    img_sec = img(cv::Rect(left, top, reg_w, reg_h));
+    roi = canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows));
+    img_sec.copyTo( canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows)) );
+}*/
+
+void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, 
+                                        cv::Point loc_canvas, cv::Size size, cv::Mat F_matrix,
+                                         shared_ptr<KeyPoint2> matched_kpt )
+{
+    int reg_w, reg_h, top, bottom, left, right;
+    cv::Mat img_sec, roi;
+
+    // Extracting and enhancing keypoint image section
+    reg_w = kpt->getSize();
+    reg_h = reg_w;
+    
+    top = std::max(int(kpt->getCoordY() - reg_h/2), 0);
+    left = std::max(int(kpt->getCoordX() - reg_w/2), 0);
+    reg_w = std::min(reg_w, img.cols - int(kpt->getCoordX()));
+    reg_h = std::min(reg_h, img.rows - int(kpt->getCoordY()));
+
+    img_sec = img(cv::Rect(left, top, reg_w, reg_h));
+    cv::resize(img_sec, img_sec, size);
+
+    // Draw keypoint center
+    cv::Scalar color(255, 0, 0);
+    int cross_hair_size = 20;
+    int kpt_x = int( (kpt->getCoordX() - left)*size.width/reg_w );
+    int kpt_y = int( (kpt->getCoordY() - top)*size.height/reg_h );
+    cv::line(img_sec,   cv::Point(kpt_x - cross_hair_size, kpt_y),
+                        cv::Point(kpt_x + cross_hair_size, kpt_y),
+                        color);
+    cv::line(img_sec,   cv::Point(kpt_x, kpt_y - cross_hair_size),
+                        cv::Point(kpt_x, kpt_y + cross_hair_size),
+                        color);
+
+    // Draw epipolar line
+    /*
+    if ( matched_kpt != nullptr )
+    {
+        cv::RNG rng(0);
+        std::vector<cv::Point3f> epiline;
+        cv::Point matched_point = matched_kpt->compileCV2DPoint();
+        vector<cv::Point> point2{matched_point};
+        cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline);
+        
+        double a = - epiline[0].x / epiline[0].y;
+        double b = - epiline[0].z / epiline[0].y + img.rows - top + reg_h;
+        cv::Scalar color(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256));
+        cv::line(img_sec,
+            cv::Point(float(0),-(epiline[0].z+epiline[0].x*(left)/epiline[0].y - (top-reg_h)),
+            cv::Point(float(reg_w),-(epiline[0].z+epiline[0].x*(left+reg_w)/epiline[0].y - (top-reg_h)),
+            color);
+        std::cout << cv::Point(0, b) << " -> " << cv::Point(reg_w, a*reg_w + b) << std::endl;
+        std::cout << "--------------------------\n";
+    }
+    */
+
+    // Coying enhanced keypoint into canvas
+    roi = canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows));
+    img_sec.copyTo( canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows)) );
 }

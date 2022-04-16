@@ -1,6 +1,8 @@
 #ifndef GJET_h
 #define GJET_h
 
+#include <ceres/ceres.h>
+
 #include "../poseCalculation.hpp"
 #include "../../dataStructures/frameData.hpp"
 #include "../../dataStructures/keypoint.hpp"
@@ -48,7 +50,6 @@ class GJET : public PoseCalculator    // 5-Point with Outlier Rejection Pose Cal
 class DDNormal       // Descriptor distance Normalization
 {
     private:
-        int reg_size = 3;
         int step_size = 1; //px
         ParamID paramId = ParamID::STDPARAM;
 
@@ -66,14 +67,19 @@ class DDNormal       // Descriptor distance Normalization
                                                 edgeThreshold,
                                                 firstLevel,
                                                 WTA_K,
-                                                cv::ORB::HARRIS_SCORE,
+                                                cv::ORB::FAST_SCORE,
                                                 patchSize,
                                                 fastThreshold);
     public:
         DDNormal(){};
         ~DDNormal(){};
 
-        std::string orb_non_rot = "orb_non_rot";
+        int reg_size = 7;
+        int inspect_kpt_nr = -1;
+        bool print_log = false;
+        bool visual_error_check = true;
+
+        std::string orb_non_rot = "orb";//"orb_non_rot";
         std::string quad_fit = "quad_fit";
         void collectDescriptorDistance( const cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
         void collectDescriptorDistances( cv::Mat& img, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
@@ -96,6 +102,26 @@ class DDNormal       // Descriptor distance Normalization
 
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
         double calculateScale(cv::Mat& v_k_opt);
+};
+
+
+class IterationUpdate : public ceres::EvaluationCallback
+{
+    private:
+        double* p;
+        cv::Mat img, K1, K2;
+        std::shared_ptr<DDNormal> solver;
+        std::shared_ptr<Parametrization> parametrization;
+        std::vector<std::shared_ptr<KeyPoint2>> m_kpts1, m_kpts2;
+    public:
+        IterationUpdate(    cv::Mat& img, double* p, cv::Mat K1, cv::Mat K2, 
+                            std::shared_ptr<DDNormal> solver, 
+                            std::shared_ptr<Parametrization> parametrization);
+        ~IterationUpdate(){};
+        
+        void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
+        void addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
+                            std::shared_ptr<KeyPoint2> kpt2);
 };
 
 

@@ -133,6 +133,7 @@ void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix)
     shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
 
     this->extractor->extract( img, frame, this->getMap3D() );
+    frame->setImg( img ); // TODO: Remove later when not needed anymore
     this->appendTrackingFrame(frame);
 }
 
@@ -146,6 +147,8 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     shared_ptr<FrameData> frame1 = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
     shared_ptr<FrameData> frame2 = this->getFrame(-comparison_frame_spacing);
+
+    frame1->setImg( img ); // TODO: Remove later when not needed anymore
 
 
     std::cout << "Frame nr: " << frame1->getFrameNr() << std::endl;
@@ -332,6 +335,7 @@ void FTracker::drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr)
 
 void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
 {
+    //TODO: Change variable <frame_nr> to <frame_idx> as frame_nr has secondary meaning
     vector<cv::Point2f> pts1, pts2;
     cv::Mat E_matrix, F_matrix, epipole;
     std::shared_ptr<FrameData> curr_frame, prev_frame;
@@ -347,6 +351,55 @@ void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
     E_matrix = curr_frame->getRelPose( prev_frame->getFrameNr() )->getEMatrix(); 
     F_matrix = fundamentalFromEssential( E_matrix, curr_frame->getKMatrix() );
     drawEpipolarLines( F_matrix, img_disp, pts2, pts1 );
+}
+
+cv::Mat FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
+{
+    int random_idx, canvas_h, canvas_w;
+    double hamming_dist;
+    cv::Mat img1, img2, F_matrix;
+    cv::Mat canvas(800, 1400, img_disp.type(), cv::Scalar::all(0));
+    shared_ptr<FrameData> frame1, frame2;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
+
+    if (frame_idx=-1)
+    {
+        frame_idx = this->getFrameListLength() - 1;  //TODO: Should not be 1, depends on <comparion frame spacing variable>
+    }
+
+    copyMakeBorder(img_disp, canvas, 0, canvas.rows-img_disp.rows, 0, canvas.cols-img_disp.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
+
+    frame1 = this->getFrame( frame_idx );
+    frame2 = this->getFrame( frame_idx -1 );
+
+    img1 = frame1->getImg();
+    img2 = frame2->getImg();
+    cvtColor(img1, img1, cv::COLOR_GRAY2BGR );
+    cvtColor(img2, img2, cv::COLOR_GRAY2BGR );
+    
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    F_matrix = fundamentalFromEssential(frame1->getRelPose( frame2 )->getEMatrix(), frame1->getKMatrix());
+
+
+    int border = 30;
+    cv::Size size(100,100);
+
+    for ( int i = 0; i < 10; ++i )
+    {
+        random_idx = rand() % matched_kpts1.size();
+        kpt1 = matched_kpts1[random_idx];
+        kpt2 = matched_kpts2[random_idx];
+        KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
+        KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
+        hamming_dist = cv::norm(kpt1->getDescriptor("orb"), kpt2->getDescriptor("orb"), cv::NORM_HAMMING);
+        drawIndicator(canvas, 100*(255 - 2*hamming_dist) / 255, cv::Point((border + size.width)*i, 620));
+    }
+
+    cv::imshow("KeyPoint Analysis", canvas);
+    cv::waitKey(0);
+    return img_disp;
 }
 
 void FTracker::incremental3DMapTrackingLog(shared_ptr<FrameData> frame, string ILog)
