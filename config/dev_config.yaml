@@ -29,7 +29,7 @@ Camera.cy: 185.2157
 Method.motion_prior: none
 Method.extractor: orb_os #dd #orb #orb_os
 Method.matcher: bf_mono
-Method.pose_calculator: 5-point + outlier removal #reproOpt #G_JET #5-point + outlier removal
+Method.pose_calculator: G_JET #reproOpt #G_JET #5-point + outlier removal
 Method.point_reg_3D: all
 Method.point_cull_3D: OoW
 
