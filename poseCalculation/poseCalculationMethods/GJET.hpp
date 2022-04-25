@@ -113,6 +113,7 @@ class IterationUpdate : public ceres::EvaluationCallback
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
         void addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
                             std::shared_ptr<KeyPoint2> kpt2);
+        void logKptState(   std::shared_ptr<KeyPoint2> kpt );
 };
 
 #endif

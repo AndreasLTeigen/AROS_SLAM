@@ -3,7 +3,6 @@
 
 #include "../dataStructures/frameData.hpp"
 
-
 class Matcher
 {
     public:

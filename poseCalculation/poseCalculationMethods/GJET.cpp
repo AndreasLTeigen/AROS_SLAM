@@ -96,12 +96,6 @@ struct GJETSolver
 
 
 
-
-
-
-
-
-
 std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     // Assumes K_matrix is equal for both frames.
@@ -602,8 +596,10 @@ bool DDNormal::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& im
 
     v_k_opt = kpt->getDescriptor("v_k_opt");
     scale = this->calculateScale(v_k_opt);
-    x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(1,0);
-    y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(0,0);
+    //x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(1,0);
+    //y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(0,0);
+    x_update = kpt->getCoordX() + v_k_opt.at<double>(1,0);
+    y_update = kpt->getCoordY() + v_k_opt.at<double>(0,0);
 
     desc_radius = std::max(this->patchSize, int(std::ceil(kpt->getSize())/2));
     if ( validDescriptorRegion( x_update, y_update, W, H, desc_radius + this->reg_size ) )
@@ -669,6 +665,10 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
             kpt1 = m_kpts1[i];
             kpt2 = m_kpts2[i];
 
+
+            // TODO: Remove later when no longer usefull
+            this->logKptState( kpt1 );
+
             cv::Mat R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
 
             vector<double> p_vec;
@@ -728,4 +728,48 @@ void IterationUpdate::addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
 {
     this->m_kpts1.push_back(kpt1);
     this->m_kpts2.push_back(kpt2);
+}
+
+void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt )
+{
+    /*
+    Arguments:
+        kpt:    Keypoint which is wanted to log the current state of.
+    Effect:
+        Stores the current position of the keypoint, local hamming distances and
+        current A matrix in the keypoint 'descriptor' map. And stores them as:
+
+        log_cnt = x
+        loc_log_x
+        hamming_log_x
+        quad_fit_log_x
+    */
+
+    int log_nr;
+    cv::Mat log_cnt, uv, hamming, A;
+
+
+    if ( kpt->isDescriptor("log_cnt") )
+    {
+        log_cnt = kpt->getDescriptor("log_cnt");
+        log_cnt.at<double>(0,0) += 1;
+    }
+    else
+    {
+        log_cnt = cv::Mat::zeros(1,1,CV_64F);
+    }
+
+    // Get current state
+    log_nr = log_cnt.at<double>(0,0);
+    uv = kpt->getLoc().clone();
+    A = kpt->getDescriptor("quad_fit").clone();
+
+    // Saving logged state
+    kpt->setDescriptor(log_cnt, "log_cnt");
+    kpt->setDescriptor(uv, "loc_log" + std::to_string(log_nr));
+    kpt->setDescriptor(A, "quad_fit_log" + std::to_string(log_nr));
+
+    //std::cout << kpt->getDescriptor("log_cnt") << std::endl;
+    //std::cout << kpt->getDescriptor("loc_log" + std::to_string(log_nr)) << std::endl;
+    //std::cout << kpt->getDescriptor("quad_fit_log" + std::to_string(log_nr)) << std::endl;
 }

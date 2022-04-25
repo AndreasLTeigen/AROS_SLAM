@@ -2,6 +2,8 @@
 #define match_h
 
 #include "keypoint.hpp"
+
+#include <memory>
 #include <shared_mutex>
 
 // Forward declaration for circular dependence

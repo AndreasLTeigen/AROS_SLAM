@@ -219,6 +219,19 @@ double KeyPoint2::getSize()
     return this->size;
 }
 
+bool KeyPoint2::isDescriptor(std::string descr_type)
+{
+    std::shared_lock lock(mutex_descriptors);
+    if ( this->descriptors.find(descr_type) == this->descriptors.end() )
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
 Mat KeyPoint2::getDescriptor(std::string descr_type)
 {
     std::shared_lock lock(mutex_descriptors);
@@ -307,45 +320,83 @@ void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::share
     
     top = std::max(int(kpt->getCoordY() - reg_h/2), 0);
     left = std::max(int(kpt->getCoordX() - reg_w/2), 0);
-    reg_w = std::min(reg_w, img.cols - int(kpt->getCoordX()));
     reg_h = std::min(reg_h, img.rows - int(kpt->getCoordY()));
+    reg_w = std::min(reg_w, img.cols - int(kpt->getCoordX()));
 
     img_sec = img(cv::Rect(left, top, reg_w, reg_h));
     cv::resize(img_sec, img_sec, size);
 
     // Draw keypoint center
-    cv::Scalar color(255, 0, 0);
+    cv::Scalar blue(255, 0, 0);
     int cross_hair_size = 20;
     int kpt_x = int( (kpt->getCoordX() - left)*size.width/reg_w );
     int kpt_y = int( (kpt->getCoordY() - top)*size.height/reg_h );
     cv::line(img_sec,   cv::Point(kpt_x - cross_hair_size, kpt_y),
                         cv::Point(kpt_x + cross_hair_size, kpt_y),
-                        color);
+                        blue);
     cv::line(img_sec,   cv::Point(kpt_x, kpt_y - cross_hair_size),
                         cv::Point(kpt_x, kpt_y + cross_hair_size),
-                        color);
+                        blue);
 
+    
     // Draw epipolar line
-    /*
     if ( matched_kpt != nullptr )
     {
-        cv::RNG rng(0);
+        cv::Scalar red(0, 0, 255);
         std::vector<cv::Point3f> epiline;
         cv::Point matched_point = matched_kpt->compileCV2DPoint();
         vector<cv::Point> point2{matched_point};
         cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline);
         
         double a = - epiline[0].x / epiline[0].y;
-        double b = - epiline[0].z / epiline[0].y + img.rows - top + reg_h;
-        cv::Scalar color(rng.uniform(0,256),rng.uniform(0,256),rng.uniform(0,256));
-        cv::line(img_sec,
-            cv::Point(float(0),-(epiline[0].z+epiline[0].x*(left)/epiline[0].y - (top-reg_h)),
-            cv::Point(float(reg_w),-(epiline[0].z+epiline[0].x*(left+reg_w)/epiline[0].y - (top-reg_h)),
-            color);
-        std::cout << cv::Point(0, b) << " -> " << cv::Point(reg_w, a*reg_w + b) << std::endl;
-        std::cout << "--------------------------\n";
+        double b = - epiline[0].z / epiline[0].y;
+
+        // Checking intersects in all vertices of the image patch
+        std::vector<cv::Point> points;
+
+        // Left intersection
+        if ( (a * left + b) > top && (a * left + b) < top + reg_h )
+        {
+            points.push_back(cv::Point(left, (a * left + b)));
+        }
+        // Top instersection
+        if ( (top - b)/a > left && (top - b)/a < left + reg_w )
+        {
+            points.push_back(cv::Point((top - b)/a, top));
+        }
+
+        // Right intersection
+        if ( (a * (left+reg_w) + b) > top && (a * (left+reg_w) + b) < top + reg_h )
+        {
+            points.push_back(cv::Point((left+reg_w), (a * (left+reg_w) + b)));
+        }
+        // Bottom intersection
+        if ( ((top + reg_h) - b)/a > left && ((top + reg_h) - b)/a < left + reg_w )
+        {
+            points.push_back(cv::Point(((top + reg_h) - b)/a, (top + reg_h)));
+        }
+
+        if (points.size() == 2)
+        {
+            points[0].x -= left;
+            points[0].y -= top;
+            points[1].x -= left;
+            points[1].y -= top;
+
+            points[0].x *= (size.width/reg_w);
+            points[0].y *= (size.height/reg_h);
+            points[1].x *= 2*(size.width/reg_w);
+            points[1].y *= 2*(size.height/reg_h);
+
+            //std::cout << points[0] << points[1] << std::endl;
+            cv::line(img_sec, points[0], points[1], red);
+        }
+        else if (points.size() > 2)
+        {
+            std::cout << "WARNING: LINE INTERSECTS SQUARE MORE THAN 2 TIMES" << std::endl;
+        }
+
     }
-    */
 
     // Coying enhanced keypoint into canvas
     roi = canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows));

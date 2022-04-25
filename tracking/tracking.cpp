@@ -386,12 +386,14 @@ cv::Mat FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
     int border = 30;
     cv::Size size(100,100);
 
+    //srand (time(NULL));
     for ( int i = 0; i < 10; ++i )
     {
         random_idx = rand() % matched_kpts1.size();
         kpt1 = matched_kpts1[random_idx];
         kpt2 = matched_kpts2[random_idx];
         KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
+        //KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 400), cv::Size(31,31), F_matrix, kpt2);
         KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
         hamming_dist = cv::norm(kpt1->getDescriptor("orb"), kpt2->getDescriptor("orb"), cv::NORM_HAMMING);
         drawIndicator(canvas, 100*(255 - 2*hamming_dist) / 255, cv::Point((border + size.width)*i, 620));

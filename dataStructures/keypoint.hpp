@@ -74,6 +74,7 @@ class KeyPoint2
         double getAngle();
         double getResponse();
         double getSize();
+        bool isDescriptor(std::string descr_type);
         cv::Mat getDescriptor(std::string descr_type="orb");
         std::shared_ptr<MapPoint> getMapPoint();
         std::vector<std::shared_ptr<Match>> getMatches(int matched_frame_nr);
