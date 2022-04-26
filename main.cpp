@@ -142,7 +142,8 @@ int AVGSlam()
             //tracker->drawEpipolarLinesWithPrev(img_disp);
             tracker->drawEpipoleWithPrev(img_disp);
             tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
-            img_disp = tracker->kptMatchAnalysisWithPrev(img_disp);
+            tracker->kptMatchAnalysisIterationLogWithPrev(img_disp);
+            //tracker->kptMatchAnalysisWithPrev(img_disp);
             seq.visualizeImage(img_disp);
         }
 

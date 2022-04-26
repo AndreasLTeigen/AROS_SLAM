@@ -71,6 +71,8 @@ std::vector<double> transform2stdParam(cv::Mat &T);
 
 bool isInsideImageBounds( double y, double x, int H, int W);
 
+std::string type2str(int type);
+
 void writeParameters2File(std::string file_path, std::string image_idenifier, cv::Mat &T );
 
 std::vector<std::vector<std::string>> readCSVFile(std::string filename);

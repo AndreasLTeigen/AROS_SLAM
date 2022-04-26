@@ -55,7 +55,8 @@ class FTracker
         void drawKeypointTrails(cv::Mat &img, int trail_length=49, int frame_nr=-1, int trail_thickness=2);
         void drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr1=-1);
         void drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr=-1);
-        cv::Mat kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
+        void kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
+        void kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
         void incremental3DMapTrackingLog(std::shared_ptr<FrameData> frame, std::string ILog_path);
 
         // Functions for error checking

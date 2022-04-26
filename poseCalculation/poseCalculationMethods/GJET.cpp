@@ -167,7 +167,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 100;
+    options.max_num_iterations = 1;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.BriefReport() << "\n";
@@ -282,8 +282,6 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     KKT = (cv::Mat_<double>(3,3)<<  A_k.at<double>(0,0),    A_k.at<double>(0,1),    F_d_x.at<double>(0,0),
                                     A_k.at<double>(1,0),    A_k.at<double>(1,1),    F_d_x.at<double>(1,0),
                                     F_d_x.at<double>(0,0),  F_d_x.at<double>(1.0),  0);
-
-
     q = (cv::Mat_<double>(3,1)<<    -b_k.at<double>(0,0),
                                     -b_k.at<double>(1,0),
                                      q_31.at<double>(0,0));
@@ -564,7 +562,7 @@ void DDNormal::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matc
             if (this->inspect_kpt_nr == -1)
             {
                 this->inspect_kpt_nr = kpt1->getKptId();
-                std::cout << this->inspect_kpt_nr << std::endl;
+                std::cout << "Inspection kpt number: " << this->inspect_kpt_nr << std::endl;
             }
             this->collectDescriptorDistance( img, kpt1, kpt2 );
         }
@@ -665,10 +663,6 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
             kpt1 = m_kpts1[i];
             kpt2 = m_kpts2[i];
 
-
-            // TODO: Remove later when no longer usefull
-            this->logKptState( kpt1 );
-
             cv::Mat R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
 
             vector<double> p_vec;
@@ -706,7 +700,12 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
 
             //Updating the keypoint
             kpt1->setDescriptor(v_k_opt, "v_k_opt");
-            //std::cout << "1111" << std::endl;
+
+
+            // TODO: Remove later when no longer usefull
+            this->logKptState( kpt1, F_matrix );
+
+
             solver->updateKeypoint(kpt1, this->img);
 
             if (kpt1->getKptId() == this->solver->inspect_kpt_nr && solver->print_log)
@@ -717,7 +716,6 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
 
             // Re-linearizing
             solver->collectDescriptorDistance( this->img, kpt1, kpt2 );
-            //std::cout << "############" << std::endl;
         }
     }
 }
@@ -730,7 +728,7 @@ void IterationUpdate::addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
     this->m_kpts2.push_back(kpt2);
 }
 
-void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt )
+void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix )
 {
     /*
     Arguments:
@@ -738,7 +736,6 @@ void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt )
     Effect:
         Stores the current position of the keypoint, local hamming distances and
         current A matrix in the keypoint 'descriptor' map. And stores them as:
-
         log_cnt = x
         loc_log_x
         hamming_log_x
@@ -746,7 +743,7 @@ void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt )
     */
 
     int log_nr;
-    cv::Mat log_cnt, uv, hamming, A;
+    cv::Mat log_cnt, uv, hamming, A, v_k_opt;
 
 
     if ( kpt->isDescriptor("log_cnt") )
@@ -762,14 +759,20 @@ void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt )
     // Get current state
     log_nr = log_cnt.at<double>(0,0);
     uv = kpt->getLoc().clone();
+    v_k_opt = kpt->getDescriptor("v_k_opt").clone();
     A = kpt->getDescriptor("quad_fit").clone();
+    hamming = kpt->getDescriptor("hamming").clone();
 
     // Saving logged state
     kpt->setDescriptor(log_cnt, "log_cnt");
-    kpt->setDescriptor(uv, "loc_log" + std::to_string(log_nr));
+    kpt->setDescriptor(uv, "loc_from_log" + std::to_string(log_nr));
+    kpt->setDescriptor(v_k_opt, "v_k_opt_log" + std::to_string(log_nr));
     kpt->setDescriptor(A, "quad_fit_log" + std::to_string(log_nr));
+    kpt->setDescriptor(hamming, "hamming_log" + std::to_string(log_nr));
+    kpt->setDescriptor(F_matrix.clone(), "F_matrix_log" + std::to_string(log_nr));
 
     //std::cout << kpt->getDescriptor("log_cnt") << std::endl;
     //std::cout << kpt->getDescriptor("loc_log" + std::to_string(log_nr)) << std::endl;
     //std::cout << kpt->getDescriptor("quad_fit_log" + std::to_string(log_nr)) << std::endl;
+    //std::cout << kpt->getDescriptor("F_matrix_log" + std::to_string(log_nr)) << std::endl;
 }
