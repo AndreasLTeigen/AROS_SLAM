@@ -98,6 +98,94 @@ struct GJETSolver
 
 std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
+    std::shared_ptr<Pose> pose;
+    //pose = this->calculateFull( frame1, frame2, img );
+    pose = this->calculateTest( frame1, frame2, img );
+    return pose;
+}
+
+std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
+{
+    // Test of just one iteration with no optimization of relative pose, just keypoint position.
+    cv::Mat E_matrix, F_matrix, inliers, A_d_k;
+    std::vector<cv::Point> pts1, pts2;
+    compileMatchedCVPoints( frame1, frame2, pts1, pts2 );
+    E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
+    FrameData::removeOutlierMatches( inliers, frame1, frame2 );
+    std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
+    rel_pose->updateParametrization();
+    vector<double> p_vec = rel_pose->getParametrization( this->paramId )->getParamVector();
+
+    shared_ptr<DDNormal> solver = std::make_shared<DDNormal>();
+
+    vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+
+
+    shared_ptr<StdParam> parametrization = std::make_shared<StdParam>();
+    solver->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
+
+    cv::Mat v_k_opt, R, t, y_k, x_k;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+
+
+
+
+
+    for (int i = 0; i < matched_kpts1.size(); ++i)
+    {
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
+
+        A_d_k = kpt1->getDescriptor("quad_fit");
+        if (!A_d_k.empty())
+        {
+            
+            y_k = kpt1->getLoc();
+            x_k = kpt2->getLoc();
+
+            if (kpt1->getKptId() == solver->inspect_kpt_nr && solver->print_log)
+            {
+                std::cout << "Kpt nr: " << kpt1->getKptId() << std::endl;
+                std::cout << "y_k: " << kpt1->getLoc().t() << std::endl;
+            }
+
+
+            parametrization->composeRMatrixAndTParam( p_vec, R, t );
+            //std::cout << "R_matrix: " << R << std::endl;
+            E_matrix = composeEMatrix( R, t );
+            //std::cout << "E_matrix: " << E_matrix << std::endl;
+            F_matrix = fundamentalFromEssential( E_matrix, frame1->getKMatrix(), frame2->getKMatrix() );
+            //std::cout << "F_matrix: " << F_matrix << std::endl;
+            //std::cout << "A: " << kpt1->getDescriptor("quad_fit") << std::endl;
+
+            GJET::epipolarConstrainedOptimization( F_matrix, kpt1->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+
+            //Updating the keypoint
+            kpt1->setDescriptor(v_k_opt, "v_k_opt");
+
+
+            // TODO: Remove later when no longer usefull
+            IterationUpdate::logKptState( kpt1, F_matrix );
+
+
+            solver->updateKeypoint(kpt1, img);
+
+            if (kpt1->getKptId() == solver->inspect_kpt_nr && solver->print_log)
+            {
+                std::cout << "v_k_opt: " << v_k_opt.t() << std::endl;
+                std::cout << "new y_k: " << kpt1->getLoc().t() << std::endl;
+            }
+
+            // Re-linearizing
+            solver->collectDescriptorDistance( img, kpt1, kpt2 );
+        }
+    }
+    return rel_pose;
+}
+
+std::shared_ptr<Pose> GJET::calculateFull( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
+{
     // Assumes K_matrix is equal for both frames.
     cv::Mat E_matrix, F_matrix, inliers;
     std::vector<cv::Point> pts1, pts2;
@@ -703,7 +791,7 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
 
 
             // TODO: Remove later when no longer usefull
-            this->logKptState( kpt1, F_matrix );
+            IterationUpdate::logKptState( kpt1, F_matrix );
 
 
             solver->updateKeypoint(kpt1, this->img);

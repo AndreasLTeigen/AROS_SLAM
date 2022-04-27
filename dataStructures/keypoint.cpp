@@ -405,7 +405,7 @@ void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::share
 }
 
 // Function specific to GJET
-// TODO: Remove after use
+// TODO: MOVE TO GJET IMPLEMENTATION
 void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, 
                                         cv::Point loc_canvas, cv::Size size, cv::Mat F_matrix,
                                          shared_ptr<KeyPoint2> matched_kpt, cv::Mat heat_map, int it, bool updated,
@@ -434,21 +434,13 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         if (show_hm)
         {
             cv::Mat heatmap_img, heat_map_img_sec;
-            //heat_map = heat_map.reshape(1);
             heat_map = 255 - heat_map;
             heat_map_img_sec = img_sec(cv::Rect(int(img_sec.cols/2) - int(heat_map.cols/2), 
                                                 int(img_sec.rows/2) - int(heat_map.rows/2), 
                                                 heat_map.cols, heat_map.rows)).clone();
 
-            //std::cout << type2str(img.type()) << std::endl;
-            //std::cout << type2str(heat_map.type()) << std::endl;
-            //std::cout << heat_map << std::endl;
             heat_map.convertTo(heat_map, CV_8UC1);
-            //std::cout << type2str(heat_map.type()) << std::endl;
-            //std::cout << heat_map << std::endl;
             cv::applyColorMap(heat_map, heatmap_img, cv::COLORMAP_JET);
-            //std::cout << heatmap_img.size << std::endl;
-            //std::cout << heat_map_img_sec.size << std::endl;
             cv::addWeighted(heatmap_img, 0.7, heat_map_img_sec, 0.3, 0, heat_map_img_sec);
             heat_map_img_sec.copyTo( img_sec(cv::Rect(int(img_sec.cols/2) - int(heat_map.cols/2), 
                                                     int(img_sec.rows/2) - int(heat_map.rows/2), 
@@ -463,8 +455,6 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         // Draw keypoint center
         cv::Scalar blue(255, 0, 0);
         int cross_hair_size = 20;
-        //std::cout << uv << std::endl;
-        //std::cout << v_k_opt << std::endl;
         int kpt_x, kpt_y;
         if (updated)
         {

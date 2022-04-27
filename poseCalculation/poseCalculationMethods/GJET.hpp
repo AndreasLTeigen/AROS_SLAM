@@ -39,6 +39,8 @@ class GJET : public PoseCalculator
         ~GJET(){};
 
         std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
+        std::shared_ptr<Pose> calculateTest( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img );
+        std::shared_ptr<Pose> calculateFull( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img );
         void jointEpipolarOptimization( cv::Mat& F_matrix, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2 );
 
         static double solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, cv::Mat& v_k );
@@ -113,7 +115,7 @@ class IterationUpdate : public ceres::EvaluationCallback
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
         void addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
                             std::shared_ptr<KeyPoint2> kpt2);
-        void logKptState(   std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix );
+        static void logKptState(   std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix );
 };
 
 #endif

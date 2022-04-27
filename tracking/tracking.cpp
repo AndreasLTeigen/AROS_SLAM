@@ -444,7 +444,7 @@ void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int fram
     //    std::cout << kpt_n->getDescriptor("F_matrix_log") << std::endl;
     //}
 
-    for (int it = 0; it < num_it; ++it )
+    for (int it = 0; it < num_it+1; ++it )
     {
 
         copyMakeBorder(img_disp, canvas, 0, canvas.rows-img_disp.rows, 0, canvas.cols-img_disp.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
