@@ -408,108 +408,146 @@ void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::share
 // TODO: Remove after use
 void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, 
                                         cv::Point loc_canvas, cv::Size size, cv::Mat F_matrix,
-                                         shared_ptr<KeyPoint2> matched_kpt, cv::Mat heat_map )
+                                         shared_ptr<KeyPoint2> matched_kpt, cv::Mat heat_map, int it, bool updated,
+                                         bool show_hm )
 {
-    int reg_w, reg_h, top, bottom, left, right;
-    cv::Mat img_sec, roi, v_k_opt;
-
-    // Extracting and enhancing keypoint image section
-    reg_w = kpt->getSize();
-    reg_h = reg_w;
-    
-    top = std::max(int(kpt->getCoordY() - reg_h/2), 0);
-    left = std::max(int(kpt->getCoordX() - reg_w/2), 0);
-    reg_h = std::min(reg_h, img.rows - int(kpt->getCoordY()));
-    reg_w = std::min(reg_w, img.cols - int(kpt->getCoordX()));
-
-    img_sec = img(cv::Rect(left, top, reg_w, reg_h)).clone();
-    cv::Mat heatmap_img;
-    std::cout << type2str(heat_map.type()) << std::endl;
-    std::cout << heat_map << std::endl;
-    heat_map.convertTo(heat_map, CV_8UC1);
-    std::cout << type2str(heat_map.type()) << std::endl;
-    std::cout << heat_map << std::endl;
-    cv::applyColorMap(heat_map, heatmap_img, cv::COLORMAP_JET);
-    cv::addWeighted(heatmap_img, 0.7, img_sec, 0.3, 0, img_sec);
-
-    cv::resize(img_sec, img_sec, size);
-
-
-    v_k_opt = kpt->getDescriptor("v_k_opt");
-
-    // Draw keypoint center
-    cv::Scalar blue(255, 0, 0);
-    int cross_hair_size = 20;
-    int kpt_x = int( (kpt->getCoordX() + v_k_opt.at<double>(1,0) - left)*size.width/reg_w );
-    int kpt_y = int( (kpt->getCoordY() + v_k_opt.at<double>(0,0) - top)*size.height/reg_h );
-    cv::line(img_sec,   cv::Point(kpt_x - cross_hair_size, kpt_y),
-                        cv::Point(kpt_x + cross_hair_size, kpt_y),
-                        blue);
-    cv::line(img_sec,   cv::Point(kpt_x, kpt_y - cross_hair_size),
-                        cv::Point(kpt_x, kpt_y + cross_hair_size),
-                        blue);
-
-    
-    // Draw epipolar line
-    if ( matched_kpt != nullptr )
+    if (!heat_map.empty())
     {
-        cv::Scalar red(0, 0, 255);
-        std::vector<cv::Point3f> epiline;
-        cv::Point matched_point = matched_kpt->compileCV2DPoint();
-        vector<cv::Point> point2{matched_point};
-        cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline);
+        int reg_w, reg_h, top, bottom, left, right;
+        cv::Mat img_sec, roi, uv, v_k_opt;
+
+        // Extracting and enhancing keypoint image section
+        reg_w = kpt->getSize();
+        reg_h = reg_w;
         
-        double a = - epiline[0].x / epiline[0].y;
-        double b = - epiline[0].z / epiline[0].y;
+        uv = kpt->getDescriptor("loc_from_log" + std::to_string(it));
 
-        // Checking intersects in all vertices of the image patch
-        std::vector<cv::Point> points;
+        top = std::max(int(uv.at<double>(0,0) - reg_h/2), 0);
+        left = std::max(int(uv.at<double>(1,0) - reg_w/2), 0);
+        reg_h = std::min(reg_h, img.rows - int(uv.at<double>(0,0)));
+        reg_w = std::min(reg_w, img.cols - int(uv.at<double>(1,0)));
 
-        // Left intersection
-        if ( (a * left + b) > top && (a * left + b) < top + reg_h )
-        {
-            points.push_back(cv::Point(left, (a * left + b)));
-        }
-        // Top instersection
-        if ( (top - b)/a > left && (top - b)/a < left + reg_w )
-        {
-            points.push_back(cv::Point((top - b)/a, top));
-        }
+        img_sec = img(cv::Rect(left, top, reg_w, reg_h)).clone();
 
-        // Right intersection
-        if ( (a * (left+reg_w) + b) > top && (a * (left+reg_w) + b) < top + reg_h )
-        {
-            points.push_back(cv::Point((left+reg_w), (a * (left+reg_w) + b)));
-        }
-        // Bottom intersection
-        if ( ((top + reg_h) - b)/a > left && ((top + reg_h) - b)/a < left + reg_w )
-        {
-            points.push_back(cv::Point(((top + reg_h) - b)/a, (top + reg_h)));
-        }
 
-        if (points.size() == 2)
+        // Adding heatmap overlay of hamming distance
+        if (show_hm)
         {
-            points[0].x -= left;
-            points[0].y -= top;
-            points[1].x -= left;
-            points[1].y -= top;
+            cv::Mat heatmap_img, heat_map_img_sec;
+            //heat_map = heat_map.reshape(1);
+            heat_map = 255 - heat_map;
+            heat_map_img_sec = img_sec(cv::Rect(int(img_sec.cols/2) - int(heat_map.cols/2), 
+                                                int(img_sec.rows/2) - int(heat_map.rows/2), 
+                                                heat_map.cols, heat_map.rows)).clone();
 
-            points[0].x *= (size.width/reg_w);
-            points[0].y *= (size.height/reg_h);
-            points[1].x *= 2*(size.width/reg_w);
-            points[1].y *= 2*(size.height/reg_h);
-
-            //std::cout << points[0] << points[1] << std::endl;
-            cv::line(img_sec, points[0], points[1], red);
-        }
-        else if (points.size() > 2)
-        {
-            std::cout << "WARNING: LINE INTERSECTS SQUARE MORE THAN 2 TIMES" << std::endl;
+            //std::cout << type2str(img.type()) << std::endl;
+            //std::cout << type2str(heat_map.type()) << std::endl;
+            //std::cout << heat_map << std::endl;
+            heat_map.convertTo(heat_map, CV_8UC1);
+            //std::cout << type2str(heat_map.type()) << std::endl;
+            //std::cout << heat_map << std::endl;
+            cv::applyColorMap(heat_map, heatmap_img, cv::COLORMAP_JET);
+            //std::cout << heatmap_img.size << std::endl;
+            //std::cout << heat_map_img_sec.size << std::endl;
+            cv::addWeighted(heatmap_img, 0.7, heat_map_img_sec, 0.3, 0, heat_map_img_sec);
+            heat_map_img_sec.copyTo( img_sec(cv::Rect(int(img_sec.cols/2) - int(heat_map.cols/2), 
+                                                    int(img_sec.rows/2) - int(heat_map.rows/2), 
+                                                    heat_map.cols, heat_map.rows)) );
         }
 
+        cv::resize(img_sec, img_sec, size);
+
+
+        v_k_opt = kpt->getDescriptor("v_k_opt_log" + std::to_string(it));
+
+        // Draw keypoint center
+        cv::Scalar blue(255, 0, 0);
+        int cross_hair_size = 20;
+        //std::cout << uv << std::endl;
+        //std::cout << v_k_opt << std::endl;
+        int kpt_x, kpt_y;
+        if (updated)
+        {
+            kpt_x = int( (uv.at<double>(1,0) + v_k_opt.at<double>(1,0) - left)*size.width/reg_w );
+            kpt_y = int( (uv.at<double>(0,0) + v_k_opt.at<double>(0,0) - top)*size.height/reg_h );
+        }
+        else
+        {
+            kpt_x = int( (uv.at<double>(1,0) - left)*size.width/reg_w );
+            kpt_y = int( (uv.at<double>(0,0) - top)*size.height/reg_h );
+        }
+        cv::line(img_sec,   cv::Point(kpt_x - cross_hair_size, kpt_y),
+                            cv::Point(kpt_x + cross_hair_size, kpt_y),
+                            blue);
+        cv::line(img_sec,   cv::Point(kpt_x, kpt_y - cross_hair_size),
+                            cv::Point(kpt_x, kpt_y + cross_hair_size),
+                            blue);
+
+        
+        // Draw epipolar line
+        if ( matched_kpt != nullptr )
+        {
+            cv::Scalar red(0, 0, 255);
+            std::vector<cv::Point3f> epiline;
+            cv::Point matched_point = matched_kpt->compileCV2DPoint();
+            vector<cv::Point> point2{matched_point};
+            cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline);
+            
+            double a = - epiline[0].x / epiline[0].y;
+            double b = - epiline[0].z / epiline[0].y;
+
+            // Checking intersects in all vertices of the image patch
+            std::vector<cv::Point> points;
+
+            // Left intersection
+            if ( (a * left + b) > top && (a * left + b) < top + reg_h )
+            {
+                points.push_back(cv::Point(left, (a * left + b)));
+            }
+            // Top instersection
+            if ( (top - b)/a > left && (top - b)/a < left + reg_w )
+            {
+                points.push_back(cv::Point((top - b)/a, top));
+            }
+
+            // Right intersection
+            if ( (a * (left+reg_w) + b) > top && (a * (left+reg_w) + b) < top + reg_h )
+            {
+                points.push_back(cv::Point((left+reg_w), (a * (left+reg_w) + b)));
+            }
+            // Bottom intersection
+            if ( ((top + reg_h) - b)/a > left && ((top + reg_h) - b)/a < left + reg_w )
+            {
+                points.push_back(cv::Point(((top + reg_h) - b)/a, (top + reg_h)));
+            }
+
+            if (points.size() == 2)
+            {
+                points[0].x -= left;
+                points[0].y -= top;
+                points[1].x -= left;
+                points[1].y -= top;
+
+                points[0].x *= (size.width/reg_w);
+                points[0].y *= (size.height/reg_h);
+                points[1].x *= 2*(size.width/reg_w);
+                points[1].y *= 2*(size.height/reg_h);
+
+                //std::cout << points[0] << points[1] << std::endl;
+                cv::line(img_sec, points[0], points[1], red);
+            }
+            else if (points.size() > 2)
+            {
+                std::cout << "WARNING: LINE INTERSECTS SQUARE MORE THAN 2 TIMES" << std::endl;
+            }
+
+        }
+
+        // Copying enhanced keypoint into canvas
+        roi = canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows));
+        img_sec.copyTo( canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows)) );
+
+        //cv::imshow("KeyPoint Analysis", img_sec);
+        //cv::waitKey(0);
     }
-
-    // Copying enhanced keypoint into canvas
-    roi = canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows));
-    img_sec.copyTo( canvas(cv::Rect(loc_canvas.x, loc_canvas.y, img_sec.cols, img_sec.rows)) );
 }

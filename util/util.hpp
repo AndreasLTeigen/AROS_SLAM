@@ -57,6 +57,8 @@ cv::Mat normalizeMat(cv::Mat& vec);
 
 cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z);
 
+cv::Mat sampleQuadraticForm(cv::Mat A, cv::Point center, cv::Size reg_size );
+
 cv::Mat reprojectionError( cv::Mat& xyz1, cv::Mat& uv1, cv::Mat& T, cv::Mat& K );
 
 cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K);

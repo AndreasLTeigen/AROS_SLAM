@@ -87,7 +87,7 @@ class KeyPoint2
         // Static funtions
         static double calculateKeypointDistance(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2);
         static void drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, cv::Point loc_canvas, cv::Size size, cv::Mat F_matrix, std::shared_ptr<KeyPoint2> matched_kpt=nullptr );
-        static void drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, cv::Point loc_canvas, cv::Size size, cv::Mat F_matrix, std::shared_ptr<KeyPoint2> matched_kpt, cv::Mat heat_map );
+        static void drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shared_ptr<KeyPoint2> kpt, cv::Point loc_canvas, cv::Size size, cv::Mat F_matrix, std::shared_ptr<KeyPoint2> matched_kpt, cv::Mat heat_map, int it, bool updated, bool show_hm );
 
 };
 

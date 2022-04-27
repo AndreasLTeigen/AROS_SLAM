@@ -505,6 +505,32 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
     return A;
 }
 
+cv::Mat sampleQuadraticForm(cv::Mat A, cv::Point center, cv::Size reg_size )
+{
+    int x_ref, y_ref;
+    cv::Mat z_mat;
+    cv::Mat_<double> z(reg_size);
+    cv::Mat_<double> loc(3,1);
+
+    x_ref = int(center.x - reg_size.width/2);
+    y_ref = int(center.y - reg_size.height/2);
+
+    loc.at<double>(2,0) = 1;
+
+    for (int y = y_ref; y < y_ref + reg_size.height; ++y)
+    {
+        loc.at<double>(0,0) = y;
+        for (int x = x_ref; x < x_ref + reg_size.width; ++x)
+        {
+            loc.at<double>(1,0) = x;
+
+            z_mat = (loc.t() * A * loc);
+            z.at<double>(y-y_ref, x-x_ref) = z_mat.at<double>(0,0);
+        }
+    }
+    return z;
+}
+
 cv::Mat reprojectionError( cv::Mat& xyz1, cv::Mat& uv1, cv::Mat& T, cv::Mat& K )
 {
     /*

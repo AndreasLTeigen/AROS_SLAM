@@ -167,7 +167,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 1;
+    options.max_num_iterations = 2;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.BriefReport() << "\n";
@@ -390,7 +390,7 @@ void DDNormal::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoin
 
     A = fitQuadraticForm(x, y, z);
     kpt1->setDescriptor( A, "quad_fit" );
-    kpt1->setDescriptor( z.reshape(this->reg_size, this->reg_size), "hamming");
+    kpt1->setDescriptor( z.reshape(1, this->reg_size), "hamming");
 
     if (kpt1->getKptId() == this->inspect_kpt_nr && this->print_log)
     {   std::cout << "x_k" << "[" << std::round(kpt2->getCoordY()) << ", " << std::round(kpt2->getCoordX()) << "]\n";

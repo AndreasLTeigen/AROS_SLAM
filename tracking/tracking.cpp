@@ -384,7 +384,7 @@ void FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
 
 
     int border = 30;
-    cv::Size size(100,100);
+    cv::Size size(101,101);
 
     //srand (time(NULL));
     for ( int i = 0; i < 10; ++i )
@@ -410,8 +410,8 @@ void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int fram
 {
     int random_idx, canvas_h, canvas_w;
     double hamming_dist;
-    cv::Mat img1, img2, F_matrix, heat_map;
-    cv::Mat canvas(800, 1400, img_disp.type(), cv::Scalar::all(0));
+    cv::Mat img1, img2, F_matrix, A, uv, hamming;
+    cv::Mat canvas(840, 1400, img_disp.type(), cv::Scalar::all(0));
     shared_ptr<FrameData> frame1, frame2;
     shared_ptr<KeyPoint2> kpt1, kpt2;
     vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
@@ -433,7 +433,8 @@ void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int fram
     cvtColor(img2, img2, cv::COLOR_GRAY2BGR );
 
     int border = 30;
-    cv::Size size(100,100);
+    //cv::Size size(31,31);
+    cv::Size size(101,101);
 
     int num_it = int(matched_kpts1[0]->getDescriptor("log_cnt").at<double>(0,0));
     std::cout << "NUM ITERATIONS: " << num_it << std::endl;
@@ -457,12 +458,22 @@ void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int fram
             random_idx = rand() % matched_kpts1.size();
             kpt1 = matched_kpts1[random_idx];
             kpt2 = matched_kpts2[random_idx];
-            heat_map = kpt1->getDescriptor("hamming_log" + std::to_string(it));
-
+            hamming = kpt1->getDescriptor("hamming_log" + std::to_string(it));
+            A = kpt1->getDescriptor("quad_fit_log" + std::to_string(it));
+            cv::Mat z;
+            if (!A.empty())
+            {
+                uv = kpt1->getDescriptor("loc_from_log" + std::to_string(it));
+                z = sampleQuadraticForm(A, cv::Point(uv.at<double>(1,0),uv.at<double>(0,0)), cv::Size(31,31) );
+            }
+            //std::cout << hamming.size << std::endl;
+            //std::cout << z.size << std::endl;
             KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
             //KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 400), cv::Size(31,31), F_matrix, kpt2);
-            KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
-            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 620), size, F_matrix, kpt2, heat_map );
+            //KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2, hamming, it, true, false );
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 620), size, F_matrix, kpt2, hamming, it, true, true );
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 730), size, F_matrix, kpt2, z, it, true, true );
         }
 
         cv::imshow("KeyPoint Log iteration: " + std::to_string(it), canvas);
