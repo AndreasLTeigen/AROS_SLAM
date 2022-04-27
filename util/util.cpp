@@ -454,7 +454,7 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
         y:      List of y coordinates,  [N x 1].
         z:      List of z coordinates,  [N x 1].
     Returns:
-        A:      Quadratic form fitted to (y, x, 1).T * A * (y, x, 1) = z, [3 x 3].
+        A:      Quadratic form fitted to (x, y, 1).T * A * (x, y, 1) = z, [3 x 3].
                    [[a11,   a12/2,  a1/2],
                     [a12/2, a22     a2/2],
                     [a1/2,  a2/2,   a0  ]]
@@ -471,11 +471,16 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
     {
         x_i = x.at<double>(i,0);
         y_i = y.at<double>(i,0);
-        D.at<double>(i, 0) = y_i*y_i;
-        D.at<double>(i, 1) = x_i*x_i;
+        //D.at<double>(i, 0) = y_i*y_i;
+        //D.at<double>(i, 1) = x_i*x_i;
+        //D.at<double>(i, 2) = x_i*y_i;
+        //D.at<double>(i, 3) = y_i;
+        //D.at<double>(i, 4) = x_i;
+        D.at<double>(i, 0) = x_i*x_i;
+        D.at<double>(i, 1) = y_i*y_i;
         D.at<double>(i, 2) = x_i*y_i;
-        D.at<double>(i, 3) = y_i;
-        D.at<double>(i, 4) = x_i;
+        D.at<double>(i, 3) = x_i;
+        D.at<double>(i, 4) = y_i;
     }
 
     cv::Mat a;
@@ -493,8 +498,8 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
     cv::Mat err_mat;
     for (int i = 0; i < x.rows; i++)
     {
-        cv::Mat Y = (cv::Mat_<double>(3,1)<<y.at<double>(i,0),
-                                            x.at<double>(i,0),
+        cv::Mat Y = (cv::Mat_<double>(3,1)<<x.at<double>(i,0),
+                                            y.at<double>(i,0),
                                             1);
         double b = z.at<double>(i,0);
         err_mat = Y.t() * A * Y - b;
@@ -519,10 +524,10 @@ cv::Mat sampleQuadraticForm(cv::Mat A, cv::Point center, cv::Size reg_size )
 
     for (int y = y_ref; y < y_ref + reg_size.height; ++y)
     {
-        loc.at<double>(0,0) = y;
+        loc.at<double>(1,0) = y;
         for (int x = x_ref; x < x_ref + reg_size.width; ++x)
         {
-            loc.at<double>(1,0) = x;
+            loc.at<double>(0,0) = x;
 
             z_mat = (loc.t() * A * loc);
             z.at<double>(y-y_ref, x-x_ref) = z_mat.at<double>(0,0);

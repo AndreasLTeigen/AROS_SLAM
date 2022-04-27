@@ -464,14 +464,14 @@ void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int fram
             if (!A.empty())
             {
                 uv = kpt1->getDescriptor("loc_from_log" + std::to_string(it));
-                z = sampleQuadraticForm(A, cv::Point(uv.at<double>(1,0),uv.at<double>(0,0)), cv::Size(31,31) );
+                z = sampleQuadraticForm(A, cv::Point(uv.at<double>(0,0),uv.at<double>(1,0)), cv::Size(31,31) );
             }
             //std::cout << hamming.size << std::endl;
             //std::cout << z.size << std::endl;
             KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
             //KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 400), cv::Size(31,31), F_matrix, kpt2);
             //KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
-            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2, hamming, it, true, false );
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2, hamming, it, false, false );
             KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 620), size, F_matrix, kpt2, hamming, it, true, true );
             KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 730), size, F_matrix, kpt2, z, it, true, true );
         }

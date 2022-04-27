@@ -184,9 +184,9 @@ cv::Mat KeyPoint2::getLoc()
 {
     /*
     Returns:
-        loc:    Location of keypoint (y, x).T [2 x 1].
+        loc:    Homogeneous location of keypoint (x, y, 1).T [3 x 1].
     */
-    cv::Mat loc = (cv::Mat_<double>(2,1) << this->getCoordY(), this->getCoordX());
+    cv::Mat loc = (cv::Mat_<double>(3,1) << this->getCoordX(), this->getCoordY(), 1);
     return loc;
 }
 
@@ -422,10 +422,10 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         
         uv = kpt->getDescriptor("loc_from_log" + std::to_string(it));
 
-        top = std::max(int(uv.at<double>(0,0) - reg_h/2), 0);
-        left = std::max(int(uv.at<double>(1,0) - reg_w/2), 0);
-        reg_h = std::min(reg_h, img.rows - int(uv.at<double>(0,0)));
-        reg_w = std::min(reg_w, img.cols - int(uv.at<double>(1,0)));
+        top = std::max(int(uv.at<double>(1,0) - reg_h/2), 0);
+        left = std::max(int(uv.at<double>(0,0) - reg_w/2), 0);
+        reg_h = std::min(reg_h, img.rows - int(uv.at<double>(1,0)));
+        reg_w = std::min(reg_w, img.cols - int(uv.at<double>(0,0)));
 
         img_sec = img(cv::Rect(left, top, reg_w, reg_h)).clone();
 
@@ -441,7 +441,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
 
             heat_map.convertTo(heat_map, CV_8UC1);
             cv::applyColorMap(heat_map, heatmap_img, cv::COLORMAP_JET);
-            cv::addWeighted(heatmap_img, 0.7, heat_map_img_sec, 0.3, 0, heat_map_img_sec);
+            cv::addWeighted(heatmap_img, 0.5, heat_map_img_sec, 0.5, 0, heat_map_img_sec);
             heat_map_img_sec.copyTo( img_sec(cv::Rect(int(img_sec.cols/2) - int(heat_map.cols/2), 
                                                     int(img_sec.rows/2) - int(heat_map.rows/2), 
                                                     heat_map.cols, heat_map.rows)) );
@@ -458,13 +458,13 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         int kpt_x, kpt_y;
         if (updated)
         {
-            kpt_x = int( (uv.at<double>(1,0) + v_k_opt.at<double>(1,0) - left)*size.width/reg_w );
-            kpt_y = int( (uv.at<double>(0,0) + v_k_opt.at<double>(0,0) - top)*size.height/reg_h );
+            kpt_x = int( (uv.at<double>(0,0) + v_k_opt.at<double>(0,0) - left)*size.width/reg_w );
+            kpt_y = int( (uv.at<double>(1,0) + v_k_opt.at<double>(1,0) - top)*size.height/reg_h );
         }
         else
         {
-            kpt_x = int( (uv.at<double>(1,0) - left)*size.width/reg_w );
-            kpt_y = int( (uv.at<double>(0,0) - top)*size.height/reg_h );
+            kpt_x = int( (uv.at<double>(0,0) - left)*size.width/reg_w );
+            kpt_y = int( (uv.at<double>(1,0) - top)*size.height/reg_h );
         }
         cv::line(img_sec,   cv::Point(kpt_x - cross_hair_size, kpt_y),
                             cv::Point(kpt_x + cross_hair_size, kpt_y),

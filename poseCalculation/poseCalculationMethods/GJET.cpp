@@ -114,7 +114,7 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
     FrameData::removeOutlierMatches( inliers, frame1, frame2 );
     std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
     rel_pose->updateParametrization();
-    vector<double> p_vec = rel_pose->getParametrization( this->paramId )->getParamVector();
+    //vector<double> p_vec = rel_pose->getParametrization( this->paramId )->getParamVector();
 
     shared_ptr<DDNormal> solver = std::make_shared<DDNormal>();
 
@@ -127,7 +127,6 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
 
     cv::Mat v_k_opt, R, t, y_k, x_k;
     shared_ptr<KeyPoint2> kpt1, kpt2;
-
 
 
 
@@ -151,9 +150,9 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
             }
 
 
-            parametrization->composeRMatrixAndTParam( p_vec, R, t );
+            //parametrization->composeRMatrixAndTParam( p_vec, R, t );
             //std::cout << "R_matrix: " << R << std::endl;
-            E_matrix = composeEMatrix( R, t );
+            //E_matrix = composeEMatrix( R, t );
             //std::cout << "E_matrix: " << E_matrix << std::endl;
             F_matrix = fundamentalFromEssential( E_matrix, frame1->getKMatrix(), frame2->getKMatrix() );
             //std::cout << "F_matrix: " << F_matrix << std::endl;
@@ -255,7 +254,7 @@ std::shared_ptr<Pose> GJET::calculateFull( std::shared_ptr<FrameData> frame1, st
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 2;
+    options.max_num_iterations = 50;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.BriefReport() << "\n";
@@ -311,7 +310,7 @@ cv::Mat GJET::solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h )
     /*
     Effect:
         Solves the KKT matrix with a 2D vector optimization:
-                [[A,    g],   *     [x1, x2, lambda].t()    =   [b, h]
+                [[A,    g],   *     [x1, x2, lambda].t()    =   [b, h].t()
                  [g.t(),0]]
         where:
                 A = [[a11, a12],    g = [g1 ,g2].t(),   b = [b1, b2].t()
@@ -352,8 +351,10 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     cv::Mat A_k, b_k, c_k, F_d, F_d_x, KKT, q_31, b_k_neg, y1_k, x1_k;
     cv::Mat I_s = cv::Mat::eye(2, 3, CV_64F);
 
-    y1_k = homogenizeArrayRet(y_k);
-    x1_k = homogenizeArrayRet(x_k);
+    //y1_k = homogenizeArrayRet(y_k);
+    //x1_k = homogenizeArrayRet(x_k);
+    y1_k = y_k;
+    x1_k = x_k;
 
     // Helping definitions
     F_d = I_s * F_matrix;
@@ -682,10 +683,10 @@ bool DDNormal::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& im
 
     v_k_opt = kpt->getDescriptor("v_k_opt");
     scale = this->calculateScale(v_k_opt);
-    //x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(1,0);
-    //y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(0,0);
-    x_update = kpt->getCoordX() + v_k_opt.at<double>(1,0);
-    y_update = kpt->getCoordY() + v_k_opt.at<double>(0,0);
+    x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(0,0);
+    y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(1,0);
+    //x_update = kpt->getCoordX() + v_k_opt.at<double>(0,0);
+    //y_update = kpt->getCoordY() + v_k_opt.at<double>(1,0);
 
     desc_radius = std::max(this->patchSize, int(std::ceil(kpt->getSize())/2));
     if ( validDescriptorRegion( x_update, y_update, W, H, desc_radius + this->reg_size ) )
