@@ -99,8 +99,8 @@ struct GJETSolver
 std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     std::shared_ptr<Pose> pose;
-    //pose = this->calculateFull( frame1, frame2, img );
-    pose = this->calculateTest( frame1, frame2, img );
+    pose = this->calculateFull( frame1, frame2, img );
+    //pose = this->calculateTest( frame1, frame2, img );
     return pose;
 }
 

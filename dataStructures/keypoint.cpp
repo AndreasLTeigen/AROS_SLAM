@@ -489,6 +489,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         {
             cv::Scalar red(0, 0, 255);
 
+            /*
             std::vector<cv::Point3f> epiline1;
             cv::Point matched_point = matched_kpt->compileCV2DPoint();
             vector<cv::Point> point2{matched_point};
@@ -497,13 +498,14 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
             double a = - epiline1[0].x / epiline1[0].y;
             double b = - epiline1[0].z / epiline1[0].y;
             std::cout << "a: " << a << ", b: " << b << std::endl; 
+            */
 
 
             cv::Mat epiline, x1_k;
             x1_k = matched_kpt->getLoc();
             epiline = F_matrix * x1_k;
-            a = -epiline.at<double>(0,0) / epiline.at<double>(1,0);
-            b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
+            double a = -epiline.at<double>(0,0) / epiline.at<double>(1,0);
+            double b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
             std::cout << "a: " << a << ", b: " << b << std::endl; 
 
 
@@ -513,42 +515,29 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
             // Left intersection
             if ( (a * left + b) > top && (a * left + b) < top + reg_h )
             {
-                points.push_back(cv::Point(left, (a * left + b)));
+                //points.push_back(cv::Point(left, (a * left + b)));
+                points.push_back(cv::Point(0, ((a * left + b)-top)*(double(size.height)/reg_h)));
             }
             // Top instersection
             if ( (top - b)/a > left && (top - b)/a < left + reg_w )
             {
-                points.push_back(cv::Point((top - b)/a, top));
+                //points.push_back(cv::Point((top - b)/a, top));
+                points.push_back(cv::Point(((top - b)/a - left)*(double(size.width)/reg_w), 0));
             }
-
             // Right intersection
             if ( (a * (left+reg_w) + b) > top && (a * (left+reg_w) + b) < top + reg_h )
             {
-                points.push_back(cv::Point((left+reg_w), (a * (left+reg_w) + b)));
+                points.push_back(cv::Point(size.width, (a * (left+reg_w) + b - top)*(double(size.height)/reg_h)));
             }
             // Bottom intersection
             if ( ((top + reg_h) - b)/a > left && ((top + reg_h) - b)/a < left + reg_w )
             {
-                points.push_back(cv::Point(((top + reg_h) - b)/a, (top + reg_h)));
+                points.push_back(cv::Point((((top + reg_h) - b)/a - left)*(double(size.width)/reg_w), size.height));
             }
+
 
             if (points.size() == 2)
             {
-                points[0].x -= left;
-                points[0].y -= top;
-                points[1].x -= left;
-                points[1].y -= top;
-
-                std::cout << "Epi-points\n";
-                std::cout << points[0] << points[1] << std::endl;
-
-                points[0].x *= (size.width/reg_w);
-                points[0].y *= (size.height/reg_h);
-                points[1].x *= 2*(size.width/reg_w);
-                points[1].y *= 2*(size.height/reg_h);
-
-                std::cout << "Epi-points scaled\n";
-                std::cout << points[0] << points[1] << std::endl;
                 cv::line(img_sec, points[0], points[1], red);
             }
             else if (points.size() > 2)

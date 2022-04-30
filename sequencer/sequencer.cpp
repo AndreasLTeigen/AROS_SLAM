@@ -30,7 +30,7 @@ Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file
 	this->fps = fps;
 	this->file_format = file_format;
 	this->play_mode = false;
-	this->play_speed = 1;
+	this->play_speed = 3;
 	this->slow_motion = false;
 	this->just_finished = false;
 	this->finished = false;
