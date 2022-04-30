@@ -76,7 +76,7 @@ class DDNormal       // Descriptor distance Normalization
         DDNormal(){};
         ~DDNormal(){};
 
-        int reg_size = 7;
+        int reg_size = 9;
         int inspect_kpt_nr = -1;
         bool print_log = false;
         bool visual_error_check = true;

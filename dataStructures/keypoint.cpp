@@ -473,18 +473,39 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
                             cv::Point(kpt_x, kpt_y + cross_hair_size),
                             blue);
 
+
+
+        std::cout <<"#############################################\nIteration: " << it << std::endl;
+        std::cout << "A: " << kpt->getDescriptor("quad_fit_log" + std::to_string(it)) << std::endl;
+        std::cout << "kpt1:\n" << kpt->getDescriptor("loc_from_log" + std::to_string(it)) << std::endl;
+        std::cout << "kpt2:\n" << matched_kpt->getLoc() << std::endl;
+        std::cout << "F_matrix:\n" << kpt->getDescriptor("F_matrix_log" + std::to_string(it)) << std::endl;
+        //std::cout << "Opt point:\n" << kpt->getDescriptor("v_k_opt_log" + std::to_string(it)) << std::endl;
+        std::cout << "Opt point:\n" << kpt->getDescriptor("loc_from_log" + std::to_string(it)).rowRange(0,2) + kpt->getDescriptor("v_k_opt_log" + std::to_string(it)) << std::endl;
+
         
         // Draw epipolar line
         if ( matched_kpt != nullptr )
         {
             cv::Scalar red(0, 0, 255);
-            std::vector<cv::Point3f> epiline;
+
+            std::vector<cv::Point3f> epiline1;
             cv::Point matched_point = matched_kpt->compileCV2DPoint();
             vector<cv::Point> point2{matched_point};
-            cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline);
-            
-            double a = - epiline[0].x / epiline[0].y;
-            double b = - epiline[0].z / epiline[0].y;
+
+            cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline1);
+            double a = - epiline1[0].x / epiline1[0].y;
+            double b = - epiline1[0].z / epiline1[0].y;
+            std::cout << "a: " << a << ", b: " << b << std::endl; 
+
+
+            cv::Mat epiline, x1_k;
+            x1_k = matched_kpt->getLoc();
+            epiline = F_matrix * x1_k;
+            a = -epiline.at<double>(0,0) / epiline.at<double>(1,0);
+            b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
+            std::cout << "a: " << a << ", b: " << b << std::endl; 
+
 
             // Checking intersects in all vertices of the image patch
             std::vector<cv::Point> points;
@@ -518,12 +539,16 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
                 points[1].x -= left;
                 points[1].y -= top;
 
+                std::cout << "Epi-points\n";
+                std::cout << points[0] << points[1] << std::endl;
+
                 points[0].x *= (size.width/reg_w);
                 points[0].y *= (size.height/reg_h);
                 points[1].x *= 2*(size.width/reg_w);
                 points[1].y *= 2*(size.height/reg_h);
 
-                //std::cout << points[0] << points[1] << std::endl;
+                std::cout << "Epi-points scaled\n";
+                std::cout << points[0] << points[1] << std::endl;
                 cv::line(img_sec, points[0], points[1], red);
             }
             else if (points.size() > 2)

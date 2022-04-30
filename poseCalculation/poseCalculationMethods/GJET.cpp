@@ -109,6 +109,7 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
     // Test of just one iteration with no optimization of relative pose, just keypoint position.
     cv::Mat E_matrix, F_matrix, inliers, A_d_k;
     std::vector<cv::Point> pts1, pts2;
+
     compileMatchedCVPoints( frame1, frame2, pts1, pts2 );
     E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
     FrameData::removeOutlierMatches( inliers, frame1, frame2 );
@@ -117,12 +118,12 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
     //vector<double> p_vec = rel_pose->getParametrization( this->paramId )->getParamVector();
 
     shared_ptr<DDNormal> solver = std::make_shared<DDNormal>();
+    shared_ptr<StdParam> parametrization = std::make_shared<StdParam>();
 
     vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
 
 
-    shared_ptr<StdParam> parametrization = std::make_shared<StdParam>();
     solver->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
 
     cv::Mat v_k_opt, R, t, y_k, x_k;
@@ -155,6 +156,7 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
             //E_matrix = composeEMatrix( R, t );
             //std::cout << "E_matrix: " << E_matrix << std::endl;
             F_matrix = fundamentalFromEssential( E_matrix, frame1->getKMatrix(), frame2->getKMatrix() );
+            //std::cout << "Reconstructed Essential Matrix:\n" << frame1->getKMatrix().t() * F_matrix * frame2->getKMatrix() << std::endl;
             //std::cout << "F_matrix: " << F_matrix << std::endl;
             //std::cout << "A: " << kpt1->getDescriptor("quad_fit") << std::endl;
 
@@ -482,8 +484,8 @@ void DDNormal::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoin
     kpt1->setDescriptor( z.reshape(1, this->reg_size), "hamming");
 
     if (kpt1->getKptId() == this->inspect_kpt_nr && this->print_log)
-    {   std::cout << "x_k" << "[" << std::round(kpt2->getCoordY()) << ", " << std::round(kpt2->getCoordX()) << "]\n";
-        std::cout << "y_k" << "[" << std::round(kpt1->getCoordY()) << ", " << std::round(kpt1->getCoordX()) << "]\n";
+    {   std::cout << "x_k" << "[" << std::round(kpt2->getCoordX()) << ", " << std::round(kpt2->getCoordY()) << "]\n";
+        std::cout << "y_k" << "[" << std::round(kpt1->getCoordX()) << ", " << std::round(kpt1->getCoordY()) << "]\n";
         this->printKptLoc( local_kpts, this->reg_size, this->reg_size );
         std::cout << "Kpt nr: " << kpt1->getKptId() << "\n" << kpt1->getDescriptor("hamming") << std::endl;
         std::cout << kpt1->getDescriptor("quad_fit") << std::endl;
@@ -848,6 +850,9 @@ void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt, cv::Mat F_mat
     // Get current state
     log_nr = log_cnt.at<double>(0,0);
     uv = kpt->getLoc().clone();
+    //std::cout << kpt->getCoordX() << ", " << kpt->getCoordY() << std::endl;
+    //std::cout << kpt->getLoc() << std::endl;
+    //std::cout << uv << std::endl;
     v_k_opt = kpt->getDescriptor("v_k_opt").clone();
     A = kpt->getDescriptor("quad_fit").clone();
     hamming = kpt->getDescriptor("hamming").clone();

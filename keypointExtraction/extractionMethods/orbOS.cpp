@@ -75,7 +75,7 @@ void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, st
 
     (*orbslam_orb_extractor)(img,cv::Mat(),kpts,desc);
 
-    //TEST FOR GJET
+    //TODO: REMOVE LATER TEST FOR GJET
     if (this->non_rot_desc)
     {
         for (int i = 0; i < kpts.size(); ++i )
