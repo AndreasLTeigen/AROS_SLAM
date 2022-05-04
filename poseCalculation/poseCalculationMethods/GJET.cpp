@@ -435,6 +435,13 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
 }
 
 
+// Comparison function
+/*
+double reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
+{
+    
+}
+*/
 
 
 
@@ -794,7 +801,7 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
 
 
             // TODO: Remove later when no longer usefull
-            IterationUpdate::logKptState( kpt1, F_matrix );
+            //IterationUpdate::logKptState( kpt1, F_matrix );
 
 
             solver->updateKeypoint(kpt1, this->img);
