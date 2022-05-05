@@ -475,6 +475,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
 
 
 
+        /*
         std::cout <<"#############################################\nIteration: " << it << std::endl;
         std::cout << "A: " << kpt->getDescriptor("quad_fit_log" + std::to_string(it)) << std::endl;
         std::cout << "kpt1:\n" << kpt->getDescriptor("loc_from_log" + std::to_string(it)) << std::endl;
@@ -482,7 +483,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         std::cout << "F_matrix:\n" << kpt->getDescriptor("F_matrix_log" + std::to_string(it)) << std::endl;
         //std::cout << "Opt point:\n" << kpt->getDescriptor("v_k_opt_log" + std::to_string(it)) << std::endl;
         std::cout << "Opt point:\n" << kpt->getDescriptor("loc_from_log" + std::to_string(it)).rowRange(0,2) + kpt->getDescriptor("v_k_opt_log" + std::to_string(it)) << std::endl;
-
+        */
         
         // Draw epipolar line
         if ( matched_kpt != nullptr )

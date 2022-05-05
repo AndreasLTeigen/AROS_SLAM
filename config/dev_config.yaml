@@ -45,8 +45,9 @@ Method.point_cull_3D: OoW
 # -----Video Out-----
 VOut.show: true
 VOut.record: false
-VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
+#VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
 #VOut.rec_path: /mnt/d/andreas/AROS/Results/Video/
+VOut.rec_path: /home/andreas/Pictures/DJET-VideoOut/
 
 # -----Log out----
 Log.save: true
