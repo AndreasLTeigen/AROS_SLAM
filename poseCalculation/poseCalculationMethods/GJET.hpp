@@ -47,6 +47,8 @@ class GJET : public PoseCalculator
         static cv::Mat solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h );
         static double epipolarConstrainedOptimization( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt );
 
+        static double reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt);
+
 };
 
 class DDNormal       // Descriptor distance Normalization
@@ -113,8 +115,10 @@ class IterationUpdate : public ceres::EvaluationCallback
         ~IterationUpdate(){};
         
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
+        void moveKptToOptLoc();
         void addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
                             std::shared_ptr<KeyPoint2> kpt2);
+        static void logOptLoc( std::shared_ptr<KeyPoint2> kpt );
         static void logKptState(   std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix );
 };
 

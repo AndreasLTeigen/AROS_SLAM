@@ -716,6 +716,27 @@ void writeParameters2File(std::string file_path, std::string image_idenifier, cv
     }
 }
 
+void writeTransformation2File(std::string file_path, std::string image_idenifier, cv::Mat &T )
+{
+    std::ofstream pose_file;
+    pose_file.open(file_path, std::ios_base::app);
+    if (pose_file.is_open())
+    {
+        pose_file << image_idenifier << " " << T.at<double>(0,0) << " " << T.at<double>(0,1)
+                                    << " " << T.at<double>(0,2) << " " << T.at<double>(0,3)
+                                    << " " << T.at<double>(1,0) << " " << T.at<double>(1,1)
+                                    << " " << T.at<double>(1,2) << " " << T.at<double>(1,3)
+                                    << " " << T.at<double>(2,0) << " " << T.at<double>(2,1)
+                                    << " " << T.at<double>(2,2) << " " << T.at<double>(2,3);
+        pose_file << "\n";
+        pose_file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+}
+
 std::vector<std::vector<std::string>> readCSVFile(std::string filename)
 {
     std::vector<std::vector<std::string>> content;

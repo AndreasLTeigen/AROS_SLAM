@@ -54,7 +54,9 @@ struct ECOptSolver
         parametrization_->composeRMatrixAndTParam( p_vec, R, t );
         E_matrix = composeEMatrix( R, t );
         F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
+        // TODO:: REVERT THIS
         residual[0] = GJET::epipolarConstrainedOptimization( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+        //residual[0] = GJET::reprojectionError(F_matrix, x_k, y_k, v_k_opt);
         return true;
     }
 
@@ -167,7 +169,7 @@ std::shared_ptr<Pose> GJET::calculateTest( std::shared_ptr<FrameData> frame1, st
 
 
             // TODO: Remove later when no longer usefull
-            IterationUpdate::logKptState( kpt1, F_matrix );
+            //IterationUpdate::logKptState( kpt1, F_matrix );
 
 
             solver->updateKeypoint(kpt1, img);
@@ -247,6 +249,8 @@ std::shared_ptr<Pose> GJET::calculateFull( std::shared_ptr<FrameData> frame1, st
             kpt2 = matched_kpts2[n];
             ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
                 new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, img, parametrization, paraboloidNormal));
+            //ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<GJETSolver, ceres::CENTRAL, 1, 6>(
+            //    new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, img, parametrization, paraboloidNormal));
             problem.AddResidualBlock(cost_function, nullptr, p);
 
             itUpdate.addEvalKpt(kpt1, kpt2);
@@ -260,6 +264,8 @@ std::shared_ptr<Pose> GJET::calculateFull( std::shared_ptr<FrameData> frame1, st
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.BriefReport() << "\n";
+
+    itUpdate.moveKptToOptLoc();
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -436,12 +442,30 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
 
 
 // Comparison function
-/*
-double reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
+
+double GJET::reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
 {
-    
+    double a, b, c, x0, y0, epi_x, epi_y, loss;
+    cv::Mat epiline;
+    epiline = F_matrix * x_k;
+    a = epiline.at<double>(0);
+    b = epiline.at<double>(1);
+    c = epiline.at<double>(2);
+    x0 = y_k.at<double>(0,0);
+    y0 = y_k.at<double>(1,0);
+
+    epi_x = (b*(b*x0 - a*y0) - a*c)/(a*a + b*b);
+    epi_y = (a*(-b*x0 + a*y0) - b*c)/(a*a + b*b);
+
+    cv::Mat y_k_opt = (cv::Mat_<double>(3,1) << epi_x, epi_y, 1);
+    v_k_opt = y_k_opt - y_k;
+    v_k_opt.at<double>(2,0) = 1;
+
+    loss = cv::norm(v_k_opt);
+
+    return loss*loss;
 }
-*/
+
 
 
 
@@ -794,10 +818,13 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
             //std::cout << "F_matrix: " << F_matrix << std::endl;
             //std::cout << "A: " << kpt1->getDescriptor("quad_fit") << std::endl;
 
+            // TODO:: REVERT THIS AS WELL
             GJET::epipolarConstrainedOptimization( F_matrix, kpt1->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+            //GJET::reprojectionError(F_matrix, x_k, y_k, v_k_opt);
 
             //Updating the keypoint
             kpt1->setDescriptor(v_k_opt, "v_k_opt");
+            this->logOptLoc(kpt1);
 
 
             // TODO: Remove later when no longer usefull
@@ -813,8 +840,23 @@ void IterationUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eva
             }
 
             // Re-linearizing
+            //TODO:: REVERT THIS
             solver->collectDescriptorDistance( this->img, kpt1, kpt2 );
         }
+    }
+}
+
+
+void IterationUpdate::moveKptToOptLoc()
+{
+    cv::Mat y_k_opt;
+    shared_ptr<KeyPoint2> kpt1;
+    for (int i = 0; i < this->m_kpts1.size(); ++i)
+    {
+        kpt1 = this->m_kpts1[i];
+        y_k_opt = kpt1->getDescriptor("y_k_opt");
+        kpt1->setCoordx(y_k_opt.at<double>(0,0));
+        kpt1->setCoordy(y_k_opt.at<double>(1,0));
     }
 }
 
@@ -824,6 +866,18 @@ void IterationUpdate::addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
 {
     this->m_kpts1.push_back(kpt1);
     this->m_kpts2.push_back(kpt2);
+}
+
+void IterationUpdate::logOptLoc( std::shared_ptr<KeyPoint2> kpt )
+{
+    cv::Mat v_k_opt;
+    v_k_opt = kpt->getDescriptor("v_k_opt");
+
+    cv::Mat y_k_opt = (cv::Mat_<double>(3,1) << 
+                        kpt->getCoordX() + v_k_opt.at<double>(0,0), 
+                        kpt->getCoordY() + v_k_opt.at<double>(1,0), 
+                        1);
+    kpt->setDescriptor(y_k_opt, "y_k_opt");
 }
 
 void IterationUpdate::logKptState( std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix )

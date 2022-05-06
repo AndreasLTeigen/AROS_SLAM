@@ -150,10 +150,10 @@ int AVGSlam()
 
         if ( Log_save )
         {
-            //Saving frame ego-motion parameters to file
+            //Saving frame ego-motion transformation matrix to file
             name_current = seq.getCurrentName();
             T_global = tracker->getGlobalPose();
-            writeParameters2File(Log_full_dst, name_current, T_global );
+            writeTransformation2File(Log_full_dst, name_current, T_global );
         }
 
         if ( ILog_save )
