@@ -20,15 +20,15 @@ using std::chrono::high_resolution_clock;
 struct ECOptSolver 
 {
     ECOptSolver( const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
-                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> paraboloidNormal )
+                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func )
                 {
                     K1_ = K1;
                     K2_ = K2;
                     img_ = img;
                     kpt1_ = kpt1;
                     kpt2_ = kpt2;
+                    loss_func_ = loss_func;
                     parametrization_ = parametrization;
-                    paraboloidNormal_ = paraboloidNormal;
                 }
     
     bool operator()( const double* p, double* residual ) const
@@ -40,13 +40,6 @@ struct ECOptSolver
         {
             p_vec.push_back(p[i]);
         }
-        /*
-        for ( double val : p_vec )
-        {
-            std::cout << val << ", ";
-        }
-        std::cout << "\n";
-        */
         
         y_k = kpt1_->getLoc();
         x_k = kpt2_->getLoc();
@@ -54,25 +47,25 @@ struct ECOptSolver
         parametrization_->composeRMatrixAndTParam( p_vec, R, t );
         E_matrix = composeEMatrix( R, t );
         F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
-        // TODO:: REVERT THIS
-        residual[0] = GJET::epipolarConstrainedOptimization( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
-        //residual[0] = GJET::reprojectionError(F_matrix, x_k, y_k, v_k_opt);
+
+        residual[0] = loss_func_->calculateLoss( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+
         return true;
     }
 
 
     cv::Mat K1_, K2_, A_k_, img_;
     shared_ptr<KeyPoint2> kpt1_, kpt2_;
+    shared_ptr<LossFunction> loss_func_;
     shared_ptr<Parametrization> parametrization_;
-    shared_ptr<LossFunction> paraboloidNormal_;
 };
 
 struct GJETSolver
 {
     GJETSolver(const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
-                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> paraboloidNormal)
+                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func)
                     : ecopt_solver(new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6>(
-                                                new ECOptSolver(K1, K2, kpt1, kpt2, img, parametrization, paraboloidNormal))) {}
+                                                new ECOptSolver(K1, K2, kpt1, kpt2, img, parametrization, loss_func))) {}
     
     template <typename T>
     bool operator()(const T* p, T* residual) const
@@ -110,13 +103,16 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
     rel_pose->updateParametrization();
 
-    shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-
     vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
 
 
-    loss_func->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
+    //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
+    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
+    //loss_func->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
+
+
     //F_matrix = fundamentalFromEssential( E_matrix, frame1->getKMatrix(), frame2->getKMatrix() );
     //this->jointEpipolarOptimization( F_matrix, matched_kpts1, matched_kpts2 );
 
@@ -355,6 +351,7 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
 
 // Comparison function
 
+/*
 double GJET::reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
 {
     double a, b, c, x0, y0, epi_x, epi_y, loss;
@@ -377,7 +374,7 @@ double GJET::reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, cons
 
     return loss*loss;
 }
-
+*/
 
 
 
@@ -410,7 +407,47 @@ LossFunction::LossFunction(cv::Mat& img)
     this->H = img.rows;
 }
 
-void LossFunction::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
+LossFunction::LossFunction(int W, int H)
+{
+    this->W = W;
+    this->H = H;
+}
+
+void LossFunction::computeDescriptors(const cv::Mat& img, vector<cv::KeyPoint>& kpt, cv::Mat& desc)
+{
+    this->orb->compute( img, kpt, desc );
+}
+
+
+
+
+
+
+
+DJETLoss::DJETLoss(cv::Mat& img, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2)
+    :LossFunction(img.cols, img.rows)
+{
+    this->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
+}
+
+double DJETLoss::calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
+{
+    return GJET::epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k_opt );
+}
+
+bool DJETLoss::validKptLoc( double x, double y, int kpt_size )
+{
+    int desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
+    return validDescriptorRegion( x, y, this->W, this->H, desc_radius + this->reg_size );
+}
+
+void DJETLoss::updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
+{
+    this->collectDescriptorDistance( img, kpt1, kpt2 );
+}
+
+
+void DJETLoss::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
 {
     cv::Mat local_descs, target_desc, A, hamming_dists, x, y, z;
     vector<cv::KeyPoint> local_kpts;
@@ -418,8 +455,8 @@ void LossFunction::collectDescriptorDistance( const cv::Mat& img, shared_ptr<Key
     local_kpts = this->generateLocalKpts( kpt1, img );
     this->orb->compute( img, local_kpts, local_descs );
 
-    //target_desc = kpt1->getDescriptor(orb_non_rot);
-    target_desc = kpt2->getDescriptor(this->orb_non_rot);
+    //target_desc = kpt1->getDescriptor(descriptor_name);
+    target_desc = kpt2->getDescriptor(this->descriptor_name);
     hamming_dists = this->computeHammingDistance(target_desc, local_descs);
     this->generateCoordinateVectors(kpt1->getCoordX(), kpt1->getCoordY(), this->reg_size, x, y);
     z = hamming_dists.t();
@@ -429,7 +466,7 @@ void LossFunction::collectDescriptorDistance( const cv::Mat& img, shared_ptr<Key
     kpt1->setDescriptor( z.reshape(1, this->reg_size), "hamming");
 }
 
-vector<cv::KeyPoint> LossFunction::generateLocalKpts( shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
+vector<cv::KeyPoint> DJETLoss::generateLocalKpts( shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
 {
     // Assumes the local region around the keypoint will produce all valid descriptors.
 
@@ -459,7 +496,7 @@ vector<cv::KeyPoint> LossFunction::generateLocalKpts( shared_ptr<KeyPoint2> kpt,
     return local_kpts;
 }
 
-void LossFunction::printKptLoc( vector<cv::KeyPoint> kpts, int rows, int cols )
+void DJETLoss::printKptLoc( vector<cv::KeyPoint> kpts, int rows, int cols )
 {
     cv::KeyPoint kpt;
 
@@ -475,7 +512,7 @@ void LossFunction::printKptLoc( vector<cv::KeyPoint> kpts, int rows, int cols )
     std::cout << "----------------------" << std::endl;
 }
 
-void LossFunction::printLocalHammingDists( cv::Mat& hamming_dist_arr, int s )
+void DJETLoss::printLocalHammingDists( cv::Mat& hamming_dist_arr, int s )
 {
     for (int row = 0; row < s; row++){
         for (int col = 0; col < s; col++)
@@ -487,7 +524,7 @@ void LossFunction::printLocalHammingDists( cv::Mat& hamming_dist_arr, int s )
     std::cout << "--------------------" << std::endl;
 }
 
-Mat LossFunction::computeHammingDistance( Mat& target_desc, Mat& region_descs )
+Mat DJETLoss::computeHammingDistance( Mat& target_desc, Mat& region_descs )
 {
     /*
     Arguments:
@@ -507,7 +544,7 @@ Mat LossFunction::computeHammingDistance( Mat& target_desc, Mat& region_descs )
     return hamming_dists;
 }
 
-void LossFunction::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
+void DJETLoss::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
 {
     /*
     Argument:
@@ -542,7 +579,7 @@ void LossFunction::generateCoordinateVectors(double x_c, double y_c, int size, M
     y = y_ret;
 }
 
-bool LossFunction::validDescriptorRegion( double x, double y, int W, int H, int border )
+bool DJETLoss::validDescriptorRegion( double x, double y, int W, int H, int border )
 {
     if ( x < border || x >= W - border )
     {
@@ -558,13 +595,7 @@ bool LossFunction::validDescriptorRegion( double x, double y, int W, int H, int 
     }
 }
 
-bool LossFunction::validKptLoc( double x, double y, int kpt_size )
-{
-    int desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
-    return validDescriptorRegion( x, y, this->W, this->H, desc_radius + this->reg_size );
-}
-
-void LossFunction::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matched_kpts1, vector<shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img )
+void DJETLoss::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matched_kpts1, vector<shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img )
 {
     int W, H, desc_radius;
     double kpt_x, kpt_y, kpt_size;
@@ -589,19 +620,57 @@ void LossFunction::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> 
 }
 
 
-void LossFunction::computeDescriptors(const cv::Mat& img, vector<cv::KeyPoint>& kpt, cv::Mat& desc)
+
+ReprojectionLoss::ReprojectionLoss(cv::Mat& img)
+    :LossFunction(img)
 {
-    this->orb->compute( img, kpt, desc );
+    std::cout << "Test" << std::endl;
 }
 
-void LossFunction::updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
+double ReprojectionLoss::calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
 {
-    this->collectDescriptorDistance( img, kpt1, kpt2 );
+    double a, b, c, x0, y0, epi_x, epi_y, loss;
+    cv::Mat epiline;
+    epiline = F_matrix * x_k;
+    a = epiline.at<double>(0);
+    b = epiline.at<double>(1);
+    c = epiline.at<double>(2);
+    x0 = y_k.at<double>(0,0);
+    y0 = y_k.at<double>(1,0);
+
+    epi_x = (b*(b*x0 - a*y0) - a*c)/(a*a + b*b);
+    epi_y = (a*(-b*x0 + a*y0) - b*c)/(a*a + b*b);
+
+    cv::Mat y_k_opt = (cv::Mat_<double>(3,1) << epi_x, epi_y, 1);
+    v_k_opt = y_k_opt - y_k;
+    v_k_opt.at<double>(2,0) = 1;
+
+    loss = cv::norm(v_k_opt);
+
+    return loss*loss;
 }
 
+bool ReprojectionLoss::validKptLoc( double x, double y, int kpt_size )
+{
+    // Keypoint has to be in the image.
+    if (x < 0 || x >= this->W)
+    {
+        return false;
+    }
+    else if ( y < 0 || y >= this->H )
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
 
+void ReprojectionLoss::updateLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
+{
 
-
+}
 
 
 
@@ -712,7 +781,7 @@ bool KeyPointUpdate::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::M
 
         loss_func->computeDescriptors(img, kpt_cv_vec, desc);
 
-        kpt->setDescriptor(desc.row(0), loss_func->orb_non_rot);
+        kpt->setDescriptor(desc.row(0), loss_func->descriptor_name);
         return true;
     }
     else
