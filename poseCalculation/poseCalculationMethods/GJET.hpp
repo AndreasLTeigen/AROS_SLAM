@@ -35,7 +35,6 @@ class LossFunction
     private:
         int W, H;
         int reg_size = 9;
-        cv::Mat img;
         ParamID paramId = ParamID::STDPARAM;
 
         int nfeatures = 500;
@@ -56,8 +55,8 @@ class LossFunction
                                                 patchSize,
                                                 fastThreshold);
     public:
-        LossFunction(cv::Mat img);
-        ~LossFunction();
+        LossFunction(cv::Mat& img);
+        ~LossFunction(){};
 
         std::string orb_non_rot = "orb";//"orb_non_rot";
         std::string quad_fit = "quad_fit";
@@ -65,10 +64,11 @@ class LossFunction
         cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
         bool validDescriptorRegion( double x, double y, int W, int H, int border );
-        bool validDescriptorRegion( double x, double y, int kpt_size );
+        bool validKptLoc( double x, double y, int kpt_size ); // Inhertied function
         void computeParaboloidNormalForAll( std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img );
         std::vector<cv::KeyPoint> generateLocalKpts( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
+        void updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
         
         void printKptLoc( std::vector<cv::KeyPoint> kpts, int rows, int cols );
         void printLocalHammingDists( cv::Mat& hamming_dist_arr, int s );

@@ -110,7 +110,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
     rel_pose->updateParametrization();
 
-    shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>();
+    shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
 
     vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
@@ -403,14 +403,12 @@ double GJET::reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, cons
 
 
 // ################ Collecting descriptor differences ####################
-LossFunction::LossFunction( cv::Mat img )
+
+LossFunction::LossFunction(cv::Mat& img)
 {
     this->W = img.cols;
     this->H = img.rows;
-    this->img = img;
 }
-
-LossFunction::~LossFunction(){}
 
 void LossFunction::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
 {
@@ -426,10 +424,6 @@ void LossFunction::collectDescriptorDistance( const cv::Mat& img, shared_ptr<Key
     this->generateCoordinateVectors(kpt1->getCoordX(), kpt1->getCoordY(), this->reg_size, x, y);
     z = hamming_dists.t();
 
-    //std::cout << "[" << int(kpt1->getCoordY()) << ", " << int(kpt1->getCoordX()) << "]\n";
-    //this->printKptLoc( local_kpts, this->reg_size, this->reg_size );
-    //this->printLocalHammingDists( z, this->reg_size );
-
     A = fitQuadraticForm(x, y, z);
     kpt1->setDescriptor( A, "quad_fit" );
     kpt1->setDescriptor( z.reshape(1, this->reg_size), "hamming");
@@ -437,6 +431,7 @@ void LossFunction::collectDescriptorDistance( const cv::Mat& img, shared_ptr<Key
 
 vector<cv::KeyPoint> LossFunction::generateLocalKpts( shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
 {
+    // Assumes the local region around the keypoint will produce all valid descriptors.
 
     int W, H, desc_radius;
     double ref_x, ref_y, x, y, kpt_x, kpt_y, kpt_size;
@@ -449,24 +444,15 @@ vector<cv::KeyPoint> LossFunction::generateLocalKpts( shared_ptr<KeyPoint2> kpt,
     kpt_y = kpt->getCoordY();
     kpt_size = kpt->getSize();
 
-    // Skips keypoints if local region will not produce all valid descriptors.
-    desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
-    if ( !validDescriptorRegion(kpt_x, kpt_y, W, H, desc_radius + this->reg_size) )
+    ref_x = kpt_x - reg_size/2; 
+    ref_y = kpt_y - reg_size/2;
+    for ( int row_i = 0; row_i < reg_size; ++row_i )
     {
-        return local_kpts;
-    }
-    else
-    {
-        ref_x = kpt_x - reg_size/2; 
-        ref_y = kpt_y - reg_size/2;
-        for ( int row_i = 0; row_i < reg_size; ++row_i )
+        y = ref_y + row_i;
+        for ( int col_j = 0; col_j < reg_size; ++col_j )
         {
-            y = ref_y + row_i;
-            for ( int col_j = 0; col_j < reg_size; ++col_j )
-            {
-                x = ref_x + col_j;
-                local_kpts.push_back(cv::KeyPoint(x,y,kpt_size));
-            }
+            x = ref_x + col_j;
+            local_kpts.push_back(cv::KeyPoint(x,y,kpt_size));
         }
     }
     
@@ -572,7 +558,7 @@ bool LossFunction::validDescriptorRegion( double x, double y, int W, int H, int 
     }
 }
 
-bool LossFunction::validDescriptorRegion( double x, double y, int kpt_size )
+bool LossFunction::validKptLoc( double x, double y, int kpt_size )
 {
     int desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
     return validDescriptorRegion( x, y, this->W, this->H, desc_radius + this->reg_size );
@@ -595,8 +581,7 @@ void LossFunction::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> 
         kpt_y = kpt1->getCoordY();
         kpt_size = kpt1->getSize();
         // Skips keypoints if local region will not produce all valid descriptors.
-        desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
-        if (validDescriptorRegion(kpt_x, kpt_y, W, H, desc_radius + this->reg_size))
+        if (validKptLoc( kpt_x, kpt_y, kpt_size ))
         {
             this->collectDescriptorDistance( img, kpt1, kpt2 );
         }
@@ -609,6 +594,10 @@ void LossFunction::computeDescriptors(const cv::Mat& img, vector<cv::KeyPoint>& 
     this->orb->compute( img, kpt, desc );
 }
 
+void LossFunction::updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
+{
+    this->collectDescriptorDistance( img, kpt1, kpt2 );
+}
 
 
 
@@ -696,8 +685,9 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
             this->updateKeypoint(kpt1, this->img);
 
             // Re-linearizing
-            //TODO:: REVERT THIS
-            loss_func->collectDescriptorDistance( this->img, kpt1, kpt2 );
+            //TODO:: UNCOMMENT THIS
+            //loss_func->collectDescriptorDistance( this->img, kpt1, kpt2 );
+            loss_func->updateLossFunction( this->img, kpt1, kpt2 );
         }
     }
 }
@@ -705,21 +695,15 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
 bool KeyPointUpdate::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
 {   
     // There is no continuity, the original descriptor is being kept to match with next image!!!
-    int W, H;
     double x_update, y_update, scale, desc_radius;
     cv::Mat desc, v_k_opt;
-
-    W = img.cols;
-    H = img.rows;
 
     v_k_opt = kpt->getDescriptor("v_k_opt");
     scale = this->calculateScale(v_k_opt);
     x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(0,0);
     y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(1,0);
-    //x_update = kpt->getCoordX() + v_k_opt.at<double>(0,0);
-    //y_update = kpt->getCoordY() + v_k_opt.at<double>(1,0);
 
-    if ( loss_func->validDescriptorRegion( x_update, y_update,kpt->getSize() ) )
+    if ( loss_func->validKptLoc( x_update, y_update, kpt->getSize() ) )
     {
         kpt->setCoordx(x_update);
         kpt->setCoordy(y_update);
