@@ -62,6 +62,7 @@ class LossFunction
         std::string descriptor_name = "orb";
 
         virtual double calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)=0;
+        virtual double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)=0;
         virtual bool validKptLoc( double x, double y, int kpt_size )=0;
         virtual void updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )=0;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
@@ -78,6 +79,7 @@ class DJETLoss : public LossFunction
         ~DJETLoss(){};
 
         double calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
+        double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
         void updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
 
@@ -99,6 +101,7 @@ class ReprojectionLoss : public LossFunction
         ~ReprojectionLoss(){};
 
         double calculateLoss( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
+        double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
         void updateLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
 };

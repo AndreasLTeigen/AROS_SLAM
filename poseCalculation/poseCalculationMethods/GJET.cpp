@@ -48,7 +48,8 @@ struct ECOptSolver
         E_matrix = composeEMatrix( R, t );
         F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
 
-        residual[0] = loss_func_->calculateLoss( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+        //residual[0] = loss_func_->calculateLoss( F_matrix, kpt1_->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+        residual[0] = loss_func_->calculateLoss( F_matrix, kpt1_, kpt2_, v_k_opt );
 
         return true;
     }
@@ -108,8 +109,8 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
-    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
+    //shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
     //loss_func->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
 
 
@@ -151,8 +152,9 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     for ( int n = 0; n < N; ++n )
     {
         kpt1 = matched_kpts1[n];
-        A_d_k = kpt1->getDescriptor("quad_fit");
-        if (!A_d_k.empty())
+        //A_d_k = kpt1->getDescriptor("quad_fit");
+        //if (!A_d_k.empty())
+        if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) )
         {
             kpt2 = matched_kpts2[n];
             ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
@@ -435,6 +437,15 @@ double DJETLoss::calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, co
     return GJET::epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k_opt );
 }
 
+double DJETLoss::calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)
+{
+    cv::Mat x_k, y_k, A_d_k;
+    y_k = kpt1->getLoc();
+    x_k = kpt2->getLoc();
+    A_d_k = kpt1->getDescriptor("quad_fit");
+    return GJET::epipolarConstrainedOptimization( F_matrix, A_d_k, x_k, y_k, v_k_opt );
+}
+
 bool DJETLoss::validKptLoc( double x, double y, int kpt_size )
 {
     int desc_radius = std::max(this->patchSize, int(std::ceil(kpt_size)/2));
@@ -650,6 +661,32 @@ double ReprojectionLoss::calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A
     return loss*loss;
 }
 
+double ReprojectionLoss::calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)
+{
+    double a, b, c, x0, y0, epi_x, epi_y, loss;
+    cv::Mat x_k, y_k, epiline;
+    y_k = kpt1->getLoc();
+    x_k = kpt2->getLoc();
+
+    epiline = F_matrix * x_k;
+    a = epiline.at<double>(0);
+    b = epiline.at<double>(1);
+    c = epiline.at<double>(2);
+    x0 = y_k.at<double>(0,0);
+    y0 = y_k.at<double>(1,0);
+
+    epi_x = (b*(b*x0 - a*y0) - a*c)/(a*a + b*b);
+    epi_y = (a*(-b*x0 + a*y0) - b*c)/(a*a + b*b);
+
+    cv::Mat y_k_opt = (cv::Mat_<double>(3,1) << epi_x, epi_y, 1);
+    v_k_opt = y_k_opt - y_k;
+    v_k_opt.at<double>(2,0) = 1;
+
+    loss = cv::norm(v_k_opt);
+
+    return loss*loss;
+}
+
 bool ReprojectionLoss::validKptLoc( double x, double y, int kpt_size )
 {
     // Keypoint has to be in the image.
@@ -739,7 +776,9 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
             //std::cout << "A: " << kpt1->getDescriptor("quad_fit") << std::endl;
 
             // TODO:: REVERT THIS AS WELL
-            GJET::epipolarConstrainedOptimization( F_matrix, kpt1->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+            loss_func->calculateLoss( F_matrix, kpt1, kpt2, v_k_opt );
+            //loss_func->calculateLoss( F_matrix, kpt1->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
+            //GJET::epipolarConstrainedOptimization( F_matrix, kpt1->getDescriptor("quad_fit"), x_k, y_k, v_k_opt );
             //GJET::reprojectionError(F_matrix, x_k, y_k, v_k_opt);
 
             //Updating the keypoint
