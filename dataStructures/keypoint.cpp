@@ -135,9 +135,19 @@ void KeyPoint2::addMatch(shared_ptr<Match> match, int matched_frame_nr)
     this->matches[matched_frame_nr].push_back(match);
 }
 
+void KeyPoint2::removeMatchReference(int matched_frame_nr, std::shared_ptr<Match> removing_match)
+{
+    // Removes reference to keypoint's specific match <removing_match> with frame nr. <matched_frame_nr>
+    // WARNING: DOES NOT REMOVE THE REFERENCES TO THE MATCH FOR THE MATCHED KEYPOINT
+    std::unique_lock lock(this->mutex_matches_map);
+
+    std::vector<std::shared_ptr<Match>> matches = this->matches[matched_frame_nr];
+    std::remove(matches.begin(), matches.end(), removing_match);
+}
+
 void KeyPoint2::removeAllMatchReferences(int matched_frame_nr)
 {
-    // Removes references to all keypoint's matches with <matched_frame_nr>
+    // Removes references to all keypoint's matches with frame nr. <matched_frame_nr>
     // WARNING: DOES NOT REMOVE THE REFERENCES TO THE MATCH FOR THE MATCHED KEYPOINT
     std::unique_lock lock(this->mutex_matches_map);
 

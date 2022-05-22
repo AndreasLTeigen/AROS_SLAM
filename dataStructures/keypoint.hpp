@@ -59,7 +59,7 @@ class KeyPoint2
         void setDescriptor(cv::Mat descr, std::string descr_type="orb");
         void setMapPoint(std::shared_ptr<MapPoint> map_point);
         void addMatch(std::shared_ptr<Match> match, int matched_frame_nr);
-        void removeMatchReference(int matched_frame_nr, std::shared_ptr<Match> remove_match);
+        void removeMatchReference(int matched_frame_nr, std::shared_ptr<Match> removing_match);
         void removeAllMatchReferences(int matched_frame_nr);
         void removeAllMatches(int matched_frame_nr);
         void orderMatchesByConfidence(int matched_frame_nr);

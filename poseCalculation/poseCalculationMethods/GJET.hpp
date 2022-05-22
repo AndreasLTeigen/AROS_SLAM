@@ -82,6 +82,7 @@ class DJETLoss : public LossFunction
         double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
         void updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
+        //void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc)override;
 
         void collectDescriptorDistance( const cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
         cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );

@@ -109,8 +109,8 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    //shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
-    shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
+    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
     //loss_func->computeParaboloidNormalForAll( matched_kpts1, matched_kpts2, img );
 
 
@@ -351,34 +351,6 @@ void GJET::jointEpipolarOptimization( cv::Mat& F_matrix, vector<shared_ptr<KeyPo
 }
 
 
-// Comparison function
-
-/*
-double GJET::reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
-{
-    double a, b, c, x0, y0, epi_x, epi_y, loss;
-    cv::Mat epiline;
-    epiline = F_matrix * x_k;
-    a = epiline.at<double>(0);
-    b = epiline.at<double>(1);
-    c = epiline.at<double>(2);
-    x0 = y_k.at<double>(0,0);
-    y0 = y_k.at<double>(1,0);
-
-    epi_x = (b*(b*x0 - a*y0) - a*c)/(a*a + b*b);
-    epi_y = (a*(-b*x0 + a*y0) - b*c)/(a*a + b*b);
-
-    cv::Mat y_k_opt = (cv::Mat_<double>(3,1) << epi_x, epi_y, 1);
-    v_k_opt = y_k_opt - y_k;
-    v_k_opt.at<double>(2,0) = 1;
-
-    loss = cv::norm(v_k_opt);
-
-    return loss*loss;
-}
-*/
-
-
 
 
 
@@ -456,6 +428,13 @@ void DJETLoss::updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1,
 {
     this->collectDescriptorDistance( img, kpt1, kpt2 );
 }
+
+/*
+void DJETLoss::computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc)
+{
+
+}
+*/
 
 
 void DJETLoss::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
@@ -635,7 +614,7 @@ void DJETLoss::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matc
 ReprojectionLoss::ReprojectionLoss(cv::Mat& img)
     :LossFunction(img)
 {
-    std::cout << "Test" << std::endl;
+    
 }
 
 double ReprojectionLoss::calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
