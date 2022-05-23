@@ -50,6 +50,7 @@ class FrameData
         void registerKeypoints( std::vector<cv::KeyPoint>& kpts, cv::Mat& descrs );
         void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list );
         std::vector<int> removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> connecting_frame );
+        std::vector<int> removeMatchesWithLowConfidence(double threshold, std::shared_ptr<FrameData> connecting_frame);
         void addKptToMatchList( std::shared_ptr<KeyPoint2> kpt, std::shared_ptr<FrameData> connecting_frame );
         void addRelPose( std::shared_ptr<Pose> rel_pose, std::shared_ptr<FrameData> connecting_frame );
         
@@ -57,6 +58,7 @@ class FrameData
         static std::shared_ptr<Pose> registerRelPose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
         static std::shared_ptr<Pose> registerGTRelPose(cv::Mat T_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
         static void removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
+        static void removeMatchesWithLowConfidence( double threshold, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
 
 
         // Read functions

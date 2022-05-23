@@ -15,8 +15,8 @@ class Match
         int match_id;
         std::weak_ptr<KeyPoint2> kpt1;
         std::weak_ptr<KeyPoint2> kpt2;
-        float confidence = -1;
-        float descr_distance;
+        double descr_distance;
+        double confidence = 0;
 
 
         // Mutexes
@@ -29,22 +29,22 @@ class Match
     public:
         Match(std::shared_ptr<KeyPoint2> kpt1,
               std::shared_ptr<KeyPoint2> kpt2,
-              float descr_distance,
+              double descr_distance,
               int match_id=-1);
         ~Match();
 
         // Write functions
         void setMatchID(int match_id);
-        void setConfidence(float confidence);
-        void setDescriptorDistance(float descr_distance);
+        void setConfidence(double confidence);
+        void setDescriptorDistance(double descr_distance);
 
         // Read functions
         int getMatchID();
         std::shared_ptr<KeyPoint2> getKpt1();
         std::shared_ptr<KeyPoint2> getKpt2();
         std::shared_ptr<KeyPoint2> getConnectingKpt(int connecting_keypoint_frame_nr);
-        float getConfidence();
-        float getDescrDistance();
+        double getConfidence();
+        double getDescrDistance();
 };
 
 #endif

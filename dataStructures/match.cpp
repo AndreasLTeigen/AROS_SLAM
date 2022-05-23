@@ -8,14 +8,13 @@ using std::weak_ptr;
 
 Match::Match(shared_ptr<KeyPoint2> kpt1, 
              shared_ptr<KeyPoint2> kpt2, 
-             float descr_distance,
+             double descr_distance,
              int match_id)
 {
     this->kpt1 = kpt1;
     this->kpt2 = kpt2;
     this->setMatchID(match_id);
     this->setDescriptorDistance(descr_distance);
-    this->setConfidence(1-descr_distance);
 }
 
 Match::~Match()
@@ -32,13 +31,13 @@ void Match::setMatchID(int match_id)
     this->match_id = match_id;
 }
 
-void Match::setConfidence(float confidence)
+void Match::setConfidence(double confidence)
 {
     std::unique_lock lock(this->mutex_confidence);
     this->confidence = confidence;
 }
 
-void Match::setDescriptorDistance(float descr_distance)
+void Match::setDescriptorDistance(double descr_distance)
 {
     std::unique_lock lock(this->mutex_descr_distance);
     this->descr_distance = descr_distance;
@@ -84,13 +83,13 @@ shared_ptr<KeyPoint2> Match::getConnectingKpt(int connecting_keypoint_frame_nr)
     }
 }
 
-float Match::getConfidence()
+double Match::getConfidence()
 {
     std::shared_lock(this->mutex_confidence);
     return this->confidence;
 }
 
-float Match::getDescrDistance()
+double Match::getDescrDistance()
 {
     std::shared_lock(this->mutex_descr_distance);
     return this->descr_distance;

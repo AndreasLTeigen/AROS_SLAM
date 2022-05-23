@@ -138,6 +138,7 @@ vector<int> FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameDat
 
     vector<shared_ptr<KeyPoint2>> matched_kpt_list = this->matched_kpts[connecting_frame->getFrameNr()];
 
+    #pragma omp parallel for
     for (int i = 0; i < matched_kpt_list.size(); i++)
     {
         if(!inliers.at<uchar>(i))
@@ -150,6 +151,39 @@ vector<int> FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameDat
         }
     }
 
+    return removed_matched_keypoint_idx;
+}
+
+std::vector<int> FrameData::removeMatchesWithLowConfidence(double threshold, std::shared_ptr<FrameData> connecting_frame)
+{
+    /*
+    Arguments:
+        threshold:                          Match confidence threshold.
+        connecting_frame:                   Frame object connecting matches of interest to <this> frame.
+    Effect:
+        frameX->kpts[Z]->matches[frameY]:   Deletes match object between keypoints in <frame1> and <frame2> 
+                                            whose confidence is lower than <threshold>.
+    */
+
+    std::shared_lock lock(this->mutex_matched_kpts);
+
+    shared_ptr<KeyPoint2> kpt1;
+    shared_ptr<Match> match1;
+    vector<int> removed_matched_keypoint_idx;
+
+    vector<shared_ptr<KeyPoint2>> matched_kpt_list = this->matched_kpts[connecting_frame->getFrameNr()];
+
+    #pragma omp parallel for
+    for (int i = 0; i < matched_kpt_list.size(); i++)
+    {
+        kpt1 = matched_kpt_list[i];
+        match1 = kpt1->getHighestConfidenceMatch(connecting_frame->getFrameNr());
+        if(match1->getConfidence() < threshold)
+        {
+            kpt1->removeAllMatches(connecting_frame->getFrameNr());
+            removed_matched_keypoint_idx.push_back(i);
+        }
+    }
     return removed_matched_keypoint_idx;
 }
 
@@ -263,7 +297,7 @@ void FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameData> fram
     Effect:
         frameX->kpts[Z]->matches[frameY]:   Deletes match object between keypoints in <frame1> and <frame2> 
                                             corresponding to <inliers> mask.
-        frameX->matched_kpts[frameZ]:       Removes keypoints in <matched_kpts[frameZ]> lists of both frames 
+        frameX->matched_kpts[frameY]:       Removes keypoints in <matched_kpts[frameY]> lists of both frames 
                                             corresponding to the matches removed.
     TODO:                                   Make this into a friend function such that both <mutex_matched_kpts>
                                             can be locked before starting to remove anything
@@ -271,6 +305,27 @@ void FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameData> fram
     
     // Remove actuall match between keypoints
     vector<int> removed_matched_keypoint_idx = frame1->removeOutlierMatches(inliers, frame2);
+
+    // Remove keypoints from <matched_kpts> lists
+    frame1->removeMatchedKeypointsByIdx(frame2->getFrameNr(), removed_matched_keypoint_idx);
+    frame2->removeMatchedKeypointsByIdx(frame1->getFrameNr(), removed_matched_keypoint_idx);
+}
+
+void FrameData::removeMatchesWithLowConfidence( double threshold, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2 )
+{
+    /*
+    Arguments:
+        threshold:      Match confidence threshold.
+        frameX:         Frames between whose matches are of interest.
+    Effect:
+        frameX->kpts[Z]->matches[frameY]:   Deletes match object between keypoints in <frame1> and <frame2>
+                                            whose confidence is lower than <threshold>.
+        frameX->matched_kpts[frameY]:       Removes keypoints in <matched_kpts[frameY] lists of both frames
+                                            corresponding to the matches removed.
+    */
+    
+    // Remove actuall match between keypoints
+    vector<int> removed_matched_keypoint_idx = frame1->removeMatchesWithLowConfidence(threshold, frame2);
 
     // Remove keypoints from <matched_kpts> lists
     frame1->removeMatchedKeypointsByIdx(frame2->getFrameNr(), removed_matched_keypoint_idx);

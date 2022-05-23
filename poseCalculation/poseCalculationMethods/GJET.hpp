@@ -60,12 +60,17 @@ class LossFunction
 
         // TODO: Move these variables to a new place
         std::string descriptor_name = "orb";
+        int getPatchSize();
 
-        virtual double calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)=0;
-        virtual double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)=0;
+        virtual double calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)=0;
+        virtual double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)=0;
         virtual bool validKptLoc( double x, double y, int kpt_size )=0;
-        virtual void updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )=0;
+        virtual bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )=0;
+        virtual void linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )=0;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
+
+        bool validDescriptorRegion( double x, double y, int border );
+        static int calculateDescriptorRadius(int patch_size, int kpt_size);
         
 };
 
@@ -78,16 +83,16 @@ class DJETLoss : public LossFunction
                                 std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2);
         ~DJETLoss(){};
 
-        double calculateLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
-        double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
+        double calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
+        double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
-        void updateLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
+        bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )override;
+        void linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
         //void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc)override;
 
         void collectDescriptorDistance( const cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
         cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
-        bool validDescriptorRegion( double x, double y, int W, int H, int border );
         void computeParaboloidNormalForAll( std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img );
         std::vector<cv::KeyPoint> generateLocalKpts( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
         
@@ -101,10 +106,11 @@ class ReprojectionLoss : public LossFunction
         ReprojectionLoss(cv::Mat& img);
         ~ReprojectionLoss(){};
 
-        double calculateLoss( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
-        double calculateLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
+        double calculateKptLoss( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
+        double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
-        void updateLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
+        bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )override;
+        void linearizeLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
 };
 
 
@@ -126,15 +132,19 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
 
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
-        void moveKptToOptLoc();
+        void moveKptsToOptLoc(const cv::Mat& img);
 
-        void addEvalKpt(   std::shared_ptr<KeyPoint2> kpt1,
-                            std::shared_ptr<KeyPoint2> kpt2);
+        void addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
+                         std::shared_ptr<KeyPoint2> kpt2);
 
         double calculateScale(cv::Mat& v_k_opt);
 
+
+        static void invalidateMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2);
+        static bool validMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2);
+
         static void logOptLoc( std::shared_ptr<KeyPoint2> kpt );
-        static void logKptState(   std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix );
+        static void logKptState( std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix );
 };
 
 #endif

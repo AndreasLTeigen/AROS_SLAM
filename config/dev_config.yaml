@@ -1,8 +1,8 @@
 
 # -----Video In-----
-#VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
+VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
-VIn.path: /home/andreas/Documents/Datasets/data_odometry_gray/dataset/sequences/00/image_0/
+#VIn.path: /home/andreas/Documents/Datasets/data_odometry_gray/dataset/sequences/00/image_0/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/A/
 VIn.file_format: png
@@ -74,7 +74,7 @@ UI.menu_bar_width: 175
 
 # -----Sequencer parameter config-----
 Seq.starting_frame_nr: 0
-Seq.frame_buffer_size: 1
+Seq.frame_buffer_size: 2
 
 # -----Tracker parameter config-----
 Trck.tracking_window_length: 50
