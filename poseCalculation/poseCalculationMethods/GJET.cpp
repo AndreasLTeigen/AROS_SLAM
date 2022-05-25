@@ -118,8 +118,8 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    //shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
-    shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
+    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
 
     // ------ CERES test -------------
     int N = matched_kpts1.size();
@@ -169,6 +169,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     options.minimizer_progress_to_stdout = true;
     options.max_num_iterations = 50;
     options.num_threads = 1;
+    //options.initial_trust_region_radius = 0.01;
     //options.logging_type = ceres::LoggingType::SILENT;
 
     ceres::Solver::Summary summary;
@@ -177,6 +178,17 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
     itUpdate.moveKptsToOptLoc(img);
     FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
+
+    vector<double> p_vec;
+    for ( int i = 0; i < 6; ++i )
+    {
+        p_vec.push_back(p[i]);
+        //TODO: Remove this later
+        if ( i < 3 )
+        {
+            p_vec[i] = -p_vec[i];
+        }
+    }
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -189,13 +201,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
         std::cout << p[i] << ", ";
     }
     std::cout << "\n";
-    
-    vector<double> p_vec;
-    for ( int i = 0; i < 6; ++i )
-    {
-        p_vec.push_back(p[i]);
-    }
-    
+
     rel_pose->setPose( p_vec, this->paramId );
     //rel_pose->setPose( p_init, this->paramId );
 
