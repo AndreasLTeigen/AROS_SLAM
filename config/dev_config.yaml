@@ -73,7 +73,7 @@ UI.menu_bar_width: 175
 
 
 # -----Sequencer parameter config-----
-Seq.starting_frame_nr: 0
+Seq.starting_frame_nr: 105
 Seq.frame_buffer_size: 2
 
 # -----Tracker parameter config-----

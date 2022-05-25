@@ -42,7 +42,7 @@ void reduceImgContrast(cv::Mat img, int lower_level, int upper_level)
 void drawCircle(cv::Mat &img, cv::Point point, int radius)
 {
     cv::Scalar color_red = cv::Scalar( 0, 0, 255, 128 );
-    std::cout << "Drawing circle at: " << point << std::endl;
+    //std::cout << "Drawing circle at: " << point << std::endl;
     cv::circle(img, point, radius, color_red, 2);
 }
 
@@ -147,7 +147,6 @@ cv::Mat invertKMatrix( cv::Mat K )
                             [0,  fy, cy]
                             [0,  0,  1]]
     */
-    //TODO: Implement inversion for other "configurations" of the K_matrix.
     double fx, fy, cx, cy, s;
     cv::Mat K_inv;
 
@@ -155,36 +154,12 @@ cv::Mat invertKMatrix( cv::Mat K )
     fy = K.at<double>(1,1);
     cx = K.at<double>(0,2);
     cy = K.at<double>(1,2);
-    s = K.at<double>(0,1);
+    s  = K.at<double>(0,1);
 
-    if ( fx == fy && s == 0 )
-    {
-        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     0,      -cx/fx,
-                                            0,      1/fx,   -cy/fx,
-                                            0,      0,      1);
-    }
-    else if ( fx != fy && s == 0 )
-    {
-        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     0,      -cx/fx,
-                                            0,      1/fy,   -cy/fy,
-                                            0,      0,      1);
-    }
-    else if ( fx == fy && s != 0 )
-    {
-        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     -s/(fx*fx), (-fx*cx + s*cy)/(fx*fx),
-                                            0,      1/fx,       -cy/fx,
-                                            0,      0,          1);
-    }
-    else if ( fx != fy && s != 0 )
-    {
-        K_inv = (cv::Mat_<double>(3,3) << 1/fx,     -s/(fx*fy), (-fy*cx + s*cy)/(fx*fy),
-                                            0,      1/fy,       -cy/fy,
-                                            0,      0,          1);
-    }
-    else
-    {
-        std::cout << "ERROR: K^(-1) not defined for this configuration of K" << std::endl;
-    }
+    K_inv = (cv::Mat_<double>(3,3) <<   fy, -s, cy*s - cx*fy,
+                                        0,  fx, -cy*fx,
+                                        0,  0,  fx*fy);
+    K_inv = K_inv / (fx*fy);
     return K_inv;
 }
 
@@ -437,11 +412,11 @@ void dehomogenizeMatrix(cv::Mat& X)
 cv::Mat normalizeMat(cv::Mat& vec)
 {
     cv::Mat ret;
-    std::cout << "Input: " << vec << std::endl;
+    //std::cout << "Input: " << vec << std::endl;
     double norm = cv::norm(vec, cv::NORM_L1);
     ret = vec/norm;
-    std::cout << "Output: " << ret << std::endl;
-    std::cout << "Norm: " << norm << std::endl;
+    //std::cout << "Output: " << ret << std::endl;
+    //std::cout << "Norm: " << norm << std::endl;
     return ret;
 }
 

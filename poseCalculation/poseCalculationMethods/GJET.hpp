@@ -77,7 +77,9 @@ class LossFunction
 class DJETLoss : public LossFunction
 {
     private:
+        bool precompDescriptors = true;
         int reg_size = 9;
+        std::vector<std::vector<cv::Mat>> descriptor_map;
     public:
         DJETLoss(cv::Mat& img, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, 
                                 std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2);
@@ -88,16 +90,19 @@ class DJETLoss : public LossFunction
         bool validKptLoc( double x, double y, int kpt_size )override;
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )override;
         void linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
-        //void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc)override;
+        void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
         void collectDescriptorDistance( const cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
+        std::vector<cv::KeyPoint> generateLocalKpts( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
         cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
         void computeParaboloidNormalForAll( std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img );
-        std::vector<cv::KeyPoint> generateLocalKpts( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
         
+        void precomputeDescriptors( const cv::Mat& img );
+
         void printKptLoc( std::vector<cv::KeyPoint> kpts, int rows, int cols );
         void printLocalHammingDists( cv::Mat& hamming_dist_arr, int s );
+        void printDescriptorMapFill();
 };
 
 class ReprojectionLoss : public LossFunction
