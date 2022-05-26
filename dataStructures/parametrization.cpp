@@ -242,9 +242,14 @@ std::ostream& StdParam::print(std::ostream& out)
 {
     /* Returns pose: rx ry rz tx ty tz*/
     vector<double> paramVector = getParamVector();
-    return out << paramVector[0] << " " << paramVector[1] << " " 
-                << paramVector[2] << " " << paramVector[3] << " " 
-                << paramVector[4] << " " << paramVector[5];
+    std::string error_string = "";
+    if (!this->isValid())
+    {
+        error_string = "Error: Parametrization not valid. \n";
+    }
+    return out << error_string  << paramVector[0] << " " << paramVector[1] << " " 
+                                << paramVector[2] << " " << paramVector[3] << " " 
+                                << paramVector[4] << " " << paramVector[5];
 }
 
 

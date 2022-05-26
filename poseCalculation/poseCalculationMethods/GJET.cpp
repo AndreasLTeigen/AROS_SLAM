@@ -20,11 +20,10 @@ using std::chrono::high_resolution_clock;
 struct ECOptSolver 
 {
     ECOptSolver( const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
-                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func )
+                        const shared_ptr<KeyPoint2> kpt2, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func )
                 {
                     K1_ = K1;
                     K2_ = K2;
-                    img_ = img;
                     kpt1_ = kpt1;
                     kpt2_ = kpt2;
                     loss_func_ = loss_func;
@@ -63,7 +62,7 @@ struct ECOptSolver
         return true;
     }
 
-    cv::Mat K1_, K2_, A_k_, img_;
+    cv::Mat K1_, K2_, A_k_;
     shared_ptr<KeyPoint2> kpt1_, kpt2_;
     shared_ptr<LossFunction> loss_func_;
     shared_ptr<Parametrization> parametrization_;
@@ -72,9 +71,9 @@ struct ECOptSolver
 struct GJETSolver
 {
     GJETSolver(const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
-                        const shared_ptr<KeyPoint2> kpt2, cv::Mat& img, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func)
+                        const shared_ptr<KeyPoint2> kpt2, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func)
                     : ecopt_solver(new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6>(
-                                                new ECOptSolver(K1, K2, kpt1, kpt2, img, parametrization, loss_func))) {}
+                                                new ECOptSolver(K1, K2, kpt1, kpt2, parametrization, loss_func))) {}
     
     template <typename T>
     bool operator()(const T* p, T* residual) const
@@ -150,10 +149,10 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
         kpt2 = matched_kpts2[n];
         if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) )
         {
-            ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
-                new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, img, parametrization, loss_func));
-            //ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<GJETSolver, ceres::CENTRAL, 1, 6>(
-            //    new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, img, parametrization, loss_func));
+            //ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<GJETSolver, 1, 6>(
+            //    new GJETSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
+            ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6>(
+                new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
             problem.AddResidualBlock(cost_function, nullptr, p);
 
             itUpdate.addEvalKpt(kpt1, kpt2);
@@ -164,31 +163,24 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
         }
     }             
 
+    // Configure the solver
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
     options.max_num_iterations = 50;
     options.num_threads = 1;
-    //options.initial_trust_region_radius = 0.01;
+    //options.initial_trust_region_radius = 10;
+    //options.max_trust_region_radius = 10;
     //options.logging_type = ceres::LoggingType::SILENT;
 
+    // Solve!
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.BriefReport() << "\n";
 
+    // Last changes
     itUpdate.moveKptsToOptLoc(img);
     FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
-
-    vector<double> p_vec;
-    for ( int i = 0; i < 6; ++i )
-    {
-        p_vec.push_back(p[i]);
-        //TODO: Remove this later
-        if ( i < 3 )
-        {
-            p_vec[i] = -p_vec[i];
-        }
-    }
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -202,15 +194,43 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     }
     std::cout << "\n";
 
+    vector<double> p_vec;
+    for ( int i = 0; i < 6; ++i )
+    {
+        p_vec.push_back(p[i]);
+        //TODO: Remove this later
+        /*
+        if ( i < 3 )
+        {
+            p_vec[i] = -p_vec[i];
+        }
+        */
+    }
+    //TODO: Also remove this later
+    /*
+    if (p_vec[5] < 0 )
+    {
+        p_vec[3] = -p_vec[3];
+        p_vec[4] = -p_vec[4];
+        p_vec[5] = -p_vec[5];
+    }
+    */
+
     rel_pose->setPose( p_vec, this->paramId );
     //rel_pose->setPose( p_init, this->paramId );
 
-    std::cout << *rel_pose->getParametrization() << "\n";
-    std::cout << rel_pose->getTMatrix() << std::endl;
+    //std::cout << rel_pose->getTMatrix() << std::endl;
     cv::Mat R_matrix = rel_pose->getRMatrix();
     cv::Mat t_vector = rel_pose->gettvector();
     t_vector = normalizeMat(t_vector);
     rel_pose->updatePoseVariables( R_matrix, t_vector );
+    rel_pose->updateParametrization(); // This function call can be removed
+    std::cout << "p_corr: " << *rel_pose->getParametrization() << "\n";
+
+
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+
     F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
     this->jointEpipolarOptimization( F_matrix, matched_kpts1, matched_kpts2 );
     //--------------------------------------
@@ -855,12 +875,15 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
     {
         //std::cout << "Re-linearizing" << std::endl;
         bool in_bounds;
+        //double tot_loss, loss_n;
         cv::Mat R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
         shared_ptr<KeyPoint2> kpt1, kpt2;
+
         /*
-        for ( double val : p_vec )
+        std::cout << "p:";
+        for (int i = 0; i < 6; i++)
         {
-            std::cout << val << ", ";
+            std::cout << p[i] << ", ";
         }
         std::cout << "\n";
         */
@@ -907,7 +930,17 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
             {
                 invalidateMatch( kpt1, kpt2 );
             }
+
+            //TODO: Remove this when done.
+            /*
+            cv::Mat v_k;
+            loss_n = GJET::epipolarConstrainedOptimization( F_matrix, kpt1->getDescriptor("quad_fit"), 
+                                                            kpt2->getLoc(), kpt1->getLoc(), v_k );
+
+            tot_loss += loss_n*loss_n;
+            */
         }
+        //std::cout << "Total Loss: " << tot_loss << std::endl;
     }
 }
 
@@ -938,6 +971,11 @@ void KeyPointUpdate::moveKptsToOptLoc(const cv::Mat& img)
     {
         kpt1 = this->m_kpts1[i];
         kpt2 = this->m_kpts2[i];
+
+        if ( !validMatch(kpt1, kpt2) )
+        {
+            continue;
+        }
 
         y_k_opt = kpt1->getDescriptor("y_k_opt");
         x_update = y_k_opt.at<double>(0,0);
