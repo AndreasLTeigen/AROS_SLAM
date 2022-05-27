@@ -199,7 +199,7 @@ cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2
     //cv::Mat K_inv = K_matrix.inv();
     cv::Mat K1_inv = invertKMatrix(K1_matrix);
     cv::Mat K2_inv = invertKMatrix(K2_matrix);
-    cv::Mat F = K1_inv.t()*E_matrix*K2_inv;
+    cv::Mat F = K2_inv.t()*E_matrix*K1_inv;
     return F;
 }
 

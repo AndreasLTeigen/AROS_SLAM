@@ -20,14 +20,10 @@ class GJET : public PoseCalculator
         ~GJET(){};
 
         std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
-        void jointEpipolarOptimization( cv::Mat& F_matrix, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2 );
 
         static double solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, cv::Mat& v_k );
         static cv::Mat solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h );
         static double epipolarConstrainedOptimization( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt );
-
-        static double reprojectionError(const cv::Mat& F_matrix, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt);
-
 };
 
 class LossFunction
@@ -68,6 +64,10 @@ class LossFunction
         virtual bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )=0;
         virtual void linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )=0;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
+
+        double calculateTotalLoss(cv::Mat& F_matrix,
+                                    std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
+                                    std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2);
 
         bool validDescriptorRegion( double x, double y, int border );
         static int calculateDescriptorRadius(int patch_size, int kpt_size);
