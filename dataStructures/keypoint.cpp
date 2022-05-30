@@ -514,7 +514,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
 
             cv::Mat epiline, x1_k;
             x1_k = matched_kpt->getLoc();
-            epiline = F_matrix * x1_k;
+            epiline = F_matrix.t() * x1_k;
             double a = -epiline.at<double>(0,0) / epiline.at<double>(1,0);
             double b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
             //std::cout << "a: " << a << ", b: " << b << std::endl; 

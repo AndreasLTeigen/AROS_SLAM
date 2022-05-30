@@ -444,12 +444,12 @@ void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int fram
         copyMakeBorder(img_disp, canvas, 0, canvas.rows-img_disp.rows, 0, canvas.cols-img_disp.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
         
         F_matrix = matched_kpts1[0]->getDescriptor("F_matrix_log" + std::to_string(it));
-        std::cout << "F_matrix: " << F_matrix << std::endl;
+        //std::cout << "F_matrix: " << F_matrix << std::endl;
 
-        //srand (time(NULL));
+        srand (time(NULL));
         for ( int i = 0; i < 10; ++i )
         {
-            //random_idx = rand() % matched_kpts1.size();
+            random_idx = rand() % matched_kpts1.size();
             random_idx = i;
             kpt1 = matched_kpts1[random_idx];
             kpt2 = matched_kpts2[random_idx];

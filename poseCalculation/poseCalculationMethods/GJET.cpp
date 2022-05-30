@@ -114,8 +114,8 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    //shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
-    shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
+    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
 
 
     // ------ CERES test -------------
@@ -167,6 +167,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     options.minimizer_progress_to_stdout = true;
     options.max_num_iterations = 50;
     options.num_threads = 1;
+    options.use_nonmonotonic_steps= false;
     //options.initial_trust_region_radius = 100;
     //options.max_trust_region_radius = 100;
     //options.logging_type = ceres::LoggingType::SILENT;
@@ -177,7 +178,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     std::cout << summary.BriefReport() << "\n";
 
     // Last changes
-    //itUpdate.moveKptsToOptLoc(img);
+    itUpdate.moveKptsToOptLoc(img);
     FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
 
     std::cout << "p: ";
@@ -196,24 +197,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     for ( int i = 0; i < 6; ++i )
     {
         p_vec.push_back(p[i]);
-        //TODO: Remove this later
-        /*
-        if ( i < 3 )
-        {
-            p_vec[i] = -p_vec[i];
-        }
-        */
-        
     }
-    //TODO: Also remove this later
-    /*
-    if (p_vec[5] < 0 )
-    {
-        p_vec[3] = -p_vec[3];
-        p_vec[4] = -p_vec[4];
-        p_vec[5] = -p_vec[5];
-    }
-    */
     
 
     rel_pose->setPose( p_vec, this->paramId );
@@ -304,9 +288,9 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     x1_k = x_k;
 
     // Helping definitions
-    F_d = I_s * F_matrix;
+    F_d = I_s * F_matrix.t();
     F_d_x = F_d*x1_k;
-    q_31 = -(y1_k.t()) * F_matrix * (x1_k);
+    q_31 = -(y1_k.t()) * F_matrix.t() * (x1_k);
     
     // KKT sub matrixes/vectors
     A_k = I_s * A_d_k * I_s.t();
@@ -762,8 +746,8 @@ double ReprojectionLoss::calculateKptLoss(const cv::Mat& F_matrix, const std::sh
     y_k = kpt1->getLoc();
     x_k = kpt2->getLoc();
 
-    //epiline = F_matrix * x_k;
-    epiline = x_k.t() * F_matrix;
+    epiline = F_matrix.t() * x_k;
+    //epiline = x_k.t() * F_matrix;
     //std::cout << epiline << std::endl;
     a = epiline.at<double>(0);
     b = epiline.at<double>(1);
@@ -878,9 +862,9 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
             this->logOptLoc(kpt1);
 
             // TODO: Remove later when no longer usefull
-            //KeyPointUpdate::logKptState( kpt1, F_matrix );
+            KeyPointUpdate::logKptState( kpt1, F_matrix );
 
-            in_bounds = true; //this->updateKeypoint(kpt1, this->img);
+            in_bounds = this->updateKeypoint(kpt1, this->img);
 
             if ( !in_bounds )
             {
@@ -891,6 +875,7 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
             tot_loss += loss_n*loss_n;
         }
         std::cout << "Total Loss: " << tot_loss << std::endl;
+        //this->F_matrices.push_back(F_matrix);
     }
 }
 
@@ -931,8 +916,10 @@ void KeyPointUpdate::moveKptsToOptLoc(const cv::Mat& img)
         x_update = y_k_opt.at<double>(0,0);
         y_update = y_k_opt.at<double>(1,0);
 
+
         desc_radius = LossFunction::calculateDescriptorRadius( loss_func->getPatchSize(), kpt1->getSize() );
         if(this->loss_func->validDescriptorRegion(x_update, y_update, desc_radius))
+            //&& cv::norm(kpt1->getDescriptor("v_k_opt")) < this->outlier_threshold)
         {
             // Updating keypoint placement.
             kpt1->setCoordx(x_update);

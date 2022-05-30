@@ -78,7 +78,7 @@ class DJETLoss : public LossFunction
 {
     private:
         bool precompDescriptors = true;
-        int reg_size = 9;
+        int reg_size = 3;
         std::vector<std::vector<cv::Mat>> descriptor_map;
     public:
         DJETLoss(cv::Mat& img, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, 
@@ -123,8 +123,10 @@ class KeyPointUpdate : public ceres::EvaluationCallback
 {
     private:
         int step_size = 1; //px
+        int outlier_threshold = 2; //px
         double* p;
         cv::Mat img, K1, K2;
+        std::vector<cv::Mat> F_matrix_log;
         std::shared_ptr<LossFunction> loss_func;
         std::shared_ptr<Parametrization> parametrization;
         std::vector<std::shared_ptr<KeyPoint2>> m_kpts1, m_kpts2;
