@@ -15,9 +15,12 @@ class GJET : public PoseCalculator
     private:
         ParamID paramId = ParamID::STDPARAM;
 
+        // Evaluation variables
         double avg_match_score = 0;
+        double varianceN_match_score = 0;
         double avg_calculated_descs = 0;
         int n = 0;
+        int n_matches = 0;
 
     public:
         GJET(){};
@@ -30,8 +33,12 @@ class GJET : public PoseCalculator
         static double epipolarConstrainedOptimization( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt );
         void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
 
+        // Evaluation functions
         static double calculateAverageMatchScore(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
                                                     std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2);
+        static double iterateMatchScoreVarianceN(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
+                                                    std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, 
+                                                    double old_varianceN, double old_mean, double mean);
 };
 
 class LossFunction

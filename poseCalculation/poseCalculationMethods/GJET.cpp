@@ -218,11 +218,17 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
     std::cout << "Total Loss: " << loss_func->calculateTotalLoss(F_matrix, matched_kpts1, matched_kpts2) << "\n" << std::endl;
     
+
+    // Evaluation
+    int old_mean = this->avg_match_score;
     this->n += 1;
+    this->n_matches += matched_kpts1.size();
     this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAverageMatchScore( matched_kpts1, matched_kpts2 ), this->n);
+    this->varianceN_match_score = GJET::iterateMatchScoreVarianceN(matched_kpts1, matched_kpts2, this->varianceN_match_score, old_mean, this->avg_match_score);
     this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
 
     std::cout << "Avg match score: " << avg_match_score << std::endl;
+    std::cout << "STD match score: " << std::sqrt(this->varianceN_match_score/this->n_matches) << std::endl;
     std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
 
     return rel_pose;
@@ -401,7 +407,29 @@ double GJET::calculateAverageMatchScore(std::vector<std::shared_ptr<KeyPoint2>> 
 }
 
 
+double GJET::iterateMatchScoreVarianceN(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
+                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, 
+                                        double old_varianceN, double old_mean, double mean)
+{
+    double accum, x_n;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    cv::Mat desc1, desc2, hamming;
 
+    accum = old_varianceN;
+    for (int i = 0; i < matched_kpts1.size(); ++i)
+    {
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
+
+        desc1 = kpt1->getDescriptor("orb");
+        desc2 = kpt2->getDescriptor("orb");
+
+        hamming = computeHammingDistance(desc1, desc2);
+        x_n = hamming.at<double>(0,0);
+        accum = accum + (x_n - old_mean)*(x_n - mean);
+    }
+    return accum;
+}
 
 
 
