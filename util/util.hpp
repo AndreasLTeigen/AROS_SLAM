@@ -3,6 +3,8 @@
 
 std::string zeroPad(int num, int pad_n);
 
+double iterativeAverage(double old_mean, double new_val, int n);
+
 void reduceImgContrast(cv::Mat img, int lower_level=128, int upper_level=255);
 
 void drawCircle(cv::Mat &img, cv::Point point, int radius=15);
@@ -66,6 +68,8 @@ cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K);
 cv::Mat projectKpt( cv::Mat XYZ1, cv::Mat T, cv::Mat K );
 
 void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, cv::Mat& uv1, cv::Mat& uv2, cv::Mat& XYZ_I2 );
+
+cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
 
 cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2);
 

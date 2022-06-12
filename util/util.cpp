@@ -31,6 +31,11 @@ std::string zeroPad(int num, int pad_n)
     return out.str();
 }
 
+double iterativeAverage(double old_mean, double new_val, int n)
+{
+    return old_mean + ((new_val - old_mean)/n);
+}
+
 void reduceImgContrast(cv::Mat img, int lower_level, int upper_level)
 {
     /* Function for moving the contrast of the image to the newly defined
@@ -612,6 +617,26 @@ void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, cv::Mat&
 
     cv::triangulatePoints(cv::Mat::eye(3,4, CV_64F), rel_T, uv1, uv2, coord_3D);
     XYZ_I2 = coord_3D;
+}
+
+cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs )
+{
+    /*
+    Arguments:
+        target_desc:        Descriptor all other descriptors should be calculated the distance to.
+        descs:              All other descriptors.
+        N:                  Number of descriptors.
+    Returns:
+        desc_dists:         Hamming distance between <target_desc> and all descriptors in <descs>
+    */
+
+    int N = region_descs.rows;
+    cv::Mat hamming_dists = cv::Mat::zeros(1, N, CV_64F);
+    for ( int i = 0; i < N; ++i )
+    {
+        hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i), cv::NORM_HAMMING);
+    }
+    return hamming_dists;
 }
 
 cv::Mat relTfromglobalTx2(cv::Mat T1, cv::Mat T2)

@@ -40,3 +40,8 @@ std::shared_ptr<Pose> NonePC::calculate( std::shared_ptr<FrameData> frame1, std:
     std::cerr << "ERROR: POSE CALCULATION ALGORITHM NOT IMPLEMENTED" << std::endl;
     return nullptr;
 }
+
+void NonePC::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+{
+    std::cerr << "ERROR: POSE CALCULATION ANALYSIS ALGORITHM NOT IMPLEMENTED" << std::endl;
+}

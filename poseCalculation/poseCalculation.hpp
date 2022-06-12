@@ -13,6 +13,7 @@ class PoseCalculator
         ~PoseCalculator(){};
 
         virtual std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )=0;
+        virtual void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )=0;
 };
 
 std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_method );
@@ -27,6 +28,7 @@ class NonePC : public PoseCalculator
         ~NonePC(){};
 
         std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
+        void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
 };
 
 

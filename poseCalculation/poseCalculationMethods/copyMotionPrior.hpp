@@ -14,6 +14,7 @@ class CopyMPPC : public PoseCalculator    // 5-Point with Outlier Rejection Pose
         ~CopyMPPC(){};
 
         std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
+        void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
 };
 
 #endif

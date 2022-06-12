@@ -15,6 +15,10 @@ class GJET : public PoseCalculator
     private:
         ParamID paramId = ParamID::STDPARAM;
 
+        double avg_match_score = 0;
+        double avg_calculated_descs = 0;
+        int n = 0;
+
     public:
         GJET(){};
         ~GJET(){};
@@ -24,6 +28,10 @@ class GJET : public PoseCalculator
         static double solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, cv::Mat& v_k );
         static cv::Mat solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h );
         static double epipolarConstrainedOptimization( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt );
+        void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
+
+        static double calculateAverageMatchScore(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
+                                                    std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2);
 };
 
 class LossFunction
@@ -54,6 +62,8 @@ class LossFunction
         LossFunction(int W, int H);
         ~LossFunction(){};
 
+        double calculated_descs = 0;
+
         // TODO: Move these variables to a new place
         std::string descriptor_name = "orb";
         int getPatchSize();
@@ -77,9 +87,11 @@ class LossFunction
 class DJETLoss : public LossFunction
 {
     private:
-        bool precompDescriptors = true;
-        int reg_size = 3;
+        bool precompDescriptors = false;
+        int reg_size = 5;
+
         std::vector<std::vector<cv::Mat>> descriptor_map;
+    
     public:
         DJETLoss(cv::Mat& img, std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts1, 
                                 std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2);
@@ -94,7 +106,7 @@ class DJETLoss : public LossFunction
 
         void collectDescriptorDistance( const cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
         std::vector<cv::KeyPoint> generateLocalKpts( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
-        cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
+        //cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
         void computeParaboloidNormalForAll( std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img );
         
@@ -103,6 +115,7 @@ class DJETLoss : public LossFunction
         void printKptLoc( std::vector<cv::KeyPoint> kpts, int rows, int cols );
         void printLocalHammingDists( cv::Mat& hamming_dist_arr, int s );
         void printDescriptorMapFill();
+        void printCalculatedDescsLog();
 };
 
 class ReprojectionLoss : public LossFunction
@@ -125,8 +138,8 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         int step_size = 1; //px
         int outlier_threshold = 2; //px
         double* p;
+        double best_loss = -1;
         cv::Mat img, K1, K2;
-        std::vector<cv::Mat> F_matrix_log;
         std::shared_ptr<LossFunction> loss_func;
         std::shared_ptr<Parametrization> parametrization;
         std::vector<std::shared_ptr<KeyPoint2>> m_kpts1, m_kpts2;
@@ -139,7 +152,8 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
 
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
-        void moveKptsToOptLoc(const cv::Mat& img);
+        void moveKptsToOptLoc(cv::Mat& F_matrix, const cv::Mat& img);
+        void moveKptsToOptLocAlt(cv::Mat& F_matrix, const cv::Mat& img);
 
         void addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
                          std::shared_ptr<KeyPoint2> kpt2);

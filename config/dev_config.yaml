@@ -45,9 +45,9 @@ Method.point_cull_3D: OoW
 # -----Video Out-----
 VOut.show: true
 VOut.record: false
-#VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
+VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
 #VOut.rec_path: /mnt/d/andreas/AROS/Results/Video/
-VOut.rec_path: /home/andreas/Pictures/DJET-VideoOut/
+#VOut.rec_path: /home/andreas/Pictures/DJET-VideoOut/
 
 # -----Log out----
 Log.save: true
@@ -59,10 +59,7 @@ ILog.save: false
 ILog.path: output/IncrementalLog/
 
 # -----UI config-----
-UI.timing_show: true
-UI.tracking_log_show: true
-UI.keypoint_trail_length: 10
-UI.GUI_show: true
+UI.GUI_show: false
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15
@@ -71,10 +68,15 @@ UI.point_size: 2.0
 UI.line_width: 1.0
 UI.menu_bar_width: 175
 
+# -----Video viewer-----
+UI.timing_show: true
+UI.tracking_log_show: true
+UI.keypoint_trail_length: 10
+
 
 # -----Sequencer parameter config-----
-Seq.starting_frame_nr: 105
-Seq.frame_buffer_size: 2
+Seq.starting_frame_nr: 0
+Seq.frame_buffer_size: 1
 
 # -----Tracker parameter config-----
 Trck.tracking_window_length: 50

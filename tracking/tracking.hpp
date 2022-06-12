@@ -41,6 +41,7 @@ class FTracker
         int getTrackingWindowLength();
         int getFrameListLength();
         cv::Mat getGlobalPose();
+        //std::shared_ptr<PoseCalculator> getPoseCalculator();
         std::vector<std::shared_ptr<FrameData>> getTrackingFrames();
         std::shared_ptr<FrameData> getFrame(int index);
         std::shared_ptr<Map3D> getMap3D();

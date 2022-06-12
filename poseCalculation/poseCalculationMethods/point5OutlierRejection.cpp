@@ -12,6 +12,11 @@ std::shared_ptr<Pose> P5ORPC::calculate( std::shared_ptr<FrameData> frame1, std:
     return this->do5pointAlgOutlierRejection( frame1, frame2, frame1->getKMatrix() );
 }
 
+void P5ORPC::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+{
+    std::cerr << "ERROR: POSE CALCULATION ANALYSIS ALGORITHM NOT IMPLEMENTED" << std::endl;
+}
+
 std::shared_ptr<Pose> P5ORPC::do5pointAlgOutlierRejection(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat K_matrix)
 {
     /*  Arguments:

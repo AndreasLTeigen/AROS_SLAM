@@ -79,6 +79,14 @@ Mat FTracker::getGlobalPose()
     return this->T_global;
 }
 
+/*
+std::shared_ptr<PoseCalculator> FTracker::getPoseCalculator()
+{
+    // NOTE: This function is not protected from data races.
+    return this->pose_calculator;
+}
+*/
+
 vector<shared_ptr<FrameData>> FTracker::getTrackingFrames()
 {
     // <WARNING> <frame_list> will not be protected against race conditions outside the scope of this function 
@@ -403,74 +411,6 @@ void FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
     cv::waitKey(0);
 }
 
-
-//Function specific to GJET 
-//TODO: move after use
-void FTracker::kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int frame_idx )
-{
-    int random_idx, canvas_h, canvas_w;
-    double hamming_dist;
-    cv::Mat img1, img2, F_matrix, A, uv, hamming;
-    cv::Mat canvas(840, 1400, img_disp.type(), cv::Scalar::all(0));
-    shared_ptr<FrameData> frame1, frame2;
-    shared_ptr<KeyPoint2> kpt1, kpt2;
-    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
-
-    if (frame_idx=-1)
-    {
-        frame_idx = this->getFrameListLength() - 1;  //TODO: Should not be 1, depends on <comparion frame spacing variable>
-    }
-
-    frame1 = this->getFrame( frame_idx );
-    frame2 = this->getFrame( frame_idx -1 );
-
-    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
-    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
-
-    img1 = frame1->getImg();
-    img2 = frame2->getImg();
-    cvtColor(img1, img1, cv::COLOR_GRAY2BGR );
-    cvtColor(img2, img2, cv::COLOR_GRAY2BGR );
-
-    int border = 30;
-    //cv::Size size(31,31);
-    cv::Size size(101,101);
-
-    int num_it = int(matched_kpts1[0]->getDescriptor("log_cnt").at<double>(0,0));
-
-    for (int it = 0; it < num_it+1; ++it )
-    {
-
-        copyMakeBorder(img_disp, canvas, 0, canvas.rows-img_disp.rows, 0, canvas.cols-img_disp.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
-        
-        F_matrix = matched_kpts1[0]->getDescriptor("F_matrix_log" + std::to_string(it));
-        //std::cout << "F_matrix: " << F_matrix << std::endl;
-
-        srand (time(NULL));
-        for ( int i = 0; i < 10; ++i )
-        {
-            random_idx = rand() % matched_kpts1.size();
-            random_idx = i;
-            kpt1 = matched_kpts1[random_idx];
-            kpt2 = matched_kpts2[random_idx];
-            hamming = kpt1->getDescriptor("hamming_log" + std::to_string(it));
-            A = kpt1->getDescriptor("quad_fit_log" + std::to_string(it));
-            cv::Mat z;
-            if (!A.empty())
-            {
-                uv = kpt1->getDescriptor("loc_from_log" + std::to_string(it));
-                z = sampleQuadraticForm(A, cv::Point(uv.at<double>(0,0),uv.at<double>(1,0)), cv::Size(31,31) );
-            }
-            KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
-            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2, hamming, it, false, false );
-            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 620), size, F_matrix, kpt2, hamming, it, true, true );
-            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 730), size, F_matrix, kpt2, z, it, true, true );
-        }
-
-        cv::imshow("KeyPoint Log iteration: " + std::to_string(it), canvas);
-        cv::waitKey(0);
-    }
-}
 
 void FTracker::incremental3DMapTrackingLog(shared_ptr<FrameData> frame, string ILog)
 {

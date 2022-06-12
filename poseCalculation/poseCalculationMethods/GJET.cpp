@@ -170,16 +170,12 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     options.use_nonmonotonic_steps= false;
     //options.initial_trust_region_radius = 100;
     //options.max_trust_region_radius = 100;
-    //options.logging_type = ceres::LoggingType::SILENT;
+    options.logging_type = ceres::LoggingType::SILENT;
 
     // Solve!
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     std::cout << summary.BriefReport() << "\n";
-
-    // Last changes
-    itUpdate.moveKptsToOptLoc(img);
-    FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -211,14 +207,24 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     rel_pose->updateParametrization(); // This function call can be removed
     std::cout << "p_corr: " << *rel_pose->getParametrization() << "\n";
 
+    F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
+    //--------------------------------------
+
+    // Last changes to keypoint locations
+    itUpdate.moveKptsToOptLoc(F_matrix, img);
+    FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
 
     matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
-
-    F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
     std::cout << "Total Loss: " << loss_func->calculateTotalLoss(F_matrix, matched_kpts1, matched_kpts2) << "\n" << std::endl;
-    //--------------------------------------
     
+    this->n += 1;
+    this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAverageMatchScore( matched_kpts1, matched_kpts2 ), this->n);
+    this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
+
+    std::cout << "Avg match score: " << avg_match_score << std::endl;
+    std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
+
     return rel_pose;
 }
 
@@ -315,7 +321,84 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     return GJET::solveQuadraticFormForV( A_k, b_k, c_k, v_k_opt );
 }
 
+void GJET::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+{
+    int random_idx, canvas_h, canvas_w;
+    double hamming_dist;
+    cv::Mat img1, img2, F_matrix, A, uv, hamming;
+    cv::Mat canvas(840, 1400, img_disp.type(), cv::Scalar::all(0));
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
 
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+
+    img1 = frame1->getImg();
+    img2 = frame2->getImg();
+    cvtColor(img1, img1, cv::COLOR_GRAY2BGR );
+    cvtColor(img2, img2, cv::COLOR_GRAY2BGR );
+
+    int border = 30;
+    //cv::Size size(31,31);
+    cv::Size size(101,101);
+
+    int num_it = int(matched_kpts1[0]->getDescriptor("log_cnt").at<double>(0,0));
+
+    for (int it = 0; it < num_it+1; ++it )
+    {
+
+        copyMakeBorder(img_disp, canvas, 0, canvas.rows-img_disp.rows, 0, canvas.cols-img_disp.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
+        
+        F_matrix = matched_kpts1[0]->getDescriptor("F_matrix_log" + std::to_string(it));
+        //std::cout << "F_matrix: " << F_matrix << std::endl;
+
+        srand (time(NULL));
+        for ( int i = 0; i < 10; ++i )
+        {
+            random_idx = rand() % matched_kpts1.size();
+            random_idx = i;
+            kpt1 = matched_kpts1[random_idx];
+            kpt2 = matched_kpts2[random_idx];
+            hamming = kpt1->getDescriptor("hamming_log" + std::to_string(it));
+            A = kpt1->getDescriptor("quad_fit_log" + std::to_string(it));
+            cv::Mat z;
+            if (!A.empty())
+            {
+                uv = kpt1->getDescriptor("loc_from_log" + std::to_string(it));
+                z = sampleQuadraticForm(A, cv::Point(uv.at<double>(0,0),uv.at<double>(1,0)), cv::Size(31,31) );
+            }
+            KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2, hamming, it, false, false );
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 620), size, F_matrix, kpt2, hamming, it, true, true );
+            KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 730), size, F_matrix, kpt2, z, it, true, true );
+        }
+
+        cv::imshow("KeyPoint Log iteration: " + std::to_string(it), canvas);
+        cv::waitKey(0);
+    }
+}
+
+double GJET::calculateAverageMatchScore(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
+                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2)
+{
+    double accum;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    cv::Mat desc1, desc2, hamming;
+
+    for (int i = 0; i < matched_kpts1.size(); ++i)
+    {
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
+
+        desc1 = kpt1->getDescriptor("orb");
+        desc2 = kpt2->getDescriptor("orb");
+
+        hamming = computeHammingDistance(desc1, desc2);
+        accum += hamming.at<double>(0,0);
+    }
+    accum = accum / matched_kpts1.size();
+    return accum;
+}
 
 
 
@@ -413,7 +496,11 @@ DJETLoss::DJETLoss(cv::Mat& img, std::vector<std::shared_ptr<KeyPoint2>>& matche
     this->descriptor_map = descriptors;
     if (this->precompDescriptors)
     {
+        auto t1 = high_resolution_clock::now(); 
         this->precomputeDescriptors( img );
+        auto t2 = high_resolution_clock::now();
+        auto ms1 = duration_cast<milliseconds>(t2-t1);
+        std::cout << "Dense descriptor calculation time: " << ms1.count() << "ms" << std::endl;
     }
 }
 
@@ -444,8 +531,6 @@ bool DJETLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& im
 
     if ( this->validKptLoc( x_update, y_update, kpt->getSize() ) )
     {
-        cv::Mat desc;
-
         kpt->setCoordx(x_update);
         kpt->setCoordy(y_update);
         return true;
@@ -478,6 +563,7 @@ void DJETLoss::computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>&
         desc = this->descriptor_map[kpt.pt.y][kpt.pt.x];
         if (desc.empty())
         {
+            this->calculated_descs += 1;
             cmpt_kpts.push_back(kpt);
         }
     }
@@ -514,7 +600,7 @@ void DJETLoss::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoin
 
     //target_desc = kpt1->getDescriptor(descriptor_name);
     target_desc = kpt2->getDescriptor(this->descriptor_name);
-    hamming_dists = this->computeHammingDistance(target_desc, local_descs);
+    hamming_dists = computeHammingDistance(target_desc, local_descs);
     this->generateCoordinateVectors(kpt1->getCoordX(), kpt1->getCoordY(), this->reg_size, x, y);
     z = hamming_dists.t();
 
@@ -553,8 +639,8 @@ vector<cv::KeyPoint> DJETLoss::generateLocalKpts( shared_ptr<KeyPoint2> kpt, con
     return local_kpts;
 }
 
-Mat DJETLoss::computeHammingDistance( Mat& target_desc, Mat& region_descs )
-{
+//Mat DJETLoss::computeHammingDistance( Mat& target_desc, Mat& region_descs )
+//{
     /*
     Arguments:
         target_desc:        Descriptor all other descriptors should be calculated the distance to.
@@ -563,7 +649,7 @@ Mat DJETLoss::computeHammingDistance( Mat& target_desc, Mat& region_descs )
     Returns:
         desc_dists:         Hamming distance between <target_desc> and all descriptors in <descs>
     */
-
+/*
     int N = region_descs.rows;
     Mat hamming_dists = Mat::zeros(1, N, CV_64F);
     for ( int i = 0; i < N; ++i )
@@ -572,6 +658,7 @@ Mat DJETLoss::computeHammingDistance( Mat& target_desc, Mat& region_descs )
     }
     return hamming_dists;
 }
+*/
 
 void DJETLoss::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
 {
@@ -708,6 +795,11 @@ void DJETLoss::printDescriptorMapFill()
     cv::waitKey(0);
 }
 
+void DJETLoss::printCalculatedDescsLog()
+{
+    std::cout << "Total number of descriptors calculated: " << this->calculated_descs << std::endl;
+}
+
 
 
 ReprojectionLoss::ReprojectionLoss(cv::Mat& img)
@@ -830,18 +922,21 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
         }
         std::cout << "\n";
         */
-
+        
+        
         vector<double> p_vec;
         for ( int i = 0; i < 6; ++i )
         {
             p_vec.push_back(p[i]);
         }
+        
 
         parametrization->composeRMatrixAndTParam( p_vec, R, t );
         E_matrix = composeEMatrix( R, t );
         F_matrix = fundamentalFromEssential( E_matrix, this->K1, this->K2 );
 
 
+        // Calculate update function
         for (int i = 0; i < this->m_kpts1.size(); ++i)
         {
 
@@ -856,26 +951,38 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
             loss_func->linearizeLossFunction( this->img, kpt1, kpt2 );
 
             loss_n = loss_func->calculateKptLoss( F_matrix, kpt1, kpt2, v_k_opt );
+            kpt1->setDescriptor(v_k_opt, "v_k_opt_candidate");
 
-            //Updating the keypoint
-            kpt1->setDescriptor(v_k_opt, "v_k_opt");
-            this->logOptLoc(kpt1);
 
-            // TODO: Remove later when no longer usefull
-            KeyPointUpdate::logKptState( kpt1, F_matrix );
-
-            in_bounds = this->updateKeypoint(kpt1, this->img);
-
-            if ( !in_bounds )
-            {
-                invalidateMatch( kpt1, kpt2 );
-            }
-
-            //TODO: Remove this when done.
             tot_loss += loss_n*loss_n;
         }
-        std::cout << "Total Loss: " << tot_loss << std::endl;
-        //this->F_matrices.push_back(F_matrix);
+        //std::cout << "Total Loss: " << tot_loss << std::endl;
+
+        // Keypoint positions are only updated if loss is reduced.
+        if ( tot_loss < this->best_loss || this->best_loss == -1 )
+        {
+            this->best_loss = tot_loss;
+            for (int i = 0; i < this->m_kpts1.size(); ++i)
+            {
+                kpt1 = m_kpts1[i];
+                kpt2 = m_kpts2[i];
+
+                //Updating the keypoint
+                v_k_opt = kpt1->getDescriptor("v_k_opt_candidate");
+                kpt1->setDescriptor(v_k_opt, "v_k_opt");
+                this->logOptLoc(kpt1);
+
+                // TODO: Remove later when no longer usefull
+                KeyPointUpdate::logKptState( kpt1, F_matrix );
+
+                in_bounds = this->updateKeypoint(kpt1, this->img);
+
+                if ( !in_bounds )
+                {
+                    invalidateMatch( kpt1, kpt2 );
+                }
+            }
+        }
     }
 }
 
@@ -896,9 +1003,10 @@ bool KeyPointUpdate::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::M
     return in_bounds;
 }
 
-void KeyPointUpdate::moveKptsToOptLoc(const cv::Mat& img)
+void KeyPointUpdate::moveKptsToOptLoc(cv::Mat& F_matrix, const cv::Mat& img)
 {
     cv::Mat y_k_opt;
+    bool in_bounds;
     int desc_radius;
     double x_update, y_update;
     shared_ptr<KeyPoint2> kpt1, kpt2;
@@ -929,6 +1037,7 @@ void KeyPointUpdate::moveKptsToOptLoc(const cv::Mat& img)
         {
             invalidateMatch(kpt1, kpt2);
         }
+
         // Updating descriptor.
         cv::Mat desc;
         cv::KeyPoint kpt_cv = cv::KeyPoint(kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize());
@@ -938,6 +1047,43 @@ void KeyPointUpdate::moveKptsToOptLoc(const cv::Mat& img)
     }
 }
 
+void KeyPointUpdate::moveKptsToOptLocAlt(cv::Mat& F_matrix, const cv::Mat& img)
+{
+    cv::Mat v_k_opt;
+    bool in_bounds;
+    int desc_radius;
+    double x_update, y_update;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    for (int i = 0; i < this->m_kpts1.size(); ++i)
+    {
+        kpt1 = this->m_kpts1[i];
+        kpt2 = this->m_kpts2[i];
+
+        if ( !validMatch(kpt1, kpt2) )
+        {
+            continue;
+        }
+
+
+        loss_func->linearizeLossFunction( this->img, kpt1, kpt2 );
+        loss_func->calculateKptLoss( F_matrix, kpt1, kpt2, v_k_opt );
+        kpt1->setDescriptor(v_k_opt, "v_k_opt");
+
+        in_bounds = this->updateKeypoint(kpt1, this->img);
+
+        if ( !in_bounds )
+        {
+            invalidateMatch( kpt1, kpt2 );
+        }
+
+        // Updating descriptor.
+        cv::Mat desc;
+        cv::KeyPoint kpt_cv = cv::KeyPoint(kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize());
+        vector<cv::KeyPoint> kpt_cv_vec{kpt_cv};
+        this->loss_func->computeDescriptors(img, kpt_cv_vec, desc);
+        kpt1->setDescriptor(desc.row(0), this->loss_func->descriptor_name);
+    }
+}
 
 void KeyPointUpdate::addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
                                  std::shared_ptr<KeyPoint2> kpt2)
@@ -947,7 +1093,7 @@ void KeyPointUpdate::addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
 }
 
 double KeyPointUpdate::calculateScale(cv::Mat& v_k_opt)
-{
+{   /*
     double v_norm = cv::norm(v_k_opt);
     if ( v_norm < this->step_size )
     {
@@ -957,6 +1103,8 @@ double KeyPointUpdate::calculateScale(cv::Mat& v_k_opt)
     {
         return (this->step_size)/v_norm;
     }
+    */
+    return 0.1;
 }
 
 
