@@ -470,6 +470,8 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         {
             kpt_x = int( (uv.at<double>(0,0) + v_k_opt.at<double>(0,0) - left)*size.width/reg_w );
             kpt_y = int( (uv.at<double>(1,0) + v_k_opt.at<double>(1,0) - top)*size.height/reg_h );
+            //kpt_x = int((kpt->getCoordX() - left)*size.width/reg_w);
+            //kpt_y = int((kpt->getCoordY() - top)*size.height/reg_h);
         }
         else
         {

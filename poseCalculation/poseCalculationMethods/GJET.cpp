@@ -114,8 +114,8 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
-    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
+    //shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
 
 
     // ------ CERES test -------------
@@ -165,12 +165,12 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 50;
+    options.max_num_iterations = 100;
     options.num_threads = 1;
     options.use_nonmonotonic_steps= false;
-    //options.initial_trust_region_radius = 100;
+    //options.initial_trust_region_radius = 1;
     //options.max_trust_region_radius = 100;
-    options.logging_type = ceres::LoggingType::SILENT;
+    //options.logging_type = ceres::LoggingType::SILENT;
 
     // Solve!
     ceres::Solver::Summary summary;
@@ -1003,7 +1003,7 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
                 // TODO: Remove later when no longer usefull
                 KeyPointUpdate::logKptState( kpt1, F_matrix );
 
-                in_bounds = this->updateKeypoint(kpt1, this->img);
+                in_bounds = true;//this->updateKeypoint(kpt1, this->img);
 
                 if ( !in_bounds )
                 {

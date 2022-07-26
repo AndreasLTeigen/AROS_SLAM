@@ -361,6 +361,14 @@ void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
     drawEpipolarLines( F_matrix, img_disp, pts2, pts1 );
 }
 
+void FTracker::analysis(YAML::Node& config, cv::Mat& img_disp)
+{
+    if (config["Anlys.pose_calculator"].as<bool>() == true)
+    {
+        this->pose_calculator->analysis(img_disp, this->getFrame(-1), this->getFrame(-2)); //Change this to be able to handle other than the last two frames
+    }
+}
+
 void FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
 {
     int random_idx, canvas_h, canvas_w;

@@ -95,7 +95,7 @@ class DJETLoss : public LossFunction
 {
     private:
         bool precompDescriptors = false;
-        int reg_size = 5;
+        int reg_size = 7;
 
         std::vector<std::vector<cv::Mat>> descriptor_map;
     
