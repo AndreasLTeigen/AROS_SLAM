@@ -19,24 +19,20 @@ using std::chrono::high_resolution_clock;
 // Epipolar Constrained Optimization Solver
 struct ECOptSolver 
 {
-    ECOptSolver(    const cv::Mat K1, 
-                    const cv::Mat K2,
-                    const shared_ptr<KeyPoint2> kpt1,
-                    const shared_ptr<KeyPoint2> kpt2,
-                    const shared_ptr<Parametrization> parametrization, 
-                    const shared_ptr<LossFunction> loss_func )
+    ECOptSolver( const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
+                        const shared_ptr<KeyPoint2> kpt2, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func )
                 {
                     K1_ = K1;
                     K2_ = K2;
-                    kpt1_ = kpt1,
-                    kpt2_ = kpt2,
+                    kpt1_ = kpt1;
+                    kpt2_ = kpt2;
                     loss_func_ = loss_func;
                     parametrization_ = parametrization;
                 }
     
-    bool operator()( const double* p, const double* Y, double* residual ) const
+    bool operator()( const double* p, double* residual ) const
     {
-        if ( !loss_func->validKptLoc( Y[0], Y[1], kpt1_->getSize() ) )
+        if ( !KeyPointUpdate::validMatch(kpt1_, kpt2_) )
         {
             residual[0] = 0;
         }
@@ -46,20 +42,18 @@ struct ECOptSolver
 
             // TODO: The variables below are calculated for every single keypoint, but this shouldnt have to be the case.
             //          See if there is some place this can be calculated only once per test change of the parameters.
-            
-            int n = sizeof(p) / sizeof(p[0]);
-            vector<double> p_vec(p, p + n);
-
-            n = sizeof(X) / sizeof(X[0]);
-            vector<double> Y_vec(Y, Y + n);
-            vector<double> X_vec{ kpt2_->getCoordX(), kpt2_->getCoordY() };
+            vector<double> p_vec;
+            for ( int i = 0; i < 6; ++i )
+            {
+                p_vec.push_back(p[i]);
+            }
 
             parametrization_->composeRMatrixAndTParam( p_vec, R, t );
             E_matrix = composeEMatrix( R, t );
             F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
 
 
-            residual[0] = loss_func_->calculateKptLoss( F_matrix, Y_vec, X_vec, v_k_opt );
+            residual[0] = loss_func_->calculateKptLoss( F_matrix, kpt1_, kpt2_, v_k_opt );
         }
 
         return true;
@@ -151,7 +145,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
         if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) )
         {
             ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6>(
-                new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), parametrization, loss_func));
+                new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
             problem.AddResidualBlock(cost_function, nullptr, p);
 
             itUpdate.addEvalKpt(kpt1, kpt2);
@@ -461,16 +455,6 @@ LossFunction::LossFunction(int W, int H)
     this->H = H;
 }
 
-int LossFunction::getImgWidth()
-{
-    return this->W;
-}
-
-int LossFunction::getImgHeight()
-{
-    return this->H;
-}
-
 int LossFunction::getPatchSize()
 {
     return this->patchSize;
@@ -576,12 +560,7 @@ bool DJETLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& im
     }
 }
 
-void DJETLoss::linearizeLossFunctionV2( vector<double> y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
-{
-    this->collectDescriptorDistanceV2( this->img, y_k, kpt2, A);
-}
-
-void DJETLoss::linearizeLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
+void DJETLoss::linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
 {
     this->collectDescriptorDistance( img, kpt1, kpt2 );
 }
@@ -628,22 +607,7 @@ void DJETLoss::computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>&
 }
 
 
-void DJETLoss::collectDescriptorDistanceV2( std::vector<double> y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
-{
-    cv::Mat local_descs, target_desc, x, y, z;
-    vector<cv::KeyPoint> local_kpts;
 
-    local_kpts = this->generateLocalKpts( y_k[0], y_k[1], this->img );
-    this->computeDescriptors(this->img, local_kpts, local_descs);
-
-    //target_desc = kpt1->getDescriptor(descriptor_name);
-    target_desc = kpt2->getDescriptor(this->descriptor_name);
-    hamming_dists = computeHammingDistance(target_desc, local_descs);
-    this->generateCoordinateVectors(y_k[0], y_k[1], this->reg_size, x, y);
-    z = hamming_dists.t();
-
-    A = fitQuadraticForm(x, y, z);
-}
 
 void DJETLoss::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
 {
@@ -662,28 +626,6 @@ void DJETLoss::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoin
     A = fitQuadraticForm(x, y, z);
     kpt1->setDescriptor( A, "quad_fit" );
     kpt1->setDescriptor( z.reshape(1, this->reg_size), "hamming");
-}
-
-vector<cv::KeyPoint> DJETLoss::generateLocalKptsV2( double kpt_x, double kpt_y, double kpt_size, const cv::Mat& img )
-{
-    // Assumes the local region around the keypoint will produce all valid descriptors.
-    
-    double ref_x, ref_y;
-    vector<cv::KeyPoint> local_kpts;
-
-    ref_x = kpt_x - reg_size/2; 
-    ref_y = kpt_y - reg_size/2;
-    for ( int row_i = 0; row_i < reg_size; ++row_i )
-    {
-        y = ref_y + row_i;
-        for ( int col_j = 0; col_j < reg_size; ++col_j )
-        {
-            x = ref_x + col_j;
-            local_kpts.push_back(cv::KeyPoint(x,y,kpt_size));
-        }
-    }
-    
-    return local_kpts;
 }
 
 vector<cv::KeyPoint> DJETLoss::generateLocalKpts( shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
