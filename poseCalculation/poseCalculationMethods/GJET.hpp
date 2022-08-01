@@ -73,12 +73,15 @@ class LossFunction
 
         // TODO: Move these variables to a new place
         std::string descriptor_name = "orb";
+        int getImgWidth();
+        int getImgHeight();
         int getPatchSize();
 
         virtual double calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)=0;
         virtual double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)=0;
         virtual bool validKptLoc( double x, double y, int kpt_size )=0;
         virtual bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )=0;
+        virtual void linearizeLossFunctionV2( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )=0;
         virtual void linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )=0;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
@@ -97,6 +100,7 @@ class DJETLoss : public LossFunction
         bool precompDescriptors = false;
         int reg_size = 7;
 
+        cv::Mat img;
         std::vector<std::vector<cv::Mat>> descriptor_map;
     
     public:
@@ -108,10 +112,13 @@ class DJETLoss : public LossFunction
         double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )override;
+        void linearizeLossFunctionV2( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
         void linearizeLossFunction(cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )override;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
+        void collectDescriptorDistanceV2( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A );
         void collectDescriptorDistance( const cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 );
+        std::vector<cv::KeyPoint> generateLocalKptsV2( double kpt_x, double kpt_y, double kpt_size, const cv::Mat& img );
         std::vector<cv::KeyPoint> generateLocalKpts( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
         //cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
