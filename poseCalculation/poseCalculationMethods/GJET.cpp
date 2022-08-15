@@ -233,7 +233,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     //itUpdate.moveKptsToOptLoc(F_matrix, img);
     //FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
 
-    itUpdate.updateKeypoints(matched_kpts1, matched_kpts2, points2D);
+    //itUpdate.updateKeypoints(matched_kpts1, matched_kpts2, points2D);
 
     matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
