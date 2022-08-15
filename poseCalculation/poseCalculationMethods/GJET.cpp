@@ -122,6 +122,7 @@ struct GJETSolver
 
 std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
+    std::cout << "GJET Start" << std::endl;
     // Assumes K_matrix is equal for both frames.
     cv::Mat E_matrix, F_matrix, inliers;
     std::vector<cv::Point> pts1, pts2;
@@ -250,6 +251,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     std::cout << "STD match score: " << std::sqrt(this->varianceN_match_score/this->n_matches) << std::endl;
     std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
 
+    std::cout << "GJET End" << std::endl;
     return rel_pose;
 }
 
