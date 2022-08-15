@@ -69,6 +69,12 @@ KeyPoint2::~KeyPoint2()
     //std::cout << "Keypoint Destroyed" << std::endl;
 }
 
+void KeyPoint2::setValidFlag(bool valid)
+{
+    std::unique_lock lock(this->mutex_valid);
+    this->valid = valid;
+}
+
 void KeyPoint2::setKptID(int kpt_id)
 {
     std::unique_lock lock(this->mutex_kpt_id);
@@ -156,6 +162,7 @@ void KeyPoint2::removeAllMatchReferences(int matched_frame_nr)
 
 void KeyPoint2::removeAllMatches(int matched_frame_nr)
 {
+    //TODO: Make this into a static function.
     std::shared_ptr<KeyPoint2> temp_kpt;
 
     std::unique_lock lock(this->mutex_matches_map);
@@ -170,6 +177,12 @@ void KeyPoint2::removeAllMatches(int matched_frame_nr)
 void KeyPoint2::orderMatchesByConfidence(int matched_frame_nr)
 {
     //TODO: MAKE THIS FUNCTION, SOME FUNCTION RELIES ON AN ORDERED KEYPOINT LIST
+}
+
+bool KeyPoint2::isValid()
+{
+    std::shared_lock lock(this->mutex_valid);
+    return this->valid;
 }
 
 int KeyPoint2::getKptId()

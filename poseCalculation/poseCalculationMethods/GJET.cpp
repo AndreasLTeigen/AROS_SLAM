@@ -32,28 +32,34 @@ struct ECOptSolver
                     kpt2_ = kpt2,
                     loss_func_ = loss_func;
                     parametrization_ = parametrization;
+
+
+                    cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
+                    residual_.at<double>(0,0) = 10000;
+
+                    kpt1_->setDescriptor(residual_, "residual");
                 }
     
     bool operator()( const double* p, const double* Y, double* residual ) const
     {
         if ( !loss_func_->validKptLoc( Y[0], Y[1], kpt1_->getSize() ) )
         {
-            residual[0] = 0;
+            residual[0] = kpt1_->getDescriptor("residual").at<double>(0,0);
         }
         else
         {  
             cv::Mat A, R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
 
-            // TODO: The variables below are calculated for every single keypoint, but this shouldnt have to be the case.
+            // TODO: The variables below are calculated for every single keypoint, but this shouldn't have to be the case.
             //          See if there is some place this can be calculated only once per test change of the parameters.
             
-            int n = sizeof(p) / sizeof(p[0]);
+            int n = 6;
             vector<double> p_vec(p, p + n);
 
             y_k = (cv::Mat_<double>(3,1)<<  Y[0],
                                             Y[1],
                                             1);
-            y_k = (cv::Mat_<double>(3,1)<<  kpt2_->getCoordX(),
+            x_k = (cv::Mat_<double>(3,1)<<  kpt2_->getCoordX(),
                                             kpt2_->getCoordY(),
                                             1);
 
@@ -64,6 +70,11 @@ struct ECOptSolver
             loss_func_->linearizeLossFunctionV2( y_k, kpt2_, A);
 
             residual[0] = loss_func_->calculateKptLoss( F_matrix, A, y_k, x_k, v_k_opt );
+
+
+            cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
+            residual_.at<double>(0,0) = residual[0];
+            kpt1_->setDescriptor(residual_, "residual");
         }
 
         return true;
@@ -111,7 +122,6 @@ struct GJETSolver
 
 std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
-    std::cout << "1111111111" << std::endl;
     // Assumes K_matrix is equal for both frames.
     cv::Mat E_matrix, F_matrix, inliers;
     std::vector<cv::Point> pts1, pts2;
@@ -130,7 +140,6 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
     //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
 
-    std::cout << "222222222" << std::endl;
     // ------ CERES test -------------
     int N = matched_kpts1.size();
     cv::Mat A_d_k, x_k, y_k;
@@ -140,7 +149,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     vector<double> p_init = rel_pose->getParametrization( this->paramId )->getParamVector();
     std::cout << *rel_pose->getParametrization( this->paramId ) << "\n";
     double p[p_init.size()];
-    vector<double*> Y;
+    vector<double*> points2D;
     
     //Filling p with values from p_init
     std::copy(p_init.begin(), p_init.end(), p);
@@ -149,10 +158,9 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
     KeyPointUpdate itUpdate( img, p, frame1->getKMatrix(), frame2->getKMatrix(), loss_func, parametrization );  
     ceres::Problem::Options problem_options;
-    problem_options.evaluation_callback = &itUpdate; 
+    //problem_options.evaluation_callback = &itUpdate; 
     ceres::Problem problem(problem_options);
     
-    std::cout << "333333333333" << std::endl;
     for ( int n = 0; n < N; ++n )
     {
         kpt1 = matched_kpts1[n];
@@ -160,43 +168,36 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
         if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) )
         {
-            double Y_elem[2] = {kpt1->getCoordX(), kpt1->getCoordY()};
-            Y.push_back(Y_elem);
+            double point2D[2] = {kpt1->getCoordX(), kpt1->getCoordY()};
+            points2D.push_back(point2D);
 
             ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6, 2>(
                 new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
-            problem.AddResidualBlock(cost_function, nullptr, p, Y_elem);
-
-            itUpdate.addEvalKpt(kpt1, kpt2);
+            problem.AddResidualBlock(cost_function, nullptr, p, point2D);
         }
         else
         {
             KeyPointUpdate::invalidateMatch( kpt1, kpt2 );
         }
-    }             
-
-    std::cout << "444444444444" << std::endl;
+    }
 
     // Configure the solver
     ceres::Solver::Options options;
+    options.use_nonmonotonic_steps = true;
+    options.preconditioner_type = ceres::SCHUR_JACOBI;
+    //options.linear_solver_type = ceres::ITERATIVE_SCHUR;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
     options.max_num_iterations = 100;
     options.num_threads = 1;
-    options.use_nonmonotonic_steps= false;
     //options.initial_trust_region_radius = 1;
     //options.max_trust_region_radius = 100;
     //options.logging_type = ceres::LoggingType::SILENT;
 
-    std::cout << "4141414141414" << std::endl;
     // Solve!
     ceres::Solver::Summary summary;
-    std::cout << "42424242424" << std::endl;
     ceres::Solve(options, &problem, &summary);
-    std::cout << "433434343" << std::endl;
     std::cout << summary.BriefReport() << "\n";
-
-    std::cout << "55555555555" << std::endl;
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -213,8 +214,6 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     int n = sizeof(p) / sizeof(p[0]);
     vector<double> p_vec(p, p + n);
 
-    std::cout << "66666666666666" << std::endl;
-
     rel_pose->setPose( p_vec, this->paramId );
     //rel_pose->setPose( p_init, this->paramId );
 
@@ -226,20 +225,18 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     rel_pose->updateParametrization(); // This function call can be removed
     std::cout << "p_corr: " << *rel_pose->getParametrization() << "\n";
 
-    std::cout << "77777777777777777" << std::endl;
-
     F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
     //--------------------------------------
 
     // Last changes to keypoint locations
     //itUpdate.moveKptsToOptLoc(F_matrix, img);
-    FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
+    //FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
+
+    itUpdate.updateKeypoints(matched_kpts1, matched_kpts2, points2D);
 
     matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
-    std::cout << "Total Loss: " << loss_func->calculateTotalLoss(F_matrix, matched_kpts1, matched_kpts2) << "\n" << std::endl;
-    
-    std::cout << "8888888888888888" << std::endl;
+    //std::cout << "Total Loss: " << loss_func->calculateTotalLoss(F_matrix, matched_kpts1, matched_kpts2) << "\n" << std::endl;
 
     // Evaluation
     int old_mean = this->avg_match_score;
@@ -249,7 +246,6 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     this->varianceN_match_score = GJET::iterateMatchScoreVarianceN(matched_kpts1, matched_kpts2, this->varianceN_match_score, old_mean, this->avg_match_score);
     this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
 
-    std::cout << "999999999999999999" << std::endl;
     std::cout << "Avg match score: " << avg_match_score << std::endl;
     std::cout << "STD match score: " << std::sqrt(this->varianceN_match_score/this->n_matches) << std::endl;
     std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
@@ -344,7 +340,20 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
 
     //SOLVE KKT Problem KKT*x = q!
     b_k_neg = -b_k;
+
     v_k_opt = GJET::solveKKT( A_k, F_d_x, b_k_neg, q_31 );
+
+    /*
+    std::cout << "x1_k:" << x1_k << std::endl;
+    std::cout << "y1_k:" << y1_k << std::endl;
+    std::cout << "F_d:" << F_d << std::endl;
+    std::cout << "A_k:" << A_k << std::endl;
+    std::cout << "F_d_x:" << F_d_x << std::endl;
+    std::cout << "b_k_neg:" << b_k_neg << std::endl;
+    std::cout << "q_31:" << q_31 << std::endl;
+    std::cout << "v_k_opt:" << v_k_opt << std::endl;
+    std::cout << "---------------" << std::endl;
+    */
 
 
     return GJET::solveQuadraticFormForV( A_k, b_k, c_k, v_k_opt );
@@ -1012,6 +1021,39 @@ KeyPointUpdate::KeyPointUpdate(   cv::Mat& img, double* p, cv::Mat K1, cv::Mat K
     this->parametrization = parametrization;
 }
 
+void KeyPointUpdate::updateKeypoints(   vector<shared_ptr<KeyPoint2>> matched_kpts1, 
+                                        vector<shared_ptr<KeyPoint2>> matched_kpts2, 
+                                        vector<double*> points2D)
+{
+    double* point2D;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+
+    int n = 0;
+    for ( int i = 0; i < matched_kpts1.size(); ++i )
+    {
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
+
+        if (KeyPointUpdate::validMatch(kpt1, kpt2))
+        {
+            point2D = points2D[n];
+            if (this->loss_func->validKptLoc( point2D[0], point2D[1], kpt1->getSize() ))
+            {
+                kpt1->setCoordx(point2D[0]);
+                kpt1->setCoordy(point2D[1]);
+            }
+            else
+            {
+                KeyPointUpdate::invalidateMatch(kpt1, kpt2);
+            }
+            n += 1;
+        }
+    }
+    std::cout << "111" << std::endl;
+    KeyPointUpdate::removeInvalidMatches(matched_kpts1, matched_kpts2);
+    std::cout << "222" << std::endl;
+}
+
 void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point)
 {
     /*
@@ -1213,19 +1255,34 @@ double KeyPointUpdate::calculateScale(cv::Mat& v_k_opt)
 
 void KeyPointUpdate::invalidateMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2)
 {
-    kpt1->getHighestConfidenceMatch( kpt2->getObservationFrameNr() )->setConfidence(-1);
+    kpt1->getHighestConfidenceMatch( kpt2->getObservationFrameNr() )->setValidFlag(false);
 }
 
 bool KeyPointUpdate::validMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2)
 {
-    bool confidence = kpt1->getHighestConfidenceMatch( kpt2->getObservationFrameNr() )->getConfidence();
-    if ( confidence == -1 )
+    bool valid = kpt1->getHighestConfidenceMatch( kpt2->getObservationFrameNr() )->isValid();
+    if ( valid == true )
     {
-        return false;
+        return true;
     }
     else
     {
-        return true;
+        return false;
+    }
+}
+
+void KeyPointUpdate::removeInvalidMatches(vector<shared_ptr<KeyPoint2>> matched_kpts1,
+                                            vector<shared_ptr<KeyPoint2>> matched_kpts2)
+{
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    for (int n = 0; n < matched_kpts1.size(); ++n)
+    {
+        kpt1 = matched_kpts1[n];
+        kpt2 = matched_kpts2[n];
+        if (!KeyPointUpdate::validMatch(kpt1, kpt2))
+        {
+            kpt1->removeAllMatches(kpt2->getObservationFrameNr());
+        }
     }
 }
 

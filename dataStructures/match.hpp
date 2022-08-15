@@ -12,6 +12,7 @@ class KeyPoint2;
 class Match
 {
     private:
+        bool valid;
         int match_id;
         std::weak_ptr<KeyPoint2> kpt1;
         std::weak_ptr<KeyPoint2> kpt2;
@@ -20,6 +21,7 @@ class Match
 
 
         // Mutexes
+        mutable std::shared_mutex mutex_valid_flag;
         mutable std::shared_mutex mutex_match_id;
         mutable std::shared_mutex mutex_kpt1;
         mutable std::shared_mutex mutex_kpt2;
@@ -34,11 +36,13 @@ class Match
         ~Match();
 
         // Write functions
+        void setValidFlag(bool valid);
         void setMatchID(int match_id);
         void setConfidence(double confidence);
         void setDescriptorDistance(double descr_distance);
 
         // Read functions
+        bool isValid();
         int getMatchID();
         std::shared_ptr<KeyPoint2> getKpt1();
         std::shared_ptr<KeyPoint2> getKpt2();

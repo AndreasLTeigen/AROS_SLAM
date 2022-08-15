@@ -97,7 +97,7 @@ class LossFunction
 class DJETLoss : public LossFunction
 {
     private:
-        bool precompDescriptors = false;
+        bool precompDescriptors = true;
         int reg_size = 7;
 
         cv::Mat img;
@@ -163,6 +163,7 @@ class KeyPointUpdate : public ceres::EvaluationCallback
                             std::shared_ptr<Parametrization> parametrization);
         ~KeyPointUpdate(){};
         
+        void updateKeypoints(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, std::vector<double*> points2D);
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
 
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );
@@ -177,6 +178,7 @@ class KeyPointUpdate : public ceres::EvaluationCallback
 
         static void invalidateMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2);
         static bool validMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2);
+        static void removeInvalidMatches(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2);
 
         static void logOptLoc( std::shared_ptr<KeyPoint2> kpt );
         static void logKptState( std::shared_ptr<KeyPoint2> kpt, cv::Mat F_matrix );

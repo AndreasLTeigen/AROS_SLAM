@@ -11,6 +11,7 @@ Match::Match(shared_ptr<KeyPoint2> kpt1,
              double descr_distance,
              int match_id)
 {
+    this->valid = true;
     this->kpt1 = kpt1;
     this->kpt2 = kpt2;
     this->setMatchID(match_id);
@@ -25,6 +26,12 @@ Match::~Match()
 
 
 // Write functions
+void Match::setValidFlag(bool valid)
+{
+    std::unique_lock lock(this->mutex_valid_flag);
+    this->valid = valid;
+}
+
 void Match::setMatchID(int match_id)
 {
     std::unique_lock lock(this->mutex_match_id);
@@ -45,6 +52,12 @@ void Match::setDescriptorDistance(double descr_distance)
 
 
 // Read functions
+bool Match::isValid()
+{
+    std::shared_lock(this->mutex_valid_flag);
+    return this->valid;
+}
+
 int Match::getMatchID()
 {
     std::shared_lock(this->mutex_match_id);

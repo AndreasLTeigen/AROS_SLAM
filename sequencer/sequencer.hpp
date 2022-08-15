@@ -33,7 +33,7 @@ private:
 
 
 public:
-	Sequencer(std::string folder_path, int frame_buffer_size, std::string file_format = "png", bool recording=false, std::string record_dst_path=nullptr, int fps = 1);
+	Sequencer(std::string folder_path, int frame_buffer_size, std::string file_format = "png", bool recording=false, std::string record_dst_path=nullptr, int fps = 1, bool show_vis = 1);
 	~Sequencer();
 
 	int getFrameBufferSize();

@@ -14,6 +14,7 @@ class MapPoint;
 class KeyPoint2
 {
     private:
+        bool valid;
         int kpt_id;             // Unique per frame identifier
         double x;
         double y;
@@ -28,6 +29,7 @@ class KeyPoint2
         std::shared_ptr<MapPoint> map_point;
 
         // Mutexes
+        mutable std::shared_mutex mutex_valid;
         mutable std::shared_mutex mutex_kpt_id;
         mutable std::shared_mutex mutex_coord;
         mutable std::shared_mutex mutex_angle;
@@ -47,6 +49,7 @@ class KeyPoint2
         ~KeyPoint2();
 
         // Write funtions
+        void setValidFlag(bool valid);
         void setKptID(int kpt_id);
         void setCoordx(double x);
         void setCoordy(double y);
@@ -65,6 +68,7 @@ class KeyPoint2
         void orderMatchesByConfidence(int matched_frame_nr);
 
         // Read funcitons
+        bool isValid();
         int getKptId();
         double getCoordX();
         double getCoordY();

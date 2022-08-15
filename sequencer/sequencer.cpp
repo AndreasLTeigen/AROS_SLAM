@@ -24,18 +24,26 @@ void checkFrameIntegrity(cv::Mat frame)
 using namespace std;
 using namespace cv;
 
-Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file_format, bool recording, string record_dst_path, int fps){
+Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file_format, bool recording, string record_dst_path, int fps, bool show_vis){
 	this->frame_buffer_size = frame_buffer_size;
 	this->pressed_key = -1;
 	this->fps = fps;
 	this->file_format = file_format;
-	this->play_mode = false;
 	this->play_speed = 1;
 	this->slow_motion = false;
 	this->just_finished = false;
 	this->finished = false;
 	this->recording = recording;
 	this->record_dst_path = record_dst_path;
+
+	if (show_vis)
+	{
+		this->play_mode = false;
+	}
+	else
+	{
+		this->play_mode = true;
+	}
 	
 	// @TODO: add visualization parameters
 	this->scale = 1;
@@ -153,6 +161,8 @@ void Sequencer::preLoadFrameBufferFull()
 	   to n+1. */
 
 	Mat frame;
+	bool tmp = this->play_mode;
+
 	this->play_mode = true;
 
 	cout << "Loading frame buffer: " << endl;
@@ -164,18 +174,20 @@ void Sequencer::preLoadFrameBufferFull()
 		cout << "Pre-loading frame nr: " << this->getCurrentIndex() << endl;
 		this->iterateToNewFrame();
 	}
-	this->play_mode = false;
+	this->play_mode = tmp;
 }
 
 void Sequencer::preLoadFrameBufferFrame(Mat frame)
 {
 	/* Loading frame into frame buffer and iterating the sequencer */
 
+	bool tmp = this->play_mode;
+
 	cout << "Pre-loading frame nr: " << this->getCurrentIndex() << endl;
 	this->play_mode = true;
 	this->frame_buffer.push( frame );
 	this->iterateToNewFrame();
-	this->play_mode = false;
+	this->play_mode = tmp;
 
 }
 
@@ -214,6 +226,7 @@ void Sequencer::visualizeImage(Mat &img){
 	{
 		this->recordImage(this->img_current);
 	}
+
 	if (this->play_mode && this->slow_motion){
 		this->evalKey(waitKey(4 * 1000 / this->fps));
 	}
@@ -331,7 +344,7 @@ void Sequencer::evalKey(char key){
 void Sequencer::iterateToNewFrame(){
 
 	/* Given different methods of playback, shift current index to the
-	 new frame*/
+	 new frame */
 
 	if (this->play_mode & !this->slow_motion){
 		this->current_index = min(this->max_index, this->current_index + this->play_speed);
