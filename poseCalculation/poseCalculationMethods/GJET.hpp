@@ -146,6 +146,16 @@ class ReprojectionLoss : public LossFunction
 };
 
 
+struct Point2DGJET
+{
+    Point2DGJET(double x, double y)
+    {
+        this->loc_[0] = x;
+        this->loc_[1] = y;
+    }
+    double loc_[2];
+};
+
 class KeyPointUpdate : public ceres::EvaluationCallback
 {
     private:
@@ -163,7 +173,7 @@ class KeyPointUpdate : public ceres::EvaluationCallback
                             std::shared_ptr<Parametrization> parametrization);
         ~KeyPointUpdate(){};
         
-        void updateKeypoints(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, std::vector<double*> points2D);
+        void updateKeypoints(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, std::vector<std::shared_ptr<Point2DGJET>> points2D, cv::Mat& F_matrix);
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
 
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img );

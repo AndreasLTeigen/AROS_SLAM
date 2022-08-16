@@ -69,12 +69,13 @@ struct ECOptSolver
 
             loss_func_->linearizeLossFunctionV2( y_k, kpt2_, A);
 
-            residual[0] = loss_func_->calculateKptLoss( F_matrix, A, y_k, x_k, v_k_opt );
+            residual[0] = loss_func_->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
 
 
             cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
             residual_.at<double>(0,0) = residual[0];
             kpt1_->setDescriptor(residual_, "residual");
+            //std::cout << "[" << Y[0] << ", " << Y[1] << "]" << std::endl;
         }
 
         return true;
@@ -104,15 +105,6 @@ struct GJETSolver
         ceres::CostFunctionToFunctor<1,6> ecopt_solver;
 };
 */
-
-
-
-
-
-
-
-
-
 
 
 
@@ -150,7 +142,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     vector<double> p_init = rel_pose->getParametrization( this->paramId )->getParamVector();
     std::cout << *rel_pose->getParametrization( this->paramId ) << "\n";
     double p[p_init.size()];
-    vector<double*> points2D;
+    vector<shared_ptr<Point2DGJET>> points2D;
     
     //Filling p with values from p_init
     std::copy(p_init.begin(), p_init.end(), p);
@@ -169,18 +161,28 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
         if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) )
         {
-            double point2D[2] = {kpt1->getCoordX(), kpt1->getCoordY()};
-            points2D.push_back(point2D);
+            //double point2D[2] = new {kpt1->getCoordX(), kpt1->getCoordY()};
+            points2D.push_back(std::make_shared<Point2DGJET>(kpt1->getCoordX(), kpt1->getCoordY()));
 
+            //points2D.push_back(std::make_shared<double[2]>(point2D));
+
+            //std::cout << "[" << point2D[0] << ", " << point2D[1] << "]" << std::endl;
             ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6, 2>(
                 new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
-            problem.AddResidualBlock(cost_function, nullptr, p, point2D);
+            problem.AddResidualBlock(cost_function, nullptr, p, points2D.back()->loc_);
         }
         else
         {
             KeyPointUpdate::invalidateMatch( kpt1, kpt2 );
         }
     }
+    /*
+    for ( int n = 0; n < points2D.size(); ++n )
+    {
+        std::cout << n << std::endl;
+        std::cout << "[" << points2D[n]->loc_[0] << ", " << points2D[n]->loc_[1] << "]" << std::endl;
+    }
+    */
 
     // Configure the solver
     ceres::Solver::Options options;
@@ -233,7 +235,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     //itUpdate.moveKptsToOptLoc(F_matrix, img);
     //FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
 
-    //itUpdate.updateKeypoints(matched_kpts1, matched_kpts2, points2D);
+    //itUpdate.updateKeypoints(matched_kpts1, matched_kpts2, points2D, F_matrix);
 
     matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
@@ -251,7 +253,6 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     std::cout << "STD match score: " << std::sqrt(this->varianceN_match_score/this->n_matches) << std::endl;
     std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
 
-    std::cout << "GJET End" << std::endl;
     return rel_pose;
 }
 
@@ -1025,9 +1026,11 @@ KeyPointUpdate::KeyPointUpdate(   cv::Mat& img, double* p, cv::Mat K1, cv::Mat K
 
 void KeyPointUpdate::updateKeypoints(   vector<shared_ptr<KeyPoint2>> matched_kpts1, 
                                         vector<shared_ptr<KeyPoint2>> matched_kpts2, 
-                                        vector<double*> points2D)
+                                        vector<shared_ptr<Point2DGJET>> points2D,
+                                        cv::Mat& F_matrix)
 {
     double* point2D;
+    cv::Mat x_k, y_k, A, v_k_opt;
     shared_ptr<KeyPoint2> kpt1, kpt2;
 
     int n = 0;
@@ -1035,14 +1038,27 @@ void KeyPointUpdate::updateKeypoints(   vector<shared_ptr<KeyPoint2>> matched_kp
     {
         kpt1 = matched_kpts1[i];
         kpt2 = matched_kpts2[i];
-
         if (KeyPointUpdate::validMatch(kpt1, kpt2))
         {
-            point2D = points2D[n];
+            point2D = points2D[n]->loc_;
             if (this->loss_func->validKptLoc( point2D[0], point2D[1], kpt1->getSize() ))
             {
-                kpt1->setCoordx(point2D[0]);
-                kpt1->setCoordy(point2D[1]);
+                // Move keypoint to optimal location
+                y_k = (cv::Mat_<double>(3,1)<<  point2D[0],
+                                                point2D[1],
+                                                1);
+                x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                                kpt2->getCoordY(),
+                                                1);
+                this->loss_func->linearizeLossFunctionV2( y_k, kpt2, A);
+                this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
+
+                y_k.at<double>(0,0) += v_k_opt.at<double>(0,0);
+                y_k.at<double>(1,0) += v_k_opt.at<double>(1,0);
+                std::cout << 11111 << std::endl;
+                std::cout << (y_k).t() * F_matrix.t() * x_k << std::endl;
+                kpt1->setCoordx(y_k.at<double>(0,0));
+                kpt1->setCoordy(y_k.at<double>(1,0));
             }
             else
             {
@@ -1051,9 +1067,7 @@ void KeyPointUpdate::updateKeypoints(   vector<shared_ptr<KeyPoint2>> matched_kp
             n += 1;
         }
     }
-    std::cout << "111" << std::endl;
     KeyPointUpdate::removeInvalidMatches(matched_kpts1, matched_kpts2);
-    std::cout << "222" << std::endl;
 }
 
 void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point)

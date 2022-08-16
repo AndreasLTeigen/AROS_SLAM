@@ -398,7 +398,6 @@ void FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
     F_matrix = fundamentalFromEssential(frame1->getRelPose( frame2 )->getEMatrix(), frame1->getKMatrix());
 
-
     int border = 30;
     cv::Size size(101,101);
 

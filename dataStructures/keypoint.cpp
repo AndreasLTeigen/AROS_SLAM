@@ -361,19 +361,32 @@ void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::share
     cv::line(img_sec,   cv::Point(kpt_x, kpt_y - cross_hair_size),
                         cv::Point(kpt_x, kpt_y + cross_hair_size),
                         blue);
-
     
     // Draw epipolar line
     if ( matched_kpt != nullptr )
     {
+        std::cout << 2222 << std::endl;
+        //std::cout << kpt->getLoc().t() << std::endl;
+        //std::cout << F_matrix << std::endl;
+        //std::cout << matched_kpt->getLoc() << std::endl;
+        std::cout << (kpt->getLoc()).t() * F_matrix.t() * matched_kpt->getLoc() << std::endl;
+
         cv::Scalar red(0, 0, 255);
-        std::vector<cv::Point3f> epiline;
-        cv::Point matched_point = matched_kpt->compileCV2DPoint();
-        vector<cv::Point> point2{matched_point};
-        cv::computeCorrespondEpilines(point2, 1, F_matrix, epiline);
-        
-        double a = - epiline[0].x / epiline[0].y;
-        double b = - epiline[0].z / epiline[0].y;
+        //std::vector<cv::Point3f> epiline;
+        //cv::Point matched_point = matched_kpt->compileCV2DPoint();
+        //vector<cv::Point> point2{matched_point};
+        //cv::computeCorrespondEpilines(point2, 1, F_matrix.t(), epiline);
+
+        //double a = - epiline[0].x / epiline[0].y;
+        //double b = - epiline[0].z / epiline[0].y;
+
+        cv::Mat epiline = F_matrix.t() * matched_kpt->getLoc();
+        std::cout << epiline << std::endl;
+        std::cout << kpt->getLoc().t() * epiline << std::endl;
+        double a = - epiline.at<double>(0,0) / epiline.at<double>(1,0);
+        double b = - epiline.at<double>(2,0) / epiline.at<double>(1,0);
+        std::cout << kpt->getCoordY() << " = " << kpt->getCoordX() * a + b << std::endl; 
+
 
         // Checking intersects in all vertices of the image patch
         std::vector<cv::Point> points;
