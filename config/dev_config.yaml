@@ -2,10 +2,10 @@
 # -----Video In-----
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
-#VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/    #Workhorse
+VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/    #Workhorse
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/B/
-VIn.path: /home/andreas/Documents/kitti_dataset/
+#VIn.path: /home/andreas/Documents/kitti_dataset/
 VIn.file_format: png
 VIn.fps: 24
 
@@ -44,14 +44,14 @@ Method.point_cull_3D: OoW
 #Method.point_cull_3D: OoW
 
 # -----Video Out-----
-VOut.show: true
+VOut.show: false
 VOut.record: false
 VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
 #VOut.rec_path: /mnt/d/andreas/AROS/Results/Video/
 #VOut.rec_path: /home/andreas/Pictures/DJET-VideoOut/
 
 # -----Analysis------
-Anlys.pose_calculator: true
+Anlys.pose_calculator: true       #TODO: Implement functionality for this
 
 # -----Log out----
 Log.save: true
@@ -63,7 +63,7 @@ ILog.save: false
 ILog.path: output/IncrementalLog/
 
 # -----UI config-----
-UI.GUI_show: true
+UI.GUI_show: false
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15
