@@ -3,7 +3,7 @@
 
 #include <shared_mutex>
 
-enum class ParamID {NONE, STDPARAM};
+enum class ParamID {NONE, STDPARAM, LIEPARAM};
 
 class Parametrization
 {
@@ -58,6 +58,36 @@ class StdParam : public Parametrization
         StdParam(double rx, double ry, double rz, double tx, double ty, double tz, bool valid=true);
         StdParam(cv::Mat R, cv::Mat t, bool valid=true);
         ~StdParam();
+
+        // Write functions
+        void setParams(std::vector<double> params)override;
+        void setParams( cv::Mat R, cv::Mat t )override;
+        void decomposeRMatrix( cv::Mat &R )override;
+        void decomposeTVector( cv::Mat t )override;
+        
+        // Read functinos
+        std::vector<double> getRotParams()override;
+        std::vector<double> getTransParams()override;
+        std::vector<double> getParamVector()override;
+        cv::Mat composeRMatrix()override;
+        cv::Mat composeTransVec()override;
+        std::ostream& print(std::ostream& out)override;
+
+        // Static functions
+        void composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, cv::Mat& t)override;
+};
+
+class LieParam : public Parametrization
+{
+    private:
+        double w1, w2, w3, tx, ty, tz;
+    
+    public:
+        LieParam();
+        LieParam(std::vector<double> params, bool valid=true);
+        LieParam(double rx, double ry, double rz, double tx, double ty, double tz, bool valid=true);
+        LieParam(cv::Mat R, cv::Mat t, bool valid=true);
+        ~LieParam();
 
         // Write functions
         void setParams(std::vector<double> params)override;

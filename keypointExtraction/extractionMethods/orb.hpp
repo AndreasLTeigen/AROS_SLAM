@@ -10,8 +10,11 @@
 class ORBExtractor : public Extractor
 {
     private:
-        cv::Ptr<cv::ORB> orb = cv::ORB::create(500);
-        //cv::Ptr<cv::ORB> descriptor = cv::ORB::create();
+        bool non_rot_desc = true;
+        int nfeatures = 500;
+        float scaleFactor = 1.2f;
+        int nlevels = 1;//8;
+        cv::Ptr<cv::ORB> orb = cv::ORB::create(nfeatures, scaleFactor, nlevels);
 
     public:
         ORBExtractor(){};

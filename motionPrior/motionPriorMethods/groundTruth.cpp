@@ -13,7 +13,7 @@ void GroundTruthMP::calculate( std::shared_ptr<FrameData> frame1, std::shared_pt
     cv::Mat T_wc = this->globalMotionPriorGT(frame1);
     frame1->setGlobalPose( T_wc );
     cv::Mat rel_T = relTfromglobalTx2(T_wc, frame2->getGlobalPose());
-    FrameData::registerGTRelPose(T_wc, frame1, frame2);
+    FrameData::registerGTRelPose(rel_T, frame1, frame2);
 }
 
 cv::Mat GroundTruthMP::globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
@@ -28,7 +28,7 @@ cv::Mat GroundTruthMP::globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
     // Retrieveing the timestamp corresponding with the image id
     long long int timestamp;
     std::string image_name, timestamp_name;
-    std::vector<std::vector<std::string>> timestamps = readCSVFile(timestamp_path);
+    std::vector<std::vector<std::string>> timestamps = readCSVFile(timestamp_path, ',');
     for(int i=1;i<timestamps.size();i++)
 	{
         image_name = image_prefix + zeroPad(frame1->getImgId(), 8);
@@ -43,7 +43,7 @@ cv::Mat GroundTruthMP::globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
     
     // Retrieving the ground truth pose based on the timestamp
     std::vector<double> pose_gt;
-    std::vector<std::vector<std::string>> poses_gt = readCSVFile(gt_poses_path);
+    std::vector<std::vector<std::string>> poses_gt = readCSVFile(gt_poses_path, ',');
     for ( int i = 1; i < poses_gt.size(); i++ )
     {
         if ( timestamp == std::stoll(poses_gt[i][0]) )

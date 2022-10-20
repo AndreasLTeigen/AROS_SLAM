@@ -158,9 +158,13 @@ void Pose::createParametrization( vector<double> params, ParamID parametrization
 {
     // Warning: Not directly protected against race conditions, use <setParametrization>
 
-    if ( parametrization_id == ParamID::STDPARAM)
+    if ( parametrization_id == ParamID::STDPARAM )
     {
         this->params[parametrization_id] = shared_ptr<Parametrization>(new StdParam(params));
+    }
+    else if ( parametrization_id == ParamID::LIEPARAM )
+    {
+        this->params[parametrization_id] = shared_ptr<Parametrization>(new LieParam(params));
     }
     else
     {
@@ -175,6 +179,10 @@ void Pose::createParametrization( Mat R, Mat t, ParamID parametrization_id )
     if ( parametrization_id == ParamID::STDPARAM)
     {
         this->params[parametrization_id] = shared_ptr<Parametrization>(new StdParam(R, t));
+    }
+    else if ( parametrization_id == ParamID::LIEPARAM )
+    {
+        this->params[parametrization_id] = shared_ptr<Parametrization>(new LieParam(R, t));
     }
     else
     {

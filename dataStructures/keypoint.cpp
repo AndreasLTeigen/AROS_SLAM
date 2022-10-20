@@ -365,7 +365,6 @@ void KeyPoint2::drawEnchancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::share
     // Draw epipolar line
     if ( matched_kpt != nullptr )
     {
-        std::cout << 2222 << std::endl;
         //std::cout << kpt->getLoc().t() << std::endl;
         //std::cout << F_matrix << std::endl;
         //std::cout << matched_kpt->getLoc() << std::endl;

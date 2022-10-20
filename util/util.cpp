@@ -451,11 +451,7 @@ cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z)
     {
         x_i = x.at<double>(i,0);
         y_i = y.at<double>(i,0);
-        //D.at<double>(i, 0) = y_i*y_i;
-        //D.at<double>(i, 1) = x_i*x_i;
-        //D.at<double>(i, 2) = x_i*y_i;
-        //D.at<double>(i, 3) = y_i;
-        //D.at<double>(i, 4) = x_i;
+
         D.at<double>(i, 0) = x_i*x_i;
         D.at<double>(i, 1) = y_i*y_i;
         D.at<double>(i, 2) = x_i*y_i;
@@ -737,7 +733,29 @@ void writeTransformation2File(std::string file_path, std::string image_idenifier
     }
 }
 
-std::vector<std::vector<std::string>> readCSVFile(std::string filename)
+void writeVector2File(std::string file_path, std::vector<double> &data, bool linebreak)
+{
+    std::ofstream file;
+    file.open(file_path, std::ios_base::app);
+    if (file.is_open())
+    {
+        for ( int n = 0; n < data.size(); ++n )
+        {
+            file << data[n] << ",";
+        }
+        if (linebreak)
+        {
+            file << "\n";
+        }
+        file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+}
+
+std::vector<std::vector<std::string>> readCSVFile(std::string filename, char delim)
 {
     std::vector<std::vector<std::string>> content;
     std::vector<std::string> row;
@@ -752,7 +770,7 @@ std::vector<std::vector<std::string>> readCSVFile(std::string filename)
  
 			std::stringstream str(line);
  
-			while(getline(str, word, ','))
+			while(getline(str, word, delim))
             {
 				row.push_back(word);
             }

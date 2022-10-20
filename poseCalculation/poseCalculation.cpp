@@ -32,6 +32,25 @@ std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_
     }
 }
 
+ParamID getParametrization( std::string parametrization_method )
+{
+    if ( parametrization_method == "std" )
+    {
+        std::cout << "METHOD: USING STANDARD PARAMETRIZATION" << std::endl;
+        return ParamID::STDPARAM;
+    }
+    else if ( parametrization_method == "lie")
+    {
+        std::cout << "METHOD: USING ANGLE AXIS PARAMETRIZATION" << std::endl;
+        return ParamID::LIEPARAM;
+    }
+    else
+    {
+        std::cerr << "ERROR: PARAMETRIZATION METHOD NOT FOUND" << std::endl;
+        return ParamID::NONE;
+    }
+}
+
 
 
 

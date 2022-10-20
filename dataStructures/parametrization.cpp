@@ -296,3 +296,206 @@ void StdParam::composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, c
             param[5]
             );
 }
+
+
+
+//--------------------------------AXIS ANGLE PARAMETRIZATION-----------------------------------
+
+LieParam::LieParam()
+    :Parametrization(ParamID::LIEPARAM, false)
+{
+    this->w1 = -1;
+    this->w2 = -1;
+    this->w3 = -1;
+    this->tx = -1;
+    this->ty = -1;
+    this->tz = -1;
+}
+
+LieParam::LieParam(vector<double> params, bool valid)
+    :Parametrization(ParamID::LIEPARAM, valid)
+{
+    if (params.size() != 6)
+    {
+        std::cout << "Warning: Parameter vector not correct length" << std::endl;
+    }
+    this->w1 = params[0];
+    this->w2 = params[1];
+    this->w3 = params[2];
+    this->tx = params[3];
+    this->ty = params[4];
+    this->tz = params[5];
+}
+
+LieParam::LieParam(double w1, double w2, double w3, double tx, double ty, double tz, bool valid)
+    :Parametrization(ParamID::LIEPARAM, valid)
+{
+    this->w1 = w1;
+    this->w2 = w2;
+    this->w3 = w3;
+    this->tx = tx;
+    this->ty = ty;
+    this->tz = tz;
+}
+
+LieParam::LieParam(Mat R, Mat t, bool valid)
+    :Parametrization(ParamID::LIEPARAM, valid)
+{
+    cv::Mat w;
+    cv::Rodrigues(R, w);
+
+    std::unique_lock lock(this->mutex_parametrization);
+    this->w1 = w.at<double>(0,0);
+    this->w2 = w.at<double>(1,0);
+    this->w3 = w.at<double>(2,0);
+    this->tx = t.at<double>(0,0);
+    this->ty = t.at<double>(1,0);
+    this->tz = t.at<double>(2,0);
+}
+
+LieParam::~LieParam()
+{
+    //TODO:Implement destructor
+}
+
+// Write functions
+void LieParam::setParams(vector<double> params)
+{
+    std::unique_lock lock(this->mutex_parametrization);
+    if (params.size() != 6)
+    {
+        std::cout << "Warning: Parameter vector not correct length" << std::endl;
+    }
+    this->w1 = params[0];
+    this->w2 = params[1];
+    this->w3 = params[2];
+    this->tx = params[3];
+    this->ty = params[4];
+    this->tz = params[5];
+    this->setValidFlag(true);
+}
+
+void LieParam::setParams( Mat R, Mat t )
+{
+    cv::Mat w;
+    cv::Rodrigues(R, w);
+
+    std::unique_lock lock(this->mutex_parametrization);
+    this->w1 = w.at<double>(0,0);
+    this->w2 = w.at<double>(1,0);
+    this->w3 = w.at<double>(2,0);
+    this->tx = t.at<double>(0,0);
+    this->ty = t.at<double>(1,0);
+    this->tz = t.at<double>(2,0);
+}
+
+void LieParam::decomposeRMatrix( Mat &R )
+{
+    std::unique_lock lock(this->mutex_parametrization);
+
+    cv::Mat w;
+    cv::Rodrigues(R, w);
+    this->w1 = w.at<double>(0,0);
+    this->w2 = w.at<double>(1,0);
+    this->w3 = w.at<double>(2,0);
+}
+
+void LieParam::decomposeTVector( Mat t )
+{
+    std::unique_lock lock(this->mutex_parametrization);
+    this->tx = t.at<double>(0,0);
+    this->ty = t.at<double>(1,0);
+    this->tz = t.at<double>(2,0);
+}
+
+// Read functions
+vector<double> LieParam::getRotParams()
+{
+    /* Returns rotational parameters in a single vector */
+    std::shared_lock lock(this->mutex_parametrization);
+    vector<double> ret_vec{ this->w1, this->w2, this->w3 };
+    return ret_vec;
+}
+
+vector<double> LieParam::getTransParams()
+{
+    /* Returns translational parameters in a single vector */
+    std::shared_lock lock(this->mutex_parametrization);
+    vector<double> ret_vec{ this->tx, this->ty, this->tz };
+    return ret_vec;
+}
+
+vector<double> LieParam::getParamVector()
+{
+    /* Returns all parameters in a single vector */
+    std::shared_lock lock(this->mutex_parametrization);
+    vector<double> ret_vec{ this->w1, this->w2, this->w3,
+                            this->tx, this->ty, this->tz };
+    return ret_vec;
+}
+
+Mat LieParam::composeRMatrix()
+{
+    vector<double> r_vec = this->getRotParams();
+    Mat w = (cv::Mat_<double>(3,1) <<
+            r_vec[0],
+            r_vec[1],
+            r_vec[2]
+            );
+
+    Mat R;
+    cv::Rodrigues(w, R);
+
+    return R;
+}
+
+Mat LieParam::composeTransVec()
+{
+    vector<double> t_vec = this->getTransParams();
+
+    Mat t = (cv::Mat_<double>(3,1) <<
+            t_vec[0],
+            t_vec[1],
+            t_vec[2]
+            );
+    return t;
+}
+
+std::ostream& LieParam::print(std::ostream& out)
+{
+    /* Returns pose: rx ry rz tx ty tz*/
+    vector<double> paramVector = getParamVector();
+    std::string error_string = "";
+    if (!this->isValid())
+    {
+        error_string = "Error: Parametrization not valid. \n";
+    }
+    return out << error_string  << paramVector[0] << " " << paramVector[1] << " " 
+                                << paramVector[2] << " " << paramVector[3] << " " 
+                                << paramVector[4] << " " << paramVector[5];
+}
+
+//Static functions
+void LieParam::composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, cv::Mat& t)
+{
+    /*
+    Arguments:
+        param:  w1, w2, w3, tx, ty, tz [1 x 6].
+    Returns:
+        R:      Rotation matrix [3 x 3].
+        t:      Translation vector [3 x 1].
+    */
+
+    std::vector<double>::const_iterator rot_first = param.begin();
+    std::vector<double>::const_iterator rot_last = param.begin() + 3;
+    std::vector<double> rot(rot_first, rot_last);
+    
+    cv::Rodrigues(rot, R);
+
+
+    t = (cv::Mat_<double>(3,1) <<
+            param[3],
+            param[4],
+            param[5]
+            );
+}

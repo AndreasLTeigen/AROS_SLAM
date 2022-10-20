@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "motionPrior.hpp"
+#include "motionPriorMethods/prevEst.hpp"
 #include "motionPriorMethods/groundTruth.hpp"
 #include "../util/util.hpp"
 
@@ -13,6 +14,10 @@ std::shared_ptr<MotionPrior> getMotionPrior( std::string motion_prior_method )
     {
         //return std::make_shared<ConstantMP>();
         return nullptr;
+    }
+    else if ( motion_prior_method == "pre_est")
+    {
+        return std::make_shared<PrevEstMP>();
     }
     else if ( motion_prior_method == "gt" )
     {

@@ -24,7 +24,7 @@ void checkFrameIntegrity(cv::Mat frame)
 using namespace std;
 using namespace cv;
 
-Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file_format, bool recording, string record_dst_path, int fps, bool show_vis){
+Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file_format, bool recording, string record_dst_path, int fps, bool auto_start){
 	this->frame_buffer_size = frame_buffer_size;
 	this->pressed_key = -1;
 	this->fps = fps;
@@ -36,13 +36,13 @@ Sequencer::Sequencer(std::string folder_path, int frame_buffer_size, string file
 	this->recording = recording;
 	this->record_dst_path = record_dst_path;
 
-	if (show_vis)
+	if (auto_start)
 	{
-		this->play_mode = false;
+		this->play_mode = true;
 	}
 	else
 	{
-		this->play_mode = true;
+		this->play_mode = false;
 	}
 	
 	// @TODO: add visualization parameters

@@ -5,6 +5,7 @@
 
 #include "../dataStructures/frameData.hpp"
 #include "../dataStructures/pose.hpp"
+#include "../dataStructures/parametrization.hpp"
 
 class PoseCalculator
 {
@@ -17,6 +18,8 @@ class PoseCalculator
 };
 
 std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_method );
+
+ParamID getParametrization( std::string parametrization_method );
 
 
 

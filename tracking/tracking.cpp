@@ -44,6 +44,7 @@ FTracker::FTracker(YAML::Node config){
     this->pose_calculator = getPoseCalculator( config["Method.pose_calculator"].as<std::string>() );
     this->map_point_reg = getMapPointRegistrator( config["Method.point_reg_3D"].as<std::string>() );
     this->map_point_cull = getMapPointCuller( config["Method.point_cull_3D"].as<std::string>() );
+    this->pose_param = getParametrization( config["Methods.param"].as<std::string>() );
 
     this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
     this->show_timings = config["UI.timing_show"].as<bool>();
@@ -193,7 +194,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     cv::Mat img_copy = img.clone();
     shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, img_copy );
     
-    rel_pose->updateParametrization();
+    rel_pose->updateParametrization(this->pose_param);
     this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
 
 
@@ -218,9 +219,10 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     auto cleanup_end_time = high_resolution_clock::now();           // Timer
 
+
     if (show_tracking_log)
     {
-        std::cout << "Parametrization: \n" << *rel_pose->getParametrization() << std::endl;
+        std::cout << "Parametrization: \n" << *rel_pose->getParametrization(this->pose_param) << std::endl;
         std::cout << "Global Pose: \n" << frame1->getGlobalPose() << std::endl;
     }
 

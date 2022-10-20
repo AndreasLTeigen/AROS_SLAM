@@ -61,6 +61,7 @@ int AVGSlam()
     int UI_keypoint_trail_length = config["UI.keypoint_trail_length"].as<int>();
 
     // Initializing sequencer parameters
+    bool Seq_auto_start = config["Seq.auto_start"].as<bool>();
     int Seq_starting_frame_nr = config["Seq.starting_frame_nr"].as<int>();
     int Seq_frame_buffer_size = config["Seq.frame_buffer_size"].as<int>();
 
@@ -79,7 +80,7 @@ int AVGSlam()
 
     // Initialize sequencer and frame tracker
     std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
-    Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VIn_fps, VOut_show);
+    Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VIn_fps, Seq_auto_start);
 	//Sequencer2 seq = Sequencer2(VIn_path, VIn_file_format);
 
     seq.setCurrentIndex(Seq_starting_frame_nr);
@@ -93,7 +94,7 @@ int AVGSlam()
         T_0 = cv::Mat::eye(4,4,CV_64F);
         if ( Log_save )
         {
-            writeParameters2File(Log_full_dst, name_current, T_0 );
+            writeTransformation2File(Log_full_dst, name_current, T_0 );
         }
     }
 

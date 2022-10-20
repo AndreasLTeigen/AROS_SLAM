@@ -21,7 +21,9 @@ class FTracker
         std::shared_ptr<Matcher> matcher;
         std::shared_ptr<PoseCalculator> pose_calculator;
         std::shared_ptr<MapPointRegistrator> map_point_reg;
-        std::shared_ptr<MapPointCuller> map_point_cull; 
+        std::shared_ptr<MapPointCuller> map_point_cull;
+
+        ParamID pose_param;
 
         int curr_frame_nr, tracking_window_length;
         std::vector<std::shared_ptr<FrameData>> frame_list;  // TODO:Change this to something like <frame_window_list>

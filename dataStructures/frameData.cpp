@@ -4,6 +4,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "frameData.hpp"
+#include "../util/util.hpp"
 
 #define THREAD_NUM 4
 
@@ -612,6 +613,41 @@ std::vector<cv::KeyPoint> FrameData::compileCVKeypoints( std::vector<std::shared
         kpts_cv[i] = *new_kpt;
     }
     return kpts_cv;
+}
+
+double FrameData::calculateAvgMatchDist( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::string descr_type )
+{
+    /*
+    Arguments:
+        frameX:             Frames whose matches' hamming distance should be compared.
+    Returns:
+        avg_dist:        Average hamming distance between every match between frame1 and frame2.
+    */
+
+    int N;
+    double avg_dist, accum;
+    cv::Mat desc1, desc2;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    std::vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
+
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    
+    N = matched_kpts1.size();
+
+    for ( int n = 0; n < N; ++n )
+    {
+        kpt1 = matched_kpts1[n];
+        kpt2 = matched_kpts2[n];
+
+        desc1 = kpt1->getDescriptor(descr_type);
+        desc2 = kpt2->getDescriptor(descr_type);
+
+        accum += computeHammingDistance( desc1, desc2 ).at<double>(0,0);
+    }
+    avg_dist = accum / N;
+    
+    return avg_dist;
 }
 
 

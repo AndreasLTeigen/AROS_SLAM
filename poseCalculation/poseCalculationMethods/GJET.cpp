@@ -33,7 +33,6 @@ struct ECOptSolver
                     loss_func_ = loss_func;
                     parametrization_ = parametrization;
 
-
                     cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
                     residual_.at<double>(0,0) = 10000;
 
@@ -42,13 +41,31 @@ struct ECOptSolver
     
     bool operator()( const double* p, const double* Y, double* residual ) const
     {
-        if ( !loss_func_->validKptLoc( Y[0], Y[1], kpt1_->getSize() ) )
+        cv::Mat y_k;
+        if (kpt_free && !baseline)
         {
+            y_k = (cv::Mat_<double>(3,1)<<  Y[0],
+                                            Y[1],
+                                            1);
+        }
+        else
+        {
+            y_k = (cv::Mat_<double>(3,1)<<  kpt1_->getCoordX(),
+                                            kpt1_->getCoordY(),
+                                            1);
+        }
+
+        if ( !loss_func_->validKptLoc( y_k.at<double>(0,0), y_k.at<double>(1,0), kpt1_->getSize() ) && kpt_free)
+        {
+            //std::cout <<"OUT OF BOUNDS! ";
             residual[0] = kpt1_->getDescriptor("residual").at<double>(0,0);
+            //std::cout << y_k.at<double>(0,0) << ", " <<  y_k.at<double>(1,0) << std::endl;
+            //KeyPointUpdate::invalidateMatch(this->kpt1_, this->kpt2_);
+            
         }
         else
         {  
-            cv::Mat A, R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
+            cv::Mat A, R, t, x_k, E_matrix, F_matrix, v_k_opt;
 
             // TODO: The variables below are calculated for every single keypoint, but this shouldn't have to be the case.
             //          See if there is some place this can be calculated only once per test change of the parameters.
@@ -56,9 +73,6 @@ struct ECOptSolver
             int n = 6;
             vector<double> p_vec(p, p + n);
 
-            y_k = (cv::Mat_<double>(3,1)<<  Y[0],
-                                            Y[1],
-                                            1);
             x_k = (cv::Mat_<double>(3,1)<<  kpt2_->getCoordX(),
                                             kpt2_->getCoordY(),
                                             1);
@@ -67,15 +81,23 @@ struct ECOptSolver
             E_matrix = composeEMatrix( R, t );
             F_matrix = fundamentalFromEssential( E_matrix, K1_, K2_ );
 
-            loss_func_->linearizeLossFunctionV2( y_k, kpt2_, A);
+            loss_func_->linearizeLossFunction( y_k, kpt2_, A);
 
             residual[0] = loss_func_->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
-
+            
+            //if (kpt_free && cv::norm(v_k_opt) > (n_reg_size-epsylon))
+            
+            if (false)
+            {
+                residual[0] += (100*(cv::norm(v_k_opt) - (n_reg_size-epsylon))
+                                *(cv::norm(v_k_opt) - (n_reg_size-epsylon)));
+            }
 
             cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
             residual_.at<double>(0,0) = residual[0];
             kpt1_->setDescriptor(residual_, "residual");
             //std::cout << "[" << Y[0] << ", " << Y[1] << "]" << std::endl;
+            //KeyPointUpdate::validateMatch(this->kpt1_, this->kpt2_);
         }
 
         return true;
@@ -86,25 +108,6 @@ struct ECOptSolver
     shared_ptr<LossFunction> loss_func_;
     shared_ptr<Parametrization> parametrization_;
 };
-
-/*
-struct GJETSolver
-{
-    GJETSolver(const cv::Mat K1, const cv::Mat K2, const shared_ptr<KeyPoint2> kpt1, 
-                        const shared_ptr<KeyPoint2> kpt2, const shared_ptr<Parametrization> parametrization, const shared_ptr<LossFunction> loss_func)
-                    : ecopt_solver(new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6>(
-                                                new ECOptSolver(K1, K2, kpt1, kpt2, parametrization, loss_func))) {}
-    
-    template <typename T>
-    bool operator()(const T* p, T* residual) const
-    {
-        return ecopt_solver(p, residual);
-    }
-
-    private:
-        ceres::CostFunctionToFunctor<1,6> ecopt_solver;
-};
-*/
 
 
 
@@ -118,21 +121,38 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     // Assumes K_matrix is equal for both frames.
     cv::Mat E_matrix, F_matrix, inliers;
     std::vector<cv::Point> pts1, pts2;
+    std::shared_ptr<Pose> rel_pose;
+    std::shared_ptr<LossFunction> loss_func;
+
     compileMatchedCVPoints( frame1, frame2, pts1, pts2 );
     E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
 
     FrameData::removeOutlierMatches( inliers, frame1, frame2 );
-    std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
-    rel_pose->updateParametrization();
+
+    if (use_motion_prior)
+    {
+        rel_pose = frame1->getRelPose( frame2 );
+    }
+    else
+    {
+        rel_pose = FrameData::registerRelPose( E_matrix, frame1, frame2 );
+    }
+    rel_pose->updateParametrization(this->paramId);
 
     vector<shared_ptr<KeyPoint2>> matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     vector<shared_ptr<KeyPoint2>> matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    shared_ptr<LossFunction> loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
-    //shared_ptr<LossFunction> loss_func = std::make_shared<ReprojectionLoss>(img);
-
+    if (baseline)
+    {
+        loss_func = std::make_shared<ReprojectionLoss>(img);
+    }
+    else
+    {
+        loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+    }
+    
     // ------ CERES test -------------
     int N = matched_kpts1.size();
     cv::Mat A_d_k, x_k, y_k;
@@ -147,11 +167,10 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     //Filling p with values from p_init
     std::copy(p_init.begin(), p_init.end(), p);
 
-    shared_ptr<StdParam> parametrization = std::make_shared<StdParam>();
-
+    shared_ptr<LieParam> parametrization = std::make_shared<LieParam>();
     KeyPointUpdate itUpdate( img, p, frame1->getKMatrix(), frame2->getKMatrix(), loss_func, parametrization );  
     ceres::Problem::Options problem_options;
-    //problem_options.evaluation_callback = &itUpdate; 
+    problem_options.evaluation_callback = &itUpdate; 
     ceres::Problem problem(problem_options);
     
     for ( int n = 0; n < N; ++n )
@@ -170,6 +189,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
             ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6, 2>(
                 new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
             problem.AddResidualBlock(cost_function, nullptr, p, points2D.back()->loc_);
+            itUpdate.addEvalKpt(kpt1, kpt2);
         }
         else
         {
@@ -186,7 +206,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
 
     // Configure the solver
     ceres::Solver::Options options;
-    options.use_nonmonotonic_steps = true;
+    options.use_nonmonotonic_steps = false;
     options.preconditioner_type = ceres::SCHUR_JACOBI;
     //options.linear_solver_type = ceres::ITERATIVE_SCHUR;
     options.linear_solver_type = ceres::DENSE_QR;
@@ -197,10 +217,18 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     //options.max_trust_region_radius = 100;
     //options.logging_type = ceres::LoggingType::SILENT;
 
-    // Solve!
-    ceres::Solver::Summary summary;
-    ceres::Solve(options, &problem, &summary);
-    std::cout << summary.BriefReport() << "\n";
+    if (!linear)
+    {
+        // Solve!
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+        std::cout << summary.BriefReport() << "\n";
+
+        if ( this->iteration_log )
+        {
+            ceresLogToFile(frame1->getImgId(), summary);
+        }
+    }
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -218,40 +246,52 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     vector<double> p_vec(p, p + n);
 
     rel_pose->setPose( p_vec, this->paramId );
-    //rel_pose->setPose( p_init, this->paramId );
 
     //std::cout << rel_pose->getTMatrix() << std::endl;
     cv::Mat R_matrix = rel_pose->getRMatrix();
     cv::Mat t_vector = rel_pose->gettvector();
     t_vector = normalizeMat(t_vector);
     rel_pose->updatePoseVariables( R_matrix, t_vector );
-    rel_pose->updateParametrization(); // This function call can be removed
-    std::cout << "p_corr: " << *rel_pose->getParametrization() << "\n";
+    rel_pose->updateParametrization(this->paramId); // This function call can be removed
+    std::cout << "p_corr: " << *rel_pose->getParametrization(this->paramId) << "\n";
 
     F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
     //--------------------------------------
 
-    // Last changes to keypoint locations
-    //itUpdate.moveKptsToOptLoc(F_matrix, img);
-    //FrameData::removeMatchesWithLowConfidence( -0.9, frame1, frame2 );
+    KeyPointUpdate::removeInvalidMatches(frame1, frame2);
 
-    //itUpdate.updateKeypoints(matched_kpts1, matched_kpts2, points2D, F_matrix);
+    if (baseline && !linear && !kpt_free)
+    {
+        itUpdate.registerOptKptPosReprErr( frame1, frame2, F_matrix );
+    }
+    if (baseline && linear)
+    {
+        itUpdate.registerOptKptPosLinear( frame1, frame2 );
+    }
+    if (kpt_free && !baseline)
+    {
+        itUpdate.logY_k_opt(frame1, frame2, F_matrix, points2D);
+        KeyPointUpdate::removeInvalidMatches(frame1, frame2);
+    }
 
+    //############################ EVALUATION ############################
     matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
     matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
-    //std::cout << "Total Loss: " << loss_func->calculateTotalLoss(F_matrix, matched_kpts1, matched_kpts2) << "\n" << std::endl;
-
-    // Evaluation
     int old_mean = this->avg_match_score;
     this->n += 1;
     this->n_matches += matched_kpts1.size();
-    this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAverageMatchScore( matched_kpts1, matched_kpts2 ), this->n);
-    this->varianceN_match_score = GJET::iterateMatchScoreVarianceN(matched_kpts1, matched_kpts2, this->varianceN_match_score, old_mean, this->avg_match_score);
+    this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAvgMatchScore( img, matched_kpts1, matched_kpts2, loss_func ), this->n);
     this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
-
     std::cout << "Avg match score: " << avg_match_score << std::endl;
-    std::cout << "STD match score: " << std::sqrt(this->varianceN_match_score/this->n_matches) << std::endl;
     std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
+    //######################################################################
+
+    // Last changes to keypoint locations
+    if (revert_kpt && !kpt_free && !baseline)
+    {
+        itUpdate.revertKptsToInit();
+    }
+
 
     return rel_pose;
 }
@@ -307,8 +347,8 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     Arguements: 
         A_d_k:      Image information based loss function in quadratic form (y_k.T*A_d_k*y_k) for keypoint 'k' [3 x 3].
         F_matrix:   Fundamental matrix between image 1 and image 2 [3 x 3].
-        y_k:        Location of keypoint k in image 1, corresponding to y_k [2 x 1].
-        x_k:        Location of keypoint k in image 2, corresponding to x_k [2 x 1].
+        y_k:        Location of keypoint k in image 1, corresponding to y_k [3 x 1].
+        x_k:        Location of keypoint k in image 2, corresponding to x_k [3 x 1].
     Returns:
         v_k_opt:    Perturbation off of y_k in image 2, optimized for A_k and constrained by the epipolar line [2 x 1].
         ret:        Value of 'y_k + v_k_opt' on the quadratic function.
@@ -419,26 +459,77 @@ void GJET::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::
     }
 }
 
-double GJET::calculateAverageMatchScore(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
-                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2)
+bool GJET::ceresLogToFile(int img_nr, ceres::Solver::Summary summary, std::string file_path)
 {
-    double accum;
-    shared_ptr<KeyPoint2> kpt1, kpt2;
-    cv::Mat desc1, desc2, hamming;
+    vector<ceres::IterationSummary> it_summary_vec = summary.iterations;
 
-    for (int i = 0; i < matched_kpts1.size(); ++i)
+    std::ofstream ceres_log_file;
+    ceres_log_file.open(file_path, std::ios_base::app);
+    if (ceres_log_file.is_open())
     {
-        kpt1 = matched_kpts1[i];
-        kpt2 = matched_kpts2[i];
-
-        desc1 = kpt1->getDescriptor("orb");
-        desc2 = kpt2->getDescriptor("orb");
-
-        hamming = computeHammingDistance(desc1, desc2);
-        accum += hamming.at<double>(0,0);
+        ceres_log_file << img_nr << " ";
+        for ( int i = 0; i < it_summary_vec.size(); ++i )
+        {
+            ceres_log_file << it_summary_vec[i].cost << " ";
+        }
+        ceres_log_file << "\n";
+        ceres_log_file.close();
     }
-    accum = accum / matched_kpts1.size();
-    return accum;
+    else
+    {
+        std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+
+    return true;
+}
+
+double GJET::calculateAvgMatchScore(cv::Mat& img,
+                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
+                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2,
+                                        std::shared_ptr<LossFunction> loss_func )
+{
+    double avg_accum = 0;
+    cv::Mat d_x_k, d_y_k, y_k_opt;
+    cv::Mat d_y_k_list, hamming;
+    vector<cv::KeyPoint> y_k_list;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    for ( int n = 0; n < matched_kpts1.size(); ++n )
+    {
+        kpt1 = matched_kpts1[n];
+        kpt2 = matched_kpts2[n];
+        y_k_opt = kpt1->getDescriptor("y_k_opt");
+        if ( !y_k_opt.empty() && loss_func->validKptLoc( y_k_opt.at<double>(0,0), y_k_opt.at<double>(1,0), kpt1->getSize() ))
+        {
+            cv::KeyPoint kpt_cv = cv::KeyPoint(y_k_opt.at<double>(0,0), y_k_opt.at<double>(1,0), kpt1->getSize());
+            y_k_list.push_back(kpt_cv);
+        }
+        else
+        {
+            KeyPointUpdate::invalidateMatch(kpt1, kpt2);
+        }
+    }
+    loss_func->computeDescriptors(img, y_k_list, d_y_k_list);
+
+    int i = 0;
+    for ( int n = 0; n < matched_kpts1.size(); ++n )
+    {
+        kpt1 = matched_kpts1[n];
+        kpt2 = matched_kpts2[n];
+        if (KeyPointUpdate::validMatch(kpt1, kpt2))
+        {
+            d_x_k = kpt2->getDescriptor("orb");
+            d_y_k = d_y_k_list.row(i);
+            hamming = computeHammingDistance(d_x_k, d_y_k);
+            avg_accum += hamming.at<double>(0,0);
+            i++;
+            vector<double> hamm = {hamming};
+            writeVector2File("output/hamming.txt", hamm, false);
+        }
+    }
+    vector<double> empty;
+    writeVector2File("output/hamming.txt", empty, true);
+    avg_accum = avg_accum / matched_kpts1.size();
+    return avg_accum;
 }
 
 
@@ -598,7 +689,7 @@ bool DJETLoss::validKptLoc( double x, double y, int kpt_size )
     return this->validDescriptorRegion( x, y, desc_radius + this->reg_size );
 }
 
-bool DJETLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )
+bool DJETLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, double x_update, double y_update )
 {
     // If the update will lead to a keypoint that is in bounds, the keypoint is updated and the function returns true.
     // If the update causes the keypoint to be out of bounds, the function returns false.
@@ -615,14 +706,9 @@ bool DJETLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& im
     }
 }
 
-void DJETLoss::linearizeLossFunctionV2( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
+void DJETLoss::linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
 {
-    this->collectDescriptorDistanceV2( y_k, kpt2, A);
-}
-
-void DJETLoss::linearizeLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
-{
-    this->collectDescriptorDistance( img, kpt1, kpt2 );
+    this->collectDescriptorDistance( y_k, kpt2, A);
 }
 
 
@@ -667,7 +753,7 @@ void DJETLoss::computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>&
 }
 
 
-void DJETLoss::collectDescriptorDistanceV2( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2,cv::Mat& A )
+void DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
 {
     double y_k_x, y_k_y;
     cv::Mat local_descs, target_desc, hamming_dists, x, y, z;
@@ -676,7 +762,7 @@ void DJETLoss::collectDescriptorDistanceV2( cv::Mat& y_k, std::shared_ptr<KeyPoi
     y_k_x = y_k.at<double>(0,0);
     y_k_y = y_k.at<double>(1,0);
 
-    local_kpts = this->generateLocalKptsV2( y_k_x, y_k_y, kpt2->getSize(), this->img );
+    local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2->getSize(), this->img );
     this->computeDescriptors(this->img, local_kpts, local_descs);
 
     //target_desc = kpt1->getDescriptor(descriptor_name);
@@ -688,26 +774,7 @@ void DJETLoss::collectDescriptorDistanceV2( cv::Mat& y_k, std::shared_ptr<KeyPoi
     A = fitQuadraticForm(x, y, z);
 }
 
-void DJETLoss::collectDescriptorDistance( const cv::Mat& img, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2 )
-{
-    cv::Mat local_descs, target_desc, A, hamming_dists, x, y, z;
-    vector<cv::KeyPoint> local_kpts;
-
-    local_kpts = this->generateLocalKpts( kpt1, img );
-    this->computeDescriptors(img, local_kpts, local_descs);
-
-    //target_desc = kpt1->getDescriptor(descriptor_name);
-    target_desc = kpt2->getDescriptor(this->descriptor_name);
-    hamming_dists = computeHammingDistance(target_desc, local_descs);
-    this->generateCoordinateVectors(kpt1->getCoordX(), kpt1->getCoordY(), this->reg_size, x, y);
-    z = hamming_dists.t();
-
-    A = fitQuadraticForm(x, y, z);
-    kpt1->setDescriptor( A, "quad_fit" );
-    kpt1->setDescriptor( z.reshape(1, this->reg_size), "hamming");
-}
-
-vector<cv::KeyPoint> DJETLoss::generateLocalKptsV2( double kpt_x, double kpt_y, double kpt_size, const cv::Mat& img )
+vector<cv::KeyPoint> DJETLoss::generateLocalKpts( double kpt_x, double kpt_y, double kpt_size, const cv::Mat& img )
 {
     // Assumes the local region around the keypoint will produce all valid descriptors.
     
@@ -728,57 +795,6 @@ vector<cv::KeyPoint> DJETLoss::generateLocalKptsV2( double kpt_x, double kpt_y, 
     
     return local_kpts;
 }
-
-vector<cv::KeyPoint> DJETLoss::generateLocalKpts( shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
-{
-    // Assumes the local region around the keypoint will produce all valid descriptors.
-
-    int W, H, desc_radius;
-    double ref_x, ref_y, x, y, kpt_x, kpt_y, kpt_size;
-    vector<int> removal_kpts;
-    vector<cv::KeyPoint> local_kpts;
-    W = img.cols;
-    H = img.rows;
-
-    kpt_x = kpt->getCoordX();
-    kpt_y = kpt->getCoordY();
-    kpt_size = kpt->getSize();
-
-    ref_x = kpt_x - reg_size/2; 
-    ref_y = kpt_y - reg_size/2;
-    for ( int row_i = 0; row_i < reg_size; ++row_i )
-    {
-        y = ref_y + row_i;
-        for ( int col_j = 0; col_j < reg_size; ++col_j )
-        {
-            x = ref_x + col_j;
-            local_kpts.push_back(cv::KeyPoint(x,y,kpt_size));
-        }
-    }
-    
-    return local_kpts;
-}
-
-//Mat DJETLoss::computeHammingDistance( Mat& target_desc, Mat& region_descs )
-//{
-    /*
-    Arguments:
-        target_desc:        Descriptor all other descriptors should be calculated the distance to.
-        descs:              All other descriptors.
-        N:                  Number of descriptors.
-    Returns:
-        desc_dists:         Hamming distance between <target_desc> and all descriptors in <descs>
-    */
-/*
-    int N = region_descs.rows;
-    Mat hamming_dists = Mat::zeros(1, N, CV_64F);
-    for ( int i = 0; i < N; ++i )
-    {
-        hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i), cv::NORM_HAMMING);
-    }
-    return hamming_dists;
-}
-*/
 
 void DJETLoss::generateCoordinateVectors(double x_c, double y_c, int size, Mat& x, Mat& y)
 {
@@ -813,31 +829,6 @@ void DJETLoss::generateCoordinateVectors(double x_c, double y_c, int size, Mat& 
 
     x = x_ret;
     y = y_ret;
-}
-
-void DJETLoss::computeParaboloidNormalForAll( vector<shared_ptr<KeyPoint2>> matched_kpts1, vector<shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img )
-{
-    // This function is no longer called
-    int W, H, desc_radius;
-    double kpt_x, kpt_y, kpt_size;
-    shared_ptr<KeyPoint2> kpt1, kpt2;
-
-    W = img.cols;
-    H = img.rows;
-
-    for ( int i = 0; i < matched_kpts1.size(); i++ )
-    {
-        kpt1 = matched_kpts1[i];
-        kpt2 = matched_kpts2[i];
-        kpt_x = kpt1->getCoordX();
-        kpt_y = kpt1->getCoordY();
-        kpt_size = kpt1->getSize();
-        // Skips keypoints if local region will not produce all valid descriptors.
-        if (validKptLoc( kpt_x, kpt_y, kpt_size ))
-        {
-            this->collectDescriptorDistance( img, kpt1, kpt2 );
-        }
-    }
 }
 
 
@@ -932,7 +923,7 @@ double ReprojectionLoss::calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat
 {
     double a, b, c, x0, y0, epi_x, epi_y, loss;
     cv::Mat epiline;
-    epiline = F_matrix * x_k;
+    epiline = F_matrix.t() * x_k;
     a = epiline.at<double>(0);
     b = epiline.at<double>(1);
     c = epiline.at<double>(2);
@@ -970,7 +961,7 @@ double ReprojectionLoss::calculateKptLoss(const cv::Mat& F_matrix, const std::sh
     epi_x = (b*(b*x0 - a*y0) - a*c)/(a*a + b*b);
     epi_y = (a*(-b*x0 + a*y0) - b*c)/(a*a + b*b);
 
-    cv::Mat y_k_opt = (cv::Mat_<double>(3,1) << epi_x, epi_y, 1);
+    cv::Mat y_k_opt = (cv::Mat_<double>(2,1) << epi_x, epi_y, 1);
     v_k_opt = y_k_opt - y_k;
     v_k_opt.at<double>(2,0) = 1;
 
@@ -986,7 +977,7 @@ bool ReprojectionLoss::validKptLoc( double x, double y, int kpt_size )
     return validDescriptorRegion( x, y, desc_radius );
 }
 
-bool ReprojectionLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img, double x_update, double y_update )
+bool ReprojectionLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, double x_update, double y_update )
 {
     if ( this->validKptLoc( x_update, y_update, kpt->getSize() ) )
     {
@@ -1000,10 +991,15 @@ bool ReprojectionLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv:
     }
 }
 
-void ReprojectionLoss::linearizeLossFunction( cv::Mat& img, std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2 )
+void ReprojectionLoss::linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
 {
 
 }
+
+
+
+
+
 
 
 
@@ -1024,148 +1020,266 @@ KeyPointUpdate::KeyPointUpdate(   cv::Mat& img, double* p, cv::Mat K1, cv::Mat K
     this->parametrization = parametrization;
 }
 
-void KeyPointUpdate::updateKeypoints(   vector<shared_ptr<KeyPoint2>> matched_kpts1, 
-                                        vector<shared_ptr<KeyPoint2>> matched_kpts2, 
-                                        vector<shared_ptr<Point2DGJET>> points2D,
-                                        cv::Mat& F_matrix)
+
+void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point)
+{
+    if (new_evaluation_point && !baseline && !kpt_free)
+    {
+        std::cout << "NEW EVAL" << std::endl;
+        double tot_loss = 0;
+        double loss;
+        cv::Mat R, t, A, y_k, x_k, v_k_opt, y_k_opt, E_matrix, F_matrix;
+        shared_ptr<KeyPoint2> kpt1, kpt2;
+
+        vector<double> p_vec;
+        for ( int i = 0; i < 6; ++i )
+        {
+            p_vec.push_back(this->p[i]);
+        }
+        
+        for ( int n = 0; n < this->m_kpts1.size(); ++n )
+        {
+            kpt1 = m_kpts1[n];
+            kpt2 = m_kpts2[n];
+
+            if (!this->loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize() ))
+            {
+                loss = kpt1->getDescriptor("residual").at<double>(0,0);
+                tot_loss += loss*loss/2;
+                cv::Mat reset;
+                kpt1->setDescriptor(reset, "y_k_opt");
+                continue;
+            }
+
+            y_k = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX(),
+                                            kpt1->getCoordY(),
+                                            1);
+
+            x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                            kpt2->getCoordY(),
+                                            1);
+
+            this->parametrization->composeRMatrixAndTParam( p_vec, R, t );
+            E_matrix = composeEMatrix( R, t );
+            F_matrix = fundamentalFromEssential( E_matrix, this->K1, this->K2 );
+
+            this->loss_func->linearizeLossFunction( y_k, kpt2, A);
+
+            loss = this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
+            kpt1->setDescriptor(v_k_opt, "v_k_opt");
+            tot_loss += loss*loss/2;
+        }
+        if (best_loss == -1)
+        {
+            std::cout << "Saving initial state..." << std::endl;
+            for ( int n = 0; n < this->m_kpts1.size(); ++n )
+            {
+                kpt1 = m_kpts1[n];
+                cv::Mat loc = kpt1->getLoc();
+                kpt1->setDescriptor(loc, "init");
+
+                v_k_opt = kpt1->getDescriptor("v_k_opt");
+                y_k_opt = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX() + v_k_opt.at<double>(0,0),
+                                                    kpt1->getCoordY() + v_k_opt.at<double>(1,0),
+                                                    1);
+                kpt1->setDescriptor(loc, "y_k_opt");
+            }
+            best_loss = tot_loss;
+        }
+        //std::cout << "It: " << this->it_num << "---" << tot_loss << " < " << best_loss << std::endl;
+        if (tot_loss < best_loss || best_loss == -1)
+        {
+            best_loss = tot_loss;
+            std::cout << this->it_num << ": " << "Updating keypoint positions" << std::endl;
+            for ( int n = 0; n < this->m_kpts1.size(); ++n )
+            {
+                kpt1 = m_kpts1[n];
+                v_k_opt = kpt1->getDescriptor("v_k_opt");
+                y_k_opt = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX() + v_k_opt.at<double>(0,0),
+                                                    kpt1->getCoordY() + v_k_opt.at<double>(1,0),
+                                                    1);
+                kpt1->setDescriptor(y_k_opt, "y_k_opt");
+                this->updateKeypoint(kpt1, v_k_opt);
+            }
+        }
+        std::cout << this->it_num << ": " << tot_loss << "\t";// << std::endl;
+        this->it_num += 1;
+    }
+}
+
+void KeyPointUpdate::updateFreeKeypoints(   shared_ptr<FrameData> frame1, 
+                                            shared_ptr<FrameData> frame2, 
+                                            vector<shared_ptr<Point2DGJET>> points2D,
+                                            cv::Mat& F_matrix)
 {
     double* point2D;
     cv::Mat x_k, y_k, A, v_k_opt;
     shared_ptr<KeyPoint2> kpt1, kpt2;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
 
     int n = 0;
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
     for ( int i = 0; i < matched_kpts1.size(); ++i )
     {
         kpt1 = matched_kpts1[i];
         kpt2 = matched_kpts2[i];
         if (KeyPointUpdate::validMatch(kpt1, kpt2))
         {
+            // Move keypoint to optimal location
             point2D = points2D[n]->loc_;
-            if (this->loss_func->validKptLoc( point2D[0], point2D[1], kpt1->getSize() ))
-            {
-                // Move keypoint to optimal location
-                y_k = (cv::Mat_<double>(3,1)<<  point2D[0],
-                                                point2D[1],
-                                                1);
-                x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
-                                                kpt2->getCoordY(),
-                                                1);
-                this->loss_func->linearizeLossFunctionV2( y_k, kpt2, A);
-                this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
+            y_k = (cv::Mat_<double>(3,1)<<  point2D[0],
+                                            point2D[1],
+                                            1);
+            x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                            kpt2->getCoordY(),
+                                            1);
+            this->loss_func->linearizeLossFunction( y_k, kpt2, A);
+            this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
 
-                y_k.at<double>(0,0) += v_k_opt.at<double>(0,0);
-                y_k.at<double>(1,0) += v_k_opt.at<double>(1,0);
-                std::cout << 11111 << std::endl;
-                std::cout << (y_k).t() * F_matrix.t() * x_k << std::endl;
-                kpt1->setCoordx(y_k.at<double>(0,0));
-                kpt1->setCoordy(y_k.at<double>(1,0));
-            }
-            else
+            y_k.at<double>(0,0) += v_k_opt.at<double>(0,0);
+            y_k.at<double>(1,0) += v_k_opt.at<double>(1,0);
+
+            cv::Mat loc = kpt1->getLoc();
+            kpt1->setDescriptor(loc, "init");
+            kpt1->setDescriptor(y_k, "y_k_opt");
+
+            kpt1->setCoordx(y_k.at<double>(0,0));
+            kpt1->setCoordy(y_k.at<double>(1,0));
+            if (!this->loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize() ))
             {
                 KeyPointUpdate::invalidateMatch(kpt1, kpt2);
             }
+            else
+            {
+                // Updating descriptor.
+                cv::Mat desc;
+                cv::KeyPoint kpt_cv = cv::KeyPoint(kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize());
+                vector<cv::KeyPoint> kpt_cv_vec{kpt_cv};
+                this->loss_func->computeDescriptors(img, kpt_cv_vec, desc);
+                kpt1->setDescriptor(desc.row(0), this->loss_func->descriptor_name);
+            }
             n += 1;
         }
+        else
+        {
+            cv::Mat loc = kpt1->getLoc();
+            kpt1->setDescriptor(loc, "init");
+        }
     }
-    KeyPointUpdate::removeInvalidMatches(matched_kpts1, matched_kpts2);
 }
 
-void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point)
+void KeyPointUpdate::logY_k_opt(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, 
+                                cv::Mat F_matrix, std::vector<std::shared_ptr<Point2DGJET>> points2D)
 {
-    /*
-    if (new_evaluation_point)
+    double* point2D;
+    cv::Mat A, x_k, y_k, v_k_opt;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
+
+    int n = 0;
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    for ( int i = 0; i < matched_kpts1.size(); ++i )
     {
-        //std::cout << "Re-linearizing" << std::endl;
-        bool in_bounds;
-        double tot_loss, loss_n;
-        cv::Mat R, t, y_k, x_k, E_matrix, F_matrix, v_k_opt;
-        shared_ptr<KeyPoint2> kpt1, kpt2;
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
 
-        
-        
-        vector<double> p_vec;
-        for ( int i = 0; i < 6; ++i )
+        point2D = points2D[n]->loc_;
+        y_k = (cv::Mat_<double>(3,1)<<  point2D[0],
+                                        point2D[1],
+                                        1);
+        x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                        kpt2->getCoordY(),
+                                        1);
+        if (!this->loss_func->validKptLoc( y_k.at<double>(0,0), y_k.at<double>(1,0), kpt1->getSize() ))
         {
-            p_vec.push_back(p[i]);
+            cv::Mat reset;
+            kpt1->setDescriptor(reset, "y_k_opt");
+            continue;
         }
-        
+        /*
+        this->loss_func->linearizeLossFunction( y_k, kpt2, A);
+        this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
 
-        parametrization->composeRMatrixAndTParam( p_vec, R, t );
-        E_matrix = composeEMatrix( R, t );
-        F_matrix = fundamentalFromEssential( E_matrix, this->K1, this->K2 );
+        y_k.at<double>(0,0) += v_k_opt.at<double>(0,0);
+        y_k.at<double>(1,0) += v_k_opt.at<double>(1,0);
+        */
 
-
-        // Calculate update function
-        for (int i = 0; i < this->m_kpts1.size(); ++i)
-        {
-
-            kpt1 = m_kpts1[i];
-            kpt2 = m_kpts2[i];
-
-            if ( !validMatch(kpt1, kpt2) )
-            {
-                continue;
-            }
-
-            loss_func->linearizeLossFunction( this->img, kpt1, kpt2 );
-
-            loss_n = loss_func->calculateKptLoss( F_matrix, kpt1, kpt2, v_k_opt );
-            kpt1->setDescriptor(v_k_opt, "v_k_opt_candidate");
-
-
-            tot_loss += loss_n*loss_n;
-        }
-        //std::cout << "Total Loss: " << tot_loss << std::endl;
-
-        // Keypoint positions are only updated if loss is reduced.
-        if ( tot_loss < this->best_loss || this->best_loss == -1 )
-        {
-            this->best_loss = tot_loss;
-            for (int i = 0; i < this->m_kpts1.size(); ++i)
-            {
-                kpt1 = m_kpts1[i];
-                kpt2 = m_kpts2[i];
-
-                //Updating the keypoint
-                v_k_opt = kpt1->getDescriptor("v_k_opt_candidate");
-                kpt1->setDescriptor(v_k_opt, "v_k_opt");
-                this->logOptLoc(kpt1);
-
-                // TODO: Remove later when no longer usefull
-                KeyPointUpdate::logKptState( kpt1, F_matrix );
-
-                in_bounds = true;//this->updateKeypoint(kpt1, this->img);
-
-                if ( !in_bounds )
-                {
-                    invalidateMatch( kpt1, kpt2 );
-                }
-            }
-        }
+        kpt1->setDescriptor(y_k, "y_k_opt");
+        n += 1;
     }
-    */
 }
 
-bool KeyPointUpdate::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, const cv::Mat& img )
+void KeyPointUpdate::registerOptKptPosReprErr( shared_ptr<FrameData> frame1, 
+                                        shared_ptr<FrameData> frame2,
+                                        cv::Mat& F_matrix )
+{
+    cv::Mat A, x_k, y_k, v_k_opt;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
+
+    int n = 0;
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    for ( int i = 0; i < matched_kpts1.size(); ++i )
+    {
+        kpt1 = matched_kpts1[i];
+        kpt2 = matched_kpts2[i];
+        if (KeyPointUpdate::validMatch(kpt1, kpt2))
+        {
+            y_k = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX(),
+                                            kpt1->getCoordY(),
+                                            1);
+            x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                            kpt2->getCoordY(),
+                                            1);
+
+            this->loss_func->linearizeLossFunction( y_k, kpt2, A);
+            this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
+
+            y_k.at<double>(0,0) += v_k_opt.at<double>(0,0);
+            y_k.at<double>(1,0) += v_k_opt.at<double>(1,0);
+
+            kpt1->setDescriptor(y_k, "y_k_opt");
+        }
+    }
+}
+
+void KeyPointUpdate::registerOptKptPosLinear( shared_ptr<FrameData> frame1, 
+                                        shared_ptr<FrameData> frame2)
+{
+    cv::Mat loc;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1;
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    for ( shared_ptr<KeyPoint2> kpt1 : matched_kpts1 )
+    {
+        loc = kpt1->getLoc();
+        kpt1->setDescriptor(loc, "y_k_opt");
+    }
+}
+
+bool KeyPointUpdate::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, cv::Mat& v_k_opt )
 {   
     // There is no continuity, the original descriptor is being kept to match with next image!!!
     bool in_bounds;
     double x_update, y_update, scale, desc_radius;
-    cv::Mat v_k_opt;
 
-    v_k_opt = kpt->getDescriptor("v_k_opt");
     scale = this->calculateScale(v_k_opt);
     x_update = kpt->getCoordX() + scale*v_k_opt.at<double>(0,0);
     y_update = kpt->getCoordY() + scale*v_k_opt.at<double>(1,0);
 
-    in_bounds = this->loss_func->updateKeypoint( kpt, img, x_update, y_update );
+    //std::cout << sqrt(scale*v_k_opt.at<double>(0,0)*scale*v_k_opt.at<double>(0,0) + 
+    //                    scale*v_k_opt.at<double>(1,0)*scale*v_k_opt.at<double>(1,0)) << std::endl;
+
+    in_bounds = this->loss_func->updateKeypoint( kpt, x_update, y_update );
 
     return in_bounds;
 }
 
 void KeyPointUpdate::moveKptsToOptLoc(cv::Mat& F_matrix, const cv::Mat& img)
 {
-    cv::Mat y_k_opt;
+    cv::Mat v_k_opt, A, y_k, x_k;
     bool in_bounds;
     int desc_radius;
     double x_update, y_update;
@@ -1180,56 +1294,21 @@ void KeyPointUpdate::moveKptsToOptLoc(cv::Mat& F_matrix, const cv::Mat& img)
             continue;
         }
 
-        y_k_opt = kpt1->getDescriptor("y_k_opt");
-        x_update = y_k_opt.at<double>(0,0);
-        y_update = y_k_opt.at<double>(1,0);
+        y_k = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX(),
+                                        kpt1->getCoordY(),
+                                        1);
+        x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                        kpt2->getCoordY(),
+                                        1);
 
 
-        desc_radius = LossFunction::calculateDescriptorRadius( loss_func->getPatchSize(), kpt1->getSize() );
-        if(this->loss_func->validDescriptorRegion(x_update, y_update, desc_radius))
-            //&& cv::norm(kpt1->getDescriptor("v_k_opt")) < this->outlier_threshold)
-        {
-            // Updating keypoint placement.
-            kpt1->setCoordx(x_update);
-            kpt1->setCoordy(y_update);
-        }
-        else
-        {
-            invalidateMatch(kpt1, kpt2);
-        }
-
-        // Updating descriptor.
-        cv::Mat desc;
-        cv::KeyPoint kpt_cv = cv::KeyPoint(kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize());
-        vector<cv::KeyPoint> kpt_cv_vec{kpt_cv};
-        this->loss_func->computeDescriptors(img, kpt_cv_vec, desc);
-        kpt1->setDescriptor(desc.row(0), this->loss_func->descriptor_name);
-    }
-}
-
-void KeyPointUpdate::moveKptsToOptLocAlt(cv::Mat& F_matrix, const cv::Mat& img)
-{
-    cv::Mat v_k_opt;
-    bool in_bounds;
-    int desc_radius;
-    double x_update, y_update;
-    shared_ptr<KeyPoint2> kpt1, kpt2;
-    for (int i = 0; i < this->m_kpts1.size(); ++i)
-    {
-        kpt1 = this->m_kpts1[i];
-        kpt2 = this->m_kpts2[i];
-
-        if ( !validMatch(kpt1, kpt2) )
-        {
-            continue;
-        }
-
-
-        loss_func->linearizeLossFunction( this->img, kpt1, kpt2 );
-        loss_func->calculateKptLoss( F_matrix, kpt1, kpt2, v_k_opt );
+        //loss_func->linearizeLossFunction( this->img, kpt1, kpt2 );
+        //loss_func->calculateKptLoss( F_matrix, kpt1, kpt2, v_k_opt );
+        loss_func->linearizeLossFunction( y_k, kpt2, A);
+        loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
         kpt1->setDescriptor(v_k_opt, "v_k_opt");
 
-        in_bounds = this->updateKeypoint(kpt1, this->img);
+        in_bounds = this->updateKeypoint(kpt1, v_k_opt);
 
         if ( !in_bounds )
         {
@@ -1245,6 +1324,20 @@ void KeyPointUpdate::moveKptsToOptLocAlt(cv::Mat& F_matrix, const cv::Mat& img)
     }
 }
 
+void KeyPointUpdate::revertKptsToInit()
+{
+    cv::Mat loc;
+    shared_ptr<KeyPoint2> kpt1;
+    std::cout << "Retrieving initial keypoint state..." << std::endl;
+    for (int n = 0; n < m_kpts1.size(); ++n)
+    {
+        kpt1 = m_kpts1[n];
+        loc = kpt1->getDescriptor("init");
+        kpt1->setCoordx(loc.at<double>(0,0));
+        kpt1->setCoordy(loc.at<double>(1,0));
+    }
+}
+
 void KeyPointUpdate::addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
                                  std::shared_ptr<KeyPoint2> kpt2)
 {
@@ -1253,7 +1346,7 @@ void KeyPointUpdate::addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
 }
 
 double KeyPointUpdate::calculateScale(cv::Mat& v_k_opt)
-{   /*
+{
     double v_norm = cv::norm(v_k_opt);
     if ( v_norm < this->step_size )
     {
@@ -1263,8 +1356,6 @@ double KeyPointUpdate::calculateScale(cv::Mat& v_k_opt)
     {
         return (this->step_size)/v_norm;
     }
-    */
-    return 0.1;
 }
 
 
@@ -1272,6 +1363,11 @@ double KeyPointUpdate::calculateScale(cv::Mat& v_k_opt)
 void KeyPointUpdate::invalidateMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2)
 {
     kpt1->getHighestConfidenceMatch( kpt2->getObservationFrameNr() )->setValidFlag(false);
+}
+
+void KeyPointUpdate::validateMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2)
+{
+    kpt1->getHighestConfidenceMatch( kpt2->getObservationFrameNr() )->setValidFlag(true);
 }
 
 bool KeyPointUpdate::validMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr<KeyPoint2> kpt2)
@@ -1287,10 +1383,17 @@ bool KeyPointUpdate::validMatch(std::shared_ptr<KeyPoint2> kpt1, std::shared_ptr
     }
 }
 
-void KeyPointUpdate::removeInvalidMatches(vector<shared_ptr<KeyPoint2>> matched_kpts1,
-                                            vector<shared_ptr<KeyPoint2>> matched_kpts2)
+void KeyPointUpdate::removeInvalidMatches(shared_ptr<FrameData> frame1,
+                                            shared_ptr<FrameData> frame2)
 {
+    vector<int> del_kpt_idx_list;
     shared_ptr<KeyPoint2> kpt1, kpt2;
+    vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
+
+    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+
+
     for (int n = 0; n < matched_kpts1.size(); ++n)
     {
         kpt1 = matched_kpts1[n];
@@ -1298,8 +1401,11 @@ void KeyPointUpdate::removeInvalidMatches(vector<shared_ptr<KeyPoint2>> matched_
         if (!KeyPointUpdate::validMatch(kpt1, kpt2))
         {
             kpt1->removeAllMatches(kpt2->getObservationFrameNr());
+            del_kpt_idx_list.push_back(n);
         }
     }
+    frame1->removeMatchedKeypointsByIdx(frame2->getFrameNr(), del_kpt_idx_list);
+    frame2->removeMatchedKeypointsByIdx(frame1->getFrameNr(), del_kpt_idx_list);
 }
 
 void KeyPointUpdate::logOptLoc( std::shared_ptr<KeyPoint2> kpt )
