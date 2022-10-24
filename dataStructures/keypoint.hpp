@@ -45,6 +45,7 @@ class KeyPoint2
     public:
         KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr );
         KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr, cv::Mat descr, std::string descr_type="orb" );
+        KeyPoint2( int kpt_id, int x, int y, int observation_frame_nr, double angle=-1, int octave=-1, double response=-1, double size=-1 );
         KeyPoint2( int kpt_id, cv::Mat xy1, int observation_frame_nr, double angle=-1, int octave=-1, double response=-1, double size=-1 );
         ~KeyPoint2();
 

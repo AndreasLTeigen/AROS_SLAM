@@ -11,7 +11,7 @@
 
 static bool linear = false;
 static bool baseline = false;
-static bool kpt_free = true;
+static bool kpt_free = false;
 static bool use_motion_prior = false;
 static bool revert_kpt = true;
 static int n_reg_size = 7;
@@ -185,14 +185,12 @@ class KeyPointUpdate : public ceres::EvaluationCallback
                             std::shared_ptr<Parametrization> parametrization);
         ~KeyPointUpdate(){};
         
-        void updateFreeKeypoints(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<std::shared_ptr<Point2DGJET>> points2D, cv::Mat& F_matrix);
         void logY_k_opt(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat F_matrix, std::vector<std::shared_ptr<Point2DGJET>> points2D);
         void registerOptKptPosReprErr( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& F_matrix );
         void registerOptKptPosLinear( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
         void PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point) final;
 
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, cv::Mat& v_k_opt );
-        void moveKptsToOptLoc(cv::Mat& F_matrix, const cv::Mat& img);
         void revertKptsToInit();
         
         void addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,

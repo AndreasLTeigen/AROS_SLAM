@@ -4,6 +4,7 @@
 
 #include "matchKeypoints.hpp"
 #include "matchingMethods/bruteForceMatching.hpp"
+#include "matchingMethods/phaseCorrelation.hpp"
 
 using std::string;
 using std::shared_ptr;
@@ -13,6 +14,10 @@ std::shared_ptr<Matcher> getMatcher( string matching_method )
     if ( matching_method == "bf_mono" )
     {
         return std::make_shared<BFMatcher>();
+    }
+    else if ( matching_method == "phaseCorr")
+    {
+        return std::make_shared<PhaseCorrelation>();
     }
     else
     {

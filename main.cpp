@@ -45,6 +45,7 @@ int AVGSlam()
     // Initializing video output parameters
     bool VOut_show = config["VOut.show"].as<bool>();
     bool VOut_record = config["VOut.record"].as<bool>();
+    bool VOut_analysis_record = config["VOut.analysis_record"].as<bool>();
     std::string VOut_rec_path = config["VOut.rec_path"].as<std::string>();
 
     // Initializing output log parameters
@@ -135,7 +136,7 @@ int AVGSlam()
         auto computing_end_time = high_resolution_clock::now();
 
 
-        if ( VOut_show )
+        if ( VOut_show || VOut_analysis_record )
         {
             // Visualizing sequencer frame
             tracker->drawKeypoints(img_current, img_disp);
@@ -143,9 +144,15 @@ int AVGSlam()
             //tracker->drawEpipolarLinesWithPrev(img_disp);
             tracker->drawEpipoleWithPrev(img_disp);
             tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
-            //tracker->analysis(config, img_disp);
-            //tracker->kptMatchAnalysisWithPrev(img_disp);
-            seq.visualizeImage(img_disp);
+            if (VOut_show)
+            {
+                seq.visualizeImage(img_disp);   
+            }
+            if (VOut_analysis_record)
+            {
+                tracker->analysis(config, img_disp);
+                //tracker->kptMatchAnalysisWithPrev(img_disp);
+            }
         }
 
 

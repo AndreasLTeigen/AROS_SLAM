@@ -670,6 +670,29 @@ bool isInsideImageBounds( double y, double x, int H, int W)
     }
 }
 
+static void meshgrid( const cv::Mat& xgv, const cv::Mat& ygv, cv::Mat& X, cv::Mat& Y )
+{
+    /*
+    Arguments:
+        xgv:    Grid values in x direction [1 x n].
+        ygv:    Grid values in y direction [1 x m].
+    Returns:
+        X:      Grid consisting of xgv values in x direction, these values are stacked in y direction [m x n].
+        Y:      Grid consisting of ygv values in y direction, these values are stacked in x direction [m x n].
+    */
+
+    std::cout << "WARNING: This function is not tested, test before using it in application" << std::endl;
+    int n = X.cols;
+    int m = Y.cols;
+
+    cv::repeat(xgv, m, 1, X);
+    cv::repeat(ygv, 1, n, Y);
+
+    std::cout << X << std::endl;
+    std::cout << Y << std::endl;
+
+}
+
 std::string type2str(int type) {
   std::string r;
 
@@ -782,4 +805,10 @@ std::vector<std::vector<std::string>> readCSVFile(std::string filename, char del
         std::cout << "ERROR: COULD NOT OPEN FILE " << filename << std::endl;
     }
     return content;
+}
+
+bool saveImage( cv::Mat& img, std::string img_name, std::string folder )
+{
+    std::cout << "Saving " << folder + img_name << std::endl;
+    return cv::imwrite(folder + img_name , img);
 }

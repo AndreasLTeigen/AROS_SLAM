@@ -45,6 +45,19 @@ KeyPoint2::KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr, Ma
     this->setMapPoint(nullptr);
 }
 
+KeyPoint2::KeyPoint2( int kpt_id, int x, int y, int observation_frame_nr, double angle, int octave, double response, double size)
+{
+    this->setKptID(kpt_id);
+    this->setCoordx(x);
+    this->setCoordy(y);
+    this->setObservationFrameNr(observation_frame_nr);
+    this->setSize(size);
+    this->setAngle(angle);
+    this->setResponse(response);
+    this->setOctave(octave);
+    this->setMapPoint(nullptr);
+}
+
 KeyPoint2::KeyPoint2( int kpt_id, cv::Mat xy1, int observation_frame_nr, double angle, int octave, double response, double size)
 {
     /*
@@ -491,18 +504,20 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
         cv::Scalar blue(255, 0, 0);
         int cross_hair_size = 20;
         int kpt_x, kpt_y;
+
         if (updated)
         {
-            kpt_x = int( (uv.at<double>(0,0) + v_k_opt.at<double>(0,0) - left)*size.width/reg_w );
-            kpt_y = int( (uv.at<double>(1,0) + v_k_opt.at<double>(1,0) - top)*size.height/reg_h );
+            kpt_x = int( (uv.at<double>(0,0) - left)*size.width/reg_w );
+            kpt_y = int( (uv.at<double>(1,0) - top)*size.height/reg_h );
             //kpt_x = int((kpt->getCoordX() - left)*size.width/reg_w);
             //kpt_y = int((kpt->getCoordY() - top)*size.height/reg_h);
         }
         else
         {
-            kpt_x = int( (uv.at<double>(0,0) - left)*size.width/reg_w );
-            kpt_y = int( (uv.at<double>(1,0) - top)*size.height/reg_h );
+            kpt_x = int( (uv.at<double>(0,0) - v_k_opt.at<double>(0,0) - left)*size.width/reg_w);
+            kpt_y = int( (uv.at<double>(1,0) - v_k_opt.at<double>(1,0) - top)*size.height/reg_h);
         }
+        std::cout << kpt_x << ", " << kpt_y << std::endl;
         cv::line(img_sec,   cv::Point(kpt_x - cross_hair_size, kpt_y),
                             cv::Point(kpt_x + cross_hair_size, kpt_y),
                             blue);
@@ -539,12 +554,14 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
             */
 
 
-            cv::Mat epiline, x1_k;
-            x1_k = matched_kpt->getLoc();
-            epiline = F_matrix.t() * x1_k;
+            cv::Mat epiline, x2_k;
+            x2_k = matched_kpt->getLoc();
+            epiline = F_matrix.t() * x2_k;
             double a = -epiline.at<double>(0,0) / epiline.at<double>(1,0);
             double b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
             //std::cout << "a: " << a << ", b: " << b << std::endl; 
+
+            std::cout << kpt->getLoc().t() * epiline << std::endl;
 
 
             // Checking intersects in all vertices of the image patch

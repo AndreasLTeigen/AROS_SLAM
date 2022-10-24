@@ -1,8 +1,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "point5OutlierRejection.hpp"
-//#include "../../dataStructures/frameData.hpp"
-//#include "../../dataStructures/pose.hpp"
 #include "../../util/util.hpp"
 
 

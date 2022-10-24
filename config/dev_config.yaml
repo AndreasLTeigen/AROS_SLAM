@@ -2,8 +2,8 @@
 # -----Video In-----
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
-VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/    # Workhorse, KITTI
-#VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/    # Workhorse, VAROS
+#VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/    # Workhorse, KITTI
+VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/    # Workhorse, VAROS
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/B/
 #VIn.path: /home/andreas/Documents/kitti_dataset/
@@ -11,10 +11,10 @@ VIn.file_format: png
 VIn.fps: 24
 
 # -----Camera param(KITTI)-----
-Camera.fx: 718.856
-Camera.fy: 718.856
-Camera.cx: 607.1928
-Camera.cy: 185.2157
+#Camera.fx: 718.856
+#Camera.fy: 718.856
+#Camera.cx: 607.1928
+#Camera.cy: 185.2157
 
 # -----Camera param(EuRoC)-----
 #Camera.fx: 458.654
@@ -23,32 +23,33 @@ Camera.cy: 185.2157
 #Camera.cy: 248.375
 
 # -----Camera param(VAROS)-----
-#Camera.fx: 985.50724637681159420289855072464
-#Camera.fy: 985.50724637681159420289855072464
-#Camera.cx: 639.5
-#Camera.cy: 359.5
+Camera.fx: 985.50724637681159420289855072464
+Camera.fy: 985.50724637681159420289855072464
+Camera.cx: 639.5
+Camera.cy: 359.5
 
 # -----Algorithms-----
 Method.motion_prior: none #constant #gt #pre_est
-Method.extractor: orb_os #dd #orb #orb_os
-Method.matcher: bf_mono
-Method.pose_calculator: G_JET #motion prior #reproOpt #G_JET #5-point + outlier removal
-Method.point_reg_3D: all
-Method.point_cull_3D: OoW
+Method.extractor: blockFeature #dd #orb #orb_os
+Method.matcher: phaseCorr #bf_mono
+Method.pose_calculator: blockShift #motionPrior #reproOpt #G_JET #5-point + outlier removal
+Method.point_reg_3D: None #all
+Method.point_cull_3D: None #OoW
 
 # -----Parametrisation-----
 Methods.param: lie #std, lie
 
 
 # -----Video Out-----
-VOut.show: false
+VOut.show: True
 VOut.record: false
+VOut.analysis_record: false
 VOut.rec_path: /mnt/c/Users/and_t/Documents/AROS/Results/Recordings/
 #VOut.rec_path: /mnt/d/andreas/AROS/Results/Video/
 #VOut.rec_path: /home/andreas/Pictures/DJET-VideoOut/
 
 # -----Analysis------
-Anlys.pose_calculator: true       #TODO: Implement functionality for this
+Anlys.pose_calculator: true
 
 # -----Log out----
 Log.save: true
@@ -72,7 +73,7 @@ UI.menu_bar_width: 175
 # -----Video viewer-----
 UI.timing_show: true
 UI.tracking_log_show: true
-UI.keypoint_trail_length: 10
+UI.keypoint_trail_length: 2
 
 
 # -----Sequencer parameter config-----

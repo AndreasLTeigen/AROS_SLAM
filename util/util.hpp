@@ -77,6 +77,8 @@ std::vector<double> transform2stdParam(cv::Mat &T);
 
 bool isInsideImageBounds( double y, double x, int H, int W);
 
+static void meshgrid( const cv::Mat& xgv, const cv::Mat& ygv, cv::Mat& X, cv::Mat& Y );
+
 std::string type2str(int type);
 
 void writeParameters2File(std::string file_path, std::string image_idenifier, cv::Mat &T );
@@ -86,5 +88,7 @@ void writeTransformation2File(std::string file_path, std::string image_idenifier
 void writeVector2File(std::string file_path, std::vector<double> &data, bool linebreak=true);
 
 std::vector<std::vector<std::string>> readCSVFile(std::string filename, char delim);
+
+bool saveImage( cv::Mat& img, std::string img_name, std::string folder );
 
 #endif

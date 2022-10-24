@@ -25,7 +25,7 @@ std::shared_ptr<MapPointRegistrator> getMapPointRegistrator( std::string map_poi
     else
     {
         std::cerr << "ERROR: MAP POINT REGISTRATION METHOD NOT FOUND" << std::endl;
-        return nullptr;
+        return std::make_shared<NoneMPReg>();
     }
 }
 

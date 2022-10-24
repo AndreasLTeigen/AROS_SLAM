@@ -5,6 +5,7 @@
 #include "poseCalculationMethods/nonLinReproOpt.hpp"
 #include "poseCalculationMethods/GJET.hpp"
 #include "poseCalculationMethods/copyMotionPrior.hpp"
+#include "poseCalculationMethods/blockShift.hpp"
 
 
 std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_method )
@@ -21,9 +22,13 @@ std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_
     {
         return std::make_shared<GJET>();
     }
-    else if ( pose_calculation_method == "motion prior" )
+    else if ( pose_calculation_method == "motionPrior" )
     {
         return std::make_shared<CopyMPPC>();
+    }
+    else if ( pose_calculation_method == "blockShift" )
+    {
+        return std::make_shared<BlockShift>();
     }
     else
     {
