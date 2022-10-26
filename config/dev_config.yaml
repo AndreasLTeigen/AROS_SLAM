@@ -3,8 +3,8 @@
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/     # Workhorse, KITTI
-#VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/     # Workhorse, VAROS
-VIn.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/            # Macbook, KITTI
+VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/     # Workhorse, VAROS
+#VIn.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/            # Macbook, KITTI
 #VIn.path: /Users/andreas/Documents/AROS/Datasets/VAROS/cam0_img/A2Incomplete/                    # Macbook, VAROS
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/B/
@@ -13,10 +13,10 @@ VIn.file_format: png
 VIn.fps: 24
 
 # -----Camera param(KITTI)-----
-Camera.fx: 718.856
-Camera.fy: 718.856
-Camera.cx: 607.1928
-Camera.cy: 185.2157
+#Camera.fx: 718.856
+#Camera.fy: 718.856
+#Camera.cx: 607.1928
+#Camera.cy: 185.2157
 
 # -----Camera param(EuRoC)-----
 #Camera.fx: 458.654
@@ -25,10 +25,10 @@ Camera.cy: 185.2157
 #Camera.cy: 248.375
 
 # -----Camera param(VAROS)-----
-#Camera.fx: 985.50724637681159420289855072464
-#Camera.fy: 985.50724637681159420289855072464
-#Camera.cx: 639.5
-#Camera.cy: 359.5
+Camera.fx: 985.50724637681159420289855072464
+Camera.fy: 985.50724637681159420289855072464
+Camera.cx: 639.5
+Camera.cy: 359.5
 
 # -----Algorithms-----
 Method.motion_prior: none #constant #gt #pre_est
