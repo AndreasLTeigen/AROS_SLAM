@@ -37,8 +37,8 @@ void PhaseCorrelation::matchKeypoints( std::shared_ptr<FrameData> frame1, std::s
             center = kpt1->getDescriptor("center");
             kpt1_x = center.at<double>(0,0);
             kpt1_y = center.at<double>(1,0);
-            kpt2->setCoordx(kpt1_x - shift.x);
-            kpt2->setCoordy(kpt1_y - shift.y);
+            kpt2->setCoordx(kpt1_x + shift.x);
+            kpt2->setCoordy(kpt1_y + shift.y);
             
 
             // Registering the match.

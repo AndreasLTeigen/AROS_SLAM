@@ -6,7 +6,7 @@
 class BlockFeatures : public Extractor
 {
     private:
-        cv::Size grid_size = cv::Size(16,16);
+        cv::Size grid_size = cv::Size(10,10);
     public:
         BlockFeatures(){};
         ~BlockFeatures(){};
