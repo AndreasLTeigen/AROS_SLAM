@@ -9,9 +9,27 @@
 
 class PhaseCorrelation : public Matcher
 {
+    private:
+        double shift_threshold = 3;
     public:
         PhaseCorrelation(){};
         ~PhaseCorrelation(){};
+
+        void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+};
+
+class KLTTracker : public Matcher
+{
+    private:
+        cv::Size winSize = cv::Size(21, 21);
+        int maxLevel = 3;
+        cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
+        int flags = 0;
+        double 	minEigThreshold = 1e-4;
+
+    public:
+        KLTTracker(){};
+        ~KLTTracker(){};
 
         void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
 };

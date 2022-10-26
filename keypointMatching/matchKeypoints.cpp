@@ -15,9 +15,13 @@ std::shared_ptr<Matcher> getMatcher( string matching_method )
     {
         return std::make_shared<BFMatcher>();
     }
-    else if ( matching_method == "phaseCorr")
+    else if ( matching_method == "phaseCorr" )
     {
         return std::make_shared<PhaseCorrelation>();
+    }
+    else if ( matching_method == "KLT" )
+    {
+        return std::make_shared<KLTTracker>();
     }
     else
     {

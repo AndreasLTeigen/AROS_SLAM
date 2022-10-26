@@ -1,5 +1,5 @@
 #include <map>
-#include <omp.h>
+//#include <omp.h>
 #include <shared_mutex>
 #include <opencv2/opencv.hpp>
 

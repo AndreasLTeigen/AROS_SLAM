@@ -6,6 +6,7 @@
 
 #include "tracking/tracking.hpp"
 #include "sequencer/sequencer.hpp"
+#include "sequencer/sequencer2.hpp"
 #include "util/util.hpp"
 
 #ifdef PANGOLIN_ACTIVE
@@ -65,6 +66,7 @@ int AVGSlam()
     bool Seq_auto_start = config["Seq.auto_start"].as<bool>();
     int Seq_starting_frame_nr = config["Seq.starting_frame_nr"].as<int>();
     int Seq_frame_buffer_size = config["Seq.frame_buffer_size"].as<int>();
+    int Seq_frame_skip = config["Seq.frame_skip"].as<int>();
 
     // Initializing other parameters
     int idx_current;
@@ -81,22 +83,22 @@ int AVGSlam()
 
     // Initialize sequencer and frame tracker
     std::shared_ptr<FTracker> tracker = std::make_shared<FTracker>(config);
-    Sequencer seq = Sequencer(VIn_path, Seq_frame_buffer_size, VIn_file_format, VOut_record, VOut_rec_path, VIn_fps, Seq_auto_start);
-	//Sequencer2 seq = Sequencer2(VIn_path, VIn_file_format);
+    Sequencer2 seq = Sequencer2(VIn_path, VIn_file_format, Seq_starting_frame_nr, Seq_frame_skip);
 
-    seq.setCurrentIndex(Seq_starting_frame_nr);
-    for ( int i = 0; i < seq.getFrameBufferSize(); i++)
+    for ( int i = 0; i < Seq_frame_buffer_size; i++)
     {
-        img_current = seq.getCurrentFrame();
+        //img_current = seq.getCurrentFrame();
+        img_current = seq.getCurrentImg();
         idx_current = seq.getCurrentIndex();
         name_current = seq.getCurrentName();
-        seq.preLoadFrameBufferFrame(img_current);
+        std::cout << "Preloading img: " << name_current << std::endl;
         tracker->initializeTracking(img_current, idx_current, K_matrix);
         T_0 = cv::Mat::eye(4,4,CV_64F);
         if ( Log_save )
         {
             writeTransformation2File(Log_full_dst, name_current, T_0 );
         }
+        seq.iterateToNewFrame();
     }
 
 
@@ -120,13 +122,13 @@ int AVGSlam()
     // =====================================================
 
     // Start reading image sequence
-	while ( seq.hasNextFrame() ){
+	while ( seq.hasNextImg() ){
         auto frame_start_time = high_resolution_clock::now();
 
         // Loading sequencer image
-		img_current = seq.getCurrentFrame();
+        img_current = seq.getCurrentImg();
         idx_current = seq.getCurrentIndex();
-        seq.frameBufferPush(img_current);
+        std::cout << "Img name: " << seq.getCurrentName() << std::endl;
         std::cout << "Img nr: " << seq.getCurrentIndex() << std::endl;
 
 
@@ -135,18 +137,17 @@ int AVGSlam()
         tracker->trackFrame(img_current, idx_current, K_matrix);
         auto computing_end_time = high_resolution_clock::now();
 
-
         if ( VOut_show || VOut_analysis_record )
         {
             // Visualizing sequencer frame
             tracker->drawKeypoints(img_current, img_disp);
-            reduceImgContrast(img_disp);
-            //tracker->drawEpipolarLinesWithPrev(img_disp);
-            tracker->drawEpipoleWithPrev(img_disp);
+            //reduceImgContrast(img_disp);
+            tracker->drawEpipolarLinesWithPrev(img_disp);
+            //tracker->drawEpipoleWithPrev(img_disp);
             tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
             if (VOut_show)
             {
-                seq.visualizeImage(img_disp);   
+                seq.visualizeImg(img_disp);  
             }
             if (VOut_analysis_record)
             {
@@ -154,7 +155,6 @@ int AVGSlam()
                 //tracker->kptMatchAnalysisWithPrev(img_disp);
             }
         }
-
 
         if ( Log_save )
         {
@@ -172,7 +172,8 @@ int AVGSlam()
 		// Set sequencer variables for next iteration
         seq.iterateToNewFrame();
 		if ( seq.isFinished() ){
-			cv::waitKey(0);
+            break;
+			//cv::waitKey(0);
 		}
 
         // Timer calculation
@@ -205,13 +206,13 @@ int AVGSlam()
 
 int main()
 {
-    //AVGSlam();
+    AVGSlam();
     //example_fun();
     //updateFrame();
 
-    std::thread main_thread(AVGSlam);
+    //std::thread main_thread(AVGSlam);
 
-    main_thread.join();
+    //main_thread.join();
     return 0;
 }
 

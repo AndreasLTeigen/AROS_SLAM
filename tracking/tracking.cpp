@@ -139,10 +139,12 @@ void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix)
     /* Creates a new initalization frame. Currently just extracts the 
        keypoints with descriptor*/
 
+    std::cout << "CURRENT FRAME: " << this->getCurrentFrameNr() << std::endl;
     shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
 
     this->extractor->extract( img, frame, this->getMap3D() );
     frame->setImg( img ); // TODO: Remove later when not needed anymore
+    this->updateGlobalPose(cv::Mat::eye(4,4, CV_64F), frame);
     this->appendTrackingFrame(frame);
 }
 
@@ -194,9 +196,11 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     cv::Mat img_copy = img.clone();
     shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, img_copy );
     
-    rel_pose->updateParametrization(this->pose_param);
-    this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
-
+    if (rel_pose != nullptr)
+    {
+        rel_pose->updateParametrization(this->pose_param);
+        this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
+    }
 
     auto rel_pose_calc_end_time = high_resolution_clock::now();     // Timer
 
@@ -204,13 +208,19 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //              Map update
     // ==================================== 
-    this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
+    if (rel_pose != nullptr)
+    {
+        this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
+    }
 
 
     auto map_update_end_time = high_resolution_clock::now();        // Timer
 
 
-    this->appendTrackingFrame(frame1);
+    if (rel_pose != nullptr)
+    {
+        this->appendTrackingFrame(frame1);
+    }
 
     // ====================================
     //              Cleanup
@@ -222,8 +232,11 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     if (show_tracking_log)
     {
-        std::cout << "Parametrization: \n" << *rel_pose->getParametrization(this->pose_param) << std::endl;
-        std::cout << "Global Pose: \n" << frame1->getGlobalPose() << std::endl;
+        if (rel_pose != nullptr)
+        {
+            std::cout << "Parametrization: \n" << *rel_pose->getParametrization(this->pose_param) << std::endl;
+        }
+        std::cout << "Global Pose: \n" << this->frame_list[this->getFrameListLength()-1]->getGlobalPose() << std::endl;
     }
 
     if (show_timings)
@@ -381,7 +394,7 @@ void FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
     shared_ptr<KeyPoint2> kpt1, kpt2;
     vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
 
-    if (frame_idx=-1)
+    if (frame_idx == -1)
     {
         frame_idx = this->getFrameListLength() - 1;  //TODO: Should not be 1, depends on <comparion frame spacing variable>
     }

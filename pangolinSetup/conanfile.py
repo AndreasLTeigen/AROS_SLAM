@@ -34,15 +34,15 @@ conan_basic_setup()''')
         self.requires("glew/2.2.0")
         self.requires("eigen/3.3.9")
         self.requires("opengl/system")
-        self.requires("wayland/1.19.0")
+        #self.requires("wayland/1.19.0")
         self.requires("pybind11/2.6.2")
         self.requires("pkgconf/1.7.4")
 
         #LATE NIGHT ADDINGS
-        self.requires("egl/system")
-        self.requires("libjpeg/9d")
-        self.requires("lz4/1.9.3")
-        self.requires("libpng/1.6.37")
+        #self.requires("egl/system")
+        #self.requires("libjpeg/9d")
+        #self.requires("lz4/1.9.3")
+        #self.requires("libpng/1.6.37")
 
     def build(self):
         cmake = CMake(self)

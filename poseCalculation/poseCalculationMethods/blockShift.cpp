@@ -15,49 +15,32 @@ std::shared_ptr<Pose> BlockShift::calculate( std::shared_ptr<FrameData> frame1, 
     shared_ptr<KeyPoint2> kpt1, kpt2;
     vector<shared_ptr<KeyPoint2>> kpts1, kpts2;
 
-    /*
-    kpts = frame2->getKeypoints();
-    for ( int i = 0; i < kpts.size(); ++i )
-    {
-        kpt = kpts[i];
-        //Getting the previous keypoints.
-        pts2.push_back( cv::Point(kpt->getCoordX(), kpt->getCoordY()) );
-
-        // Getting the shifted keypoints.
-        shift = kpt->getDescriptor("shift");
-        if ( shift.empty() )
-        {
-            std::cerr << "ERROR: SHIFT VALUE IS EMPTY " << std::endl;
-        }
-        pts1.push_back( cv::Point(shift.at<double>(0,0), shift.at<double>(1,0)) );
-    }
-    */
-
     kpts1 = frame2->getKeypoints();
     kpts2 = frame2->getKeypoints();
 
-    for ( int i = 0; i < kpts1.size(); ++i )
-    {
-        kpt1 = kpts1[i];
-        kpt2 = kpts2[i];
-
-        center = kpt2->getDescriptor("center");
-        kpt2->setCoordx(center.at<double>(0,0));
-        kpt2->setCoordy(center.at<double>(1,0));
-    }
-
-
 
     compileMatchedCVPoints(frame1, frame2, pts1, pts2);
+    std::cout << pts1.size() << std::endl;
+
+    if ( pts1.size() < 5 )
+    {
+        resetKptMatches(frame1, frame2);
+        return nullptr;
+    }
 
     K_matrix = frame2->getKMatrix();
 
     E_matrix = cv::findEssentialMat(pts1, pts2, K_matrix, cv::RANSAC, 0.999, 1.0, inliers);
     FrameData::removeOutlierMatches(inliers, frame1, frame2);
-
     std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose(E_matrix, frame1, frame2);
 
     return rel_pose;
+}
+
+void BlockShift::resetKptMatches( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+{
+    // Removes all matches between frame1 and frame2.
+    FrameData::removeMatchesWithLowConfidence(1, frame1, frame2);
 }
 
 void BlockShift::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )

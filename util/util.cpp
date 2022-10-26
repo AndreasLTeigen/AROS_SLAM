@@ -46,6 +46,7 @@ void reduceImgContrast(cv::Mat img, int lower_level, int upper_level)
 
 void drawCircle(cv::Mat &img, cv::Point point, int radius)
 {
+    // Warning: Draw circle function might take time on IOS.
     cv::Scalar color_red = cv::Scalar( 0, 0, 255, 128 );
     //std::cout << "Drawing circle at: " << point << std::endl;
     cv::circle(img, point, radius, color_red, 2);
