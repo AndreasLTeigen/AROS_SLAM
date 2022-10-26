@@ -30,7 +30,7 @@ void PhaseCorrelation::matchKeypoints( std::shared_ptr<FrameData> frame1, std::s
         desc2 = kpt2->getDescriptor("block_feature");
         desc1.convertTo(desc1, CV_32FC1, 1.0/255.0);
         desc2.convertTo(desc2, CV_32FC1, 1.0/255.0);
-        shift = cv::phaseCorrelate(desc1, desc2);
+        shift = cv::phaseCorrelate(desc2, desc1);
 
         if ( cv::norm(shift) > this->shift_threshold )
         {

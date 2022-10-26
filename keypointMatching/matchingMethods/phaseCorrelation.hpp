@@ -10,7 +10,7 @@
 class PhaseCorrelation : public Matcher
 {
     private:
-        double shift_threshold = 3;
+        double shift_threshold = 1;
     public:
         PhaseCorrelation(){};
         ~PhaseCorrelation(){};

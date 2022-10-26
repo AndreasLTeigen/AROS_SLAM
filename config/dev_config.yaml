@@ -2,9 +2,9 @@
 # -----Video In-----
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
-#VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/     # Workhorse, KITTI
+VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/     # Workhorse, KITTI
 #VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/     # Workhorse, VAROS
-VIn.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/            # Macbook, KITTI
+#VIn.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/            # Macbook, KITTI
 #VIn.path: /Users/andreas/Documents/AROS/Datasets/VAROS/cam0_img/A2Incomplete/                    # Macbook, VAROS
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/B/
@@ -33,7 +33,7 @@ Camera.cy: 185.2157
 # -----Algorithms-----
 Method.motion_prior: none #constant #gt #pre_est
 Method.extractor: blockFeature #blockFeature #dd #orb #orb_os
-Method.matcher: KLT #KLT #phaseCorr #phaseCorr #bf_mono
+Method.matcher: phaseCorr #KLT #phaseCorr #phaseCorr #bf_mono
 Method.pose_calculator: blockShift #blockShift #motionPrior #reproOpt #G_JET #5-point + outlier removal
 Method.point_reg_3D: None #None #all
 Method.point_cull_3D: None #None #OoW
@@ -63,7 +63,7 @@ ILog.save: false
 ILog.path: output/IncrementalLog/
 
 # -----UI config-----
-UI.GUI_show: false
+UI.GUI_show: true
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15
