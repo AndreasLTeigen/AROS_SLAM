@@ -13,6 +13,12 @@ using std::shared_ptr;
 void BFMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
     //--Performing brute force matching without cross check and normalized hamming distance
+
+    if (frame1->getNumKeypoints() == 0 )
+    {
+        std::cerr << "ERROR: No keypoints were found" << std::endl;
+    }
+    
     vector<vector<DMatch>> matches, matches_temp;
     Mat queryDesc = frame1->compileCVDescriptors();
     Mat trainDesc = frame2->compileCVDescriptors();

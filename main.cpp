@@ -13,6 +13,7 @@
     #include "gui/pangolinInterface.hpp"
 #endif
 
+#include "test/helloPangolin.hpp"
 #include "test/concurrencyTest.hpp"
 
 using std::string;
@@ -142,8 +143,8 @@ int AVGSlam()
             // Visualizing sequencer frame
             tracker->drawKeypoints(img_current, img_disp);
             //reduceImgContrast(img_disp);
-            tracker->drawEpipolarLinesWithPrev(img_disp);
-            //tracker->drawEpipoleWithPrev(img_disp);
+            //tracker->drawEpipolarLinesWithPrev(img_disp);
+            tracker->drawEpipoleWithPrev(img_disp);
             tracker->drawKeypointTrails(img_disp, UI_keypoint_trail_length);
             if (VOut_show)
             {
@@ -206,8 +207,8 @@ int AVGSlam()
 
 int main()
 {
-    AVGSlam();
-    //example_fun();
+    //AVGSlam();
+    sharedMemoryTest();
     //updateFrame();
 
     //std::thread main_thread(AVGSlam);

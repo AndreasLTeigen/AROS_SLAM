@@ -1,6 +1,7 @@
 #ifndef tracking_h
 #define tracking_h
 
+#include "../framePreprocessor/framePreprocessor.hpp"
 #include "../keypointExtraction/keypointExtraction.hpp"
 #include "../keypointMatching/matchKeypoints.hpp"
 #include "../motionPrior/motionPrior.hpp"
@@ -16,6 +17,7 @@ class FTracker
         bool show_timings, show_tracking_log;
         cv::Mat T_global;
 
+        std::shared_ptr<Preprocessor> frame_preprocessor;
         std::shared_ptr<MotionPrior> motion_prior;
         std::shared_ptr<Extractor> extractor;
         std::shared_ptr<Matcher> matcher;

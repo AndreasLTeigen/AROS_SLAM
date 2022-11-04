@@ -20,9 +20,8 @@ std::shared_ptr<Pose> BlockShift::calculate( std::shared_ptr<FrameData> frame1, 
 
 
     compileMatchedCVPoints(frame1, frame2, pts1, pts2);
-    std::cout << pts1.size() << std::endl;
 
-    if ( pts1.size() < 5 )
+    if ( pts1.size() <= 5 )
     {
         resetKptMatches(frame1, frame2);
         return nullptr;

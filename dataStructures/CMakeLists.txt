@@ -17,4 +17,4 @@ target_sources(DataStructuresLib #${PROJECT_NAME}_lib
 		match.hpp
 		parametrization.hpp
 )
-target_include_directories(KeypointMatchingLib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(DataStructuresLib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

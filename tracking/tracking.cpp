@@ -38,6 +38,7 @@ FTracker::FTracker(YAML::Node config){
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
 
+    this->frame_preprocessor = getPreprocessor( config["Method.preprocessor"].as<std::string>() );
     this->motion_prior = getMotionPrior( config["Method.motion_prior"].as<std::string>() );
     this->extractor = getExtractor( config["Method.extractor"].as<std::string>() );
     this->matcher = getMatcher( config["Method.matcher"].as<std::string>() );
@@ -164,17 +165,27 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     std::cout << "Frame nr: " << frame1->getFrameNr() << std::endl;
 
+    auto preprocess_start_time = high_resolution_clock::now();            // Timer
+
+    // ==================================== 
+    //         Frame preprocessing
+    // ====================================
+    std::cout << "Frame preprocessing..." << std::endl;
+    this->frame_preprocessor->calculate( img, frame1 );
+
     auto kpts_start_time = high_resolution_clock::now();            // Timer
 
     // ==================================== 
     //          Motion prior
     // ====================================
+    std::cout << "Getting motion prior..." << std::endl;
     this->motion_prior->calculate( frame1, frame2 );
 
 
     // ==================================== 
     //      Keypoint identification
     // ==================================== 
+    std::cout << "Extracting keypoints..." << std::endl;
     this->extractor->extract( img, frame1, this->getMap3D() );
 
 
@@ -184,6 +195,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //          Keypoint matching
     // ==================================== 
+    std::cout << "Matching keypoints..." << std::endl;
     this->matcher->matchKeypoints( frame1, frame2 );
 
 
@@ -193,6 +205,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //      Relative pose calculation
     // ==================================== 
+    std::cout << "Computing relative pose..." << std::endl;
     cv::Mat img_copy = img.clone();
     shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, img_copy );
     
@@ -208,6 +221,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //              Map update
     // ==================================== 
+    std::cout << "Updating map..." << std::endl;
     if (rel_pose != nullptr)
     {
         this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
@@ -225,6 +239,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ====================================
     //              Cleanup
     // ====================================
+    std::cout << "Cleaning up..." << std::endl;
     this->frameListPruning();
 
     auto cleanup_end_time = high_resolution_clock::now();           // Timer
@@ -241,11 +256,13 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
 
     if (show_timings)
     {
+        auto ms0 = duration_cast<milliseconds>(kpts_start_time-preprocess_start_time);
         auto ms1 = duration_cast<milliseconds>(kpts_end_time-kpts_start_time);
         auto ms2 = duration_cast<milliseconds>(match_end_time-kpts_end_time);
         auto ms3 = duration_cast<milliseconds>(rel_pose_calc_end_time-match_end_time);
         auto ms4 = duration_cast<milliseconds>(map_update_end_time-rel_pose_calc_end_time);
         auto ms5 = duration_cast<milliseconds>(cleanup_end_time-map_update_end_time);
+        std::cout << "Frame preprocessing time: " << ms0.count() << "ms" << std::endl;
         std::cout << "Keypoint calculation time: " << ms1.count() << "ms" << std::endl;
         std::cout << "Matching time: " << ms2.count() << "ms" << std::endl;
         std::cout << "Relalive pose calculation time: " << ms3.count() << "ms" << std::endl;

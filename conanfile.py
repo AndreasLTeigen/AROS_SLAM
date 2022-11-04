@@ -32,6 +32,7 @@ class avg_slam_conan(ConanFile):
         cmake = CMake(self)
         cmake.definitions["pangolin_active"] = self.options.pangolin
         cmake.definitions["os_wsl"] = self.options.wsl
+        cmake.definitions["is_mac_os"] = True if self.settings.os == 'Macos' else False
         cmake.configure()
         cmake.build()
 

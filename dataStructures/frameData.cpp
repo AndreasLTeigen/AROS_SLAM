@@ -233,6 +233,11 @@ void FrameData::registerMatches(shared_ptr<FrameData> frame1, shared_ptr<FrameDa
     vector<cv::DMatch> kpt_match;
     shared_ptr<KeyPoint2> kpt1, kpt2;
     
+    if ( matches.size() == 0 )
+    {
+        std::cerr << "ERROR: No matches found" << std::endl;
+    }
+
     for(int i = 0; i < matches.size(); i++)
     {
         kpt_match = matches[i];

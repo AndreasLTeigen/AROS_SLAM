@@ -13,7 +13,7 @@ class ORBExtractor : public Extractor
         bool non_rot_desc = true;
         int nfeatures = 500;
         float scaleFactor = 1.2f;
-        int nlevels = 1;//8;
+        int nlevels = 8;
         cv::Ptr<cv::ORB> orb = cv::ORB::create(nfeatures, scaleFactor, nlevels);
 
     public:

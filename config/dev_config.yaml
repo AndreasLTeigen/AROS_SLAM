@@ -3,9 +3,9 @@
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
 #VIn.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/     # Workhorse, KITTI
-VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/     # Workhorse, VAROS
-#VIn.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/            # Macbook, KITTI
-#VIn.path: /Users/andreas/Documents/AROS/Datasets/VAROS/cam0_img/A2Incomplete/                    # Macbook, VAROS
+#VIn.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/     # Workhorse, VAROS
+VIn.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/           # Macbook, KITTI
+#VIn.path: /Users/andreas/Documents/AROS/Datasets/VAROS/cam0_img/A2/                               # Macbook, VAROS
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
 #VIn.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/B/
 #VIn.path: /home/andreas/Documents/kitti_dataset/
@@ -13,10 +13,10 @@ VIn.file_format: png
 VIn.fps: 24
 
 # -----Camera param(KITTI)-----
-#Camera.fx: 718.856
-#Camera.fy: 718.856
-#Camera.cx: 607.1928
-#Camera.cy: 185.2157
+Camera.fx: 718.856
+Camera.fy: 718.856
+Camera.cx: 607.1928
+Camera.cy: 185.2157
 
 # -----Camera param(EuRoC)-----
 #Camera.fx: 458.654
@@ -25,17 +25,18 @@ VIn.fps: 24
 #Camera.cy: 248.375
 
 # -----Camera param(VAROS)-----
-Camera.fx: 985.50724637681159420289855072464
-Camera.fy: 985.50724637681159420289855072464
-Camera.cx: 639.5
-Camera.cy: 359.5
+#Camera.fx: 985.50724637681159420289855072464
+#Camera.fy: 985.50724637681159420289855072464
+#Camera.cx: 639.5
+#Camera.cy: 359.5
 
 # -----Algorithms-----
+Method.preprocessor: none #autocor #blur
 Method.motion_prior: none #constant #gt #pre_est
-Method.extractor: blockFeature #blockFeature #dd #orb #orb_os
-Method.matcher: phaseCorr #KLT #phaseCorr #phaseCorr #bf_mono
-Method.pose_calculator: blockShift #blockShift #motionPrior #reproOpt #G_JET #5-point + outlier removal
-Method.point_reg_3D: None #None #all
+Method.extractor: orb_os #blockFeature #dd #orb #orb_os
+Method.matcher: KLT #KLT #phaseCorr #phaseCorr #bf_mono
+Method.pose_calculator: 5-point + outlier removal #blockShift #motionPrior #reproOpt #G_JET #5-point + outlier removal
+Method.point_reg_3D: all #None #all
 Method.point_cull_3D: None #None #OoW
 
 # -----Parametrisation-----
@@ -63,7 +64,7 @@ ILog.save: false
 ILog.path: output/IncrementalLog/
 
 # -----UI config-----
-UI.GUI_show: true
+UI.GUI_show: false
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15
@@ -80,7 +81,7 @@ UI.keypoint_trail_length: 2
 
 # -----Sequencer parameter config-----
 Seq.auto_start: true  #TODO: Hook this back up again
-Seq.starting_frame_nr: 0
+Seq.starting_frame_nr: 44
 Seq.frame_buffer_size: 1
 Seq.frame_skip: 0
 
