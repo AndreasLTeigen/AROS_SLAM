@@ -30,9 +30,19 @@ void PhaseCorrelation::matchKeypoints( std::shared_ptr<FrameData> frame1, std::s
         desc2 = kpt2->getDescriptor("block_feature");
         desc1.convertTo(desc1, CV_32FC1, 1.0/255.0);
         desc2.convertTo(desc2, CV_32FC1, 1.0/255.0);
+
         shift = cv::phaseCorrelate(desc2, desc1);
 
-        if ( cv::norm(shift) > this->shift_threshold )
+        /*
+        cv::imshow("1", desc1);
+        cv::imshow("2", desc2);
+        std::cout << kpt1->getDescriptor("center") << std::endl;
+        cv::waitKey(0);
+        
+        std::cout << shift << std::endl;
+        */
+
+        if ( cv::norm(shift) >= this->shift_threshold )
         {
             center = kpt1->getDescriptor("center");
             kpt1_x = center.at<double>(0,0);
@@ -82,13 +92,16 @@ void KLTTracker::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_
         kpt2->setCoordx(pts2[i].x);
         kpt2->setCoordy(pts2[i].y);
 
-        // Registering the match.
-        shared_ptr<Match> match = shared_ptr<Match>(new Match(kpt1, kpt2, 0, i));
-        kpt1->addMatch(match, frame2->getFrameNr());
-        kpt2->addMatch(match, frame1->getFrameNr());
+        if (cv::norm(pts2[i]-pts1[i]) >= this->shift_threshold)
+        {
+            // Registering the match.
+            shared_ptr<Match> match = shared_ptr<Match>(new Match(kpt1, kpt2, 0, i));
+            kpt1->addMatch(match, frame2->getFrameNr());
+            kpt2->addMatch(match, frame1->getFrameNr());
 
-        frame1->addKptToMatchList(kpt1, frame2);
-        frame2->addKptToMatchList(kpt2, frame1);
+            frame1->addKptToMatchList(kpt1, frame2);
+            frame2->addKptToMatchList(kpt2, frame1);
+        }
     }
 }
 /*

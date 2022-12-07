@@ -39,4 +39,4 @@ class avg_slam_conan(ConanFile):
 
     def installPangolin(self):
         self.run("cd pangolinSetup && conan export . demo/testing")
-        self.run("cd pangolinSetup && conan install pangolin/1.0@demo/testing --build=missing")
+        self.run("cd pangolinSetup && conan install pangolin/1.0@demo/testing --build=missing -pr=standard")

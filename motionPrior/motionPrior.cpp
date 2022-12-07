@@ -25,7 +25,7 @@ std::shared_ptr<MotionPrior> getMotionPrior( std::string motion_prior_method )
     }
     else
     {
-        std::cerr << "ERROR: MOTION PRIOR METHOD NOT FOUND" << std::endl;
+        std::cerr << "Warning: Motion prior method not found." << std::endl;
         return std::make_shared<NoneMP>();
     }
 }
@@ -35,5 +35,5 @@ std::shared_ptr<MotionPrior> getMotionPrior( std::string motion_prior_method )
 
 void NoneMP::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
-    std::cerr << "ERROR: MOTION PRIOR ALGORITHM NOT IMPLEMENTED" << std::endl;
+    //std::cerr << "ERROR: MOTION PRIOR ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

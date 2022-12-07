@@ -31,6 +31,18 @@ Pose::Pose( Mat E_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> fr
     this->setPose( E_matrix );
 }
 
+Pose::Pose( Mat E_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, vector<cv::Point2d> pts1, vector<cv::Point2d> pts2, int pose_nr)
+{
+    this->pose_nr = pose_nr;
+    this->frame1 = frame1;
+    this->frame2 = frame2;
+
+    Mat R, t;
+    int num_points;
+    num_points = cv::recoverPose( E_matrix, pts1, pts2, frame1->getKMatrix(), R, t );
+    this->updatePoseVariables(E_matrix, R, t);
+}
+
 /*
 Pose::Pose(Mat T_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, int pose_nr)
 {
@@ -345,7 +357,7 @@ void Pose::decomposeEMatrixSlow(Mat &E_matrix, Mat &R, Mat &t)
        cheriality test without returning these
        NOTE: Assumes both frames uses the same camera matrix */
 
-    int num_points, num_points1, num_points2;
+    int num_points;
     std::shared_ptr<FrameData> temp_frame1, temp_frame2;
     temp_frame1 = this->getFrame1();
     temp_frame2 = this->getFrame2();

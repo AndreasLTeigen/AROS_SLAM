@@ -35,7 +35,8 @@ class Pose
     public:
         Pose( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, int pose_nr=-1 );
         Pose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, int pose_nr=-1 );
-        //Pose( cv::Mat T_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, int pose_nr=-1 );
+        Pose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, 
+                std::vector<cv::Point2d> pts1, std::vector<cv::Point2d> pts2, int pose_nr=-1);
         ~Pose();
 
         // Write functions

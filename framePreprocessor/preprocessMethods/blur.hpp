@@ -6,7 +6,7 @@
 class Blur : public Preprocessor
 {
     private:
-        cv::Size kernel_size = cv::Size(101,101);
+        cv::Size kernel_size = cv::Size(93,93);
     public:
         Blur(){};
         ~Blur(){};

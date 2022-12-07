@@ -15,10 +15,6 @@ std::shared_ptr<Pose> BlockShift::calculate( std::shared_ptr<FrameData> frame1, 
     shared_ptr<KeyPoint2> kpt1, kpt2;
     vector<shared_ptr<KeyPoint2>> kpts1, kpts2;
 
-    kpts1 = frame2->getKeypoints();
-    kpts2 = frame2->getKeypoints();
-
-
     compileMatchedCVPoints(frame1, frame2, pts1, pts2);
 
     if ( pts1.size() <= 5 )

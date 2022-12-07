@@ -1,0 +1,22 @@
+
+# -----Sequences-----
+Data.sequences:
+  - KITTI_grayscale/sequences/00/image_0/   #0
+  - KITTI_grayscale/sequences/01/image_0/   #1
+  - KITTI_grayscale/sequences/02/image_0/   #2
+
+# -----Source-----
+Data.folder: /Users/andreas/Documents/AROS/Datasets/          # Macbook
+
+# -----Meta-----
+Data.file_format: png
+Data.fps: 24
+
+# -----Camera param(KITTI)-----
+Camera.fx: 718.856
+Camera.fy: 718.856
+Camera.cx: 607.1928
+Camera.cy: 185.2157
+
+# -----Sequence Playlist-----
+Data.playlist: [1,0,2]

@@ -14,7 +14,7 @@ std::shared_ptr<MapPointCuller> getMapPointCuller( std::string map_point_cull_me
     }
     else
     {
-        std::cerr << "ERROR: MAP POINT CULLING METHOD NOT FOUND" << std::endl;
+        std::cerr << "Warning: Map point culling method not found." << std::endl;
         return nullptr;
     }
 }
@@ -22,5 +22,5 @@ std::shared_ptr<MapPointCuller> getMapPointCuller( std::string map_point_cull_me
 
 void NoneMPCull::cullMP()
 {
-    std::cerr << "ERROR: MAP POINT REGISTRATION ALGORITHM NOT IMPLEMENTED" << std::endl;
+    //std::cerr << "ERROR: MAP POINT REGISTRATION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

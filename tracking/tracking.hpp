@@ -14,7 +14,9 @@
 class FTracker
 {
     private:
-        bool show_timings, show_tracking_log;
+        bool show_timings, show_log, show_analysis, save_out;
+        bool is_pose_analysis;
+        std::string out_path;
         cv::Mat T_global;
 
         std::shared_ptr<Preprocessor> frame_preprocessor;
@@ -27,7 +29,7 @@ class FTracker
 
         ParamID pose_param;
 
-        int curr_frame_nr, tracking_window_length;
+        int curr_frame_nr, tracking_window_length, kpt_trail_length;
         std::vector<std::shared_ptr<FrameData>> frame_list;  // TODO:Change this to something like <frame_window_list>
         std::shared_ptr<Map3D> map_3d;
 
@@ -41,6 +43,12 @@ class FTracker
         FTracker( YAML::Node config );
         ~FTracker();
 
+        bool isOutSave();
+        bool isShowLog();
+        bool isShowTimings();
+        bool isShowAnalysis();
+        std::string getOutPath();
+
         int getCurrentFrameNr();
         int getTrackingWindowLength();
         int getFrameListLength();
@@ -49,18 +57,20 @@ class FTracker
         std::vector<std::shared_ptr<FrameData>> getTrackingFrames();
         std::shared_ptr<FrameData> getFrame(int index);
         std::shared_ptr<Map3D> getMap3D();
+        void setOutPath(std::string out_path);
         void setCurrentFrameNr(int curr_frame_nr);
         void setGlobalPose(cv::Mat T_global);
         void updateGlobalPose(cv::Mat T_rel, std::shared_ptr<FrameData> current_frame);
         void initializeTracking(cv::Mat &img, int img_id, cv::Mat K_matrix);
-        void trackFrame(cv::Mat &img, int img_id, cv::Mat K_matrix, int comparison_frame_spacing=1);
+        
+        int trackFrame(cv::Mat &img, int img_id, cv::Mat K_matrix, int comparison_frame_spacing=1);
         void appendTrackingFrame(std::shared_ptr<FrameData> new_frame);
         void frameListPruning();
         void drawKeypoints(cv::Mat &src, cv::Mat &dst, int frame_nr=-1);
-        void drawKeypointTrails(cv::Mat &img, int trail_length=49, int frame_nr=-1, int trail_thickness=2);
+        void drawKeypointTrails(cv::Mat &img, int frame_nr=-1, int trail_thickness=2);
         void drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr1=-1);
         void drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr=-1);
-        void analysis(YAML::Node& config, cv::Mat& img_disp);
+        void analysis(cv::Mat& img_disp);
         void kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
         void kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
         void incremental3DMapTrackingLog(std::shared_ptr<FrameData> frame, std::string ILog_path);

@@ -34,7 +34,8 @@ using json = nlohmann::json;
 
 
 
-FTracker::FTracker(YAML::Node config){
+FTracker::FTracker(YAML::Node config)
+{
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
 
@@ -47,15 +48,48 @@ FTracker::FTracker(YAML::Node config){
     this->map_point_cull = getMapPointCuller( config["Method.point_cull_3D"].as<std::string>() );
     this->pose_param = getParametrization( config["Methods.param"].as<std::string>() );
 
-    this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
-    this->show_timings = config["UI.timing_show"].as<bool>();
-    this->show_tracking_log = config["UI.tracking_log_show"].as<bool>();
     this->map_3d = std::make_shared<Map3D>();
+
+    this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
+    this->show_analysis = config["Trck.analysis"].as<bool>();
+    this->show_timings = config["Trck.timing_show"].as<bool>(); // Split this up or change location
+    this->kpt_trail_length = config["Trck.out.kpt_trail_length"].as<int>();
+    this->show_log = config["Trck.log.show"].as<bool>();
+
+    this->is_pose_analysis = config["Anlys.pose_calculator"].as<bool>();
+
+    this->out_path = config["Trck.out.path"].as<std::string>() + config["Trck.out.name"].as<std::string>();
+    this->save_out = config["Trck.out.save"].as<bool>();
 }
 
 FTracker::~FTracker()
 {
     //@TODO: Create destructor
+}
+
+bool FTracker::isOutSave()
+{
+    return this->save_out;
+}
+
+bool FTracker::isShowLog()
+{
+    return this->show_log;
+}
+
+bool FTracker::isShowTimings()
+{
+    return this->show_timings;
+}
+
+bool FTracker::isShowAnalysis()
+{
+    return this->show_analysis;
+}
+
+std::string FTracker::getOutPath()
+{
+    return this->out_path;
 }
 
 int FTracker::getCurrentFrameNr()
@@ -117,6 +151,11 @@ std::shared_ptr<Map3D> FTracker::getMap3D()
     return this->map_3d;
 }
 
+void FTracker::setOutPath(std::string out_path)
+{
+    this->out_path = out_path;
+}
+
 void FTracker::setCurrentFrameNr(int curr_frame_nr)
 {
     std::unique_lock lock(this->mutex_curr_frame_nr);
@@ -140,18 +179,17 @@ void FTracker::initializeTracking(cv::Mat &img, int img_id, Mat K_matrix)
     /* Creates a new initalization frame. Currently just extracts the 
        keypoints with descriptor*/
 
-    std::cout << "CURRENT FRAME: " << this->getCurrentFrameNr() << std::endl;
     shared_ptr<FrameData> frame = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
 
     this->extractor->extract( img, frame, this->getMap3D() );
-    frame->setImg( img ); // TODO: Remove later when not needed anymore
+    frame->setImg( img );
     this->updateGlobalPose(cv::Mat::eye(4,4, CV_64F), frame);
     this->appendTrackingFrame(frame);
 }
 
 
 
-void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_frame_spacing)
+int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_frame_spacing)
 {
     /* Core function of FTracker, recieves new image, extracts information
        with chosen methods and redirects to matching / pose prediction
@@ -163,14 +201,14 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     frame1->setImg( img ); // TODO: Remove later when not needed anymore
 
 
-    std::cout << "Frame nr: " << frame1->getFrameNr() << std::endl;
+    if (this->isShowLog()) std::cout << "Frame nr: " << frame1->getFrameNr() << std::endl;
 
     auto preprocess_start_time = high_resolution_clock::now();            // Timer
 
     // ==================================== 
     //         Frame preprocessing
     // ====================================
-    std::cout << "Frame preprocessing..." << std::endl;
+    if (this->isShowLog()) std::cout << "Frame preprocessing..." << std::endl;
     this->frame_preprocessor->calculate( img, frame1 );
 
     auto kpts_start_time = high_resolution_clock::now();            // Timer
@@ -178,14 +216,14 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //          Motion prior
     // ====================================
-    std::cout << "Getting motion prior..." << std::endl;
+    if (this->isShowLog()) std::cout << "Getting motion prior..." << std::endl;
     this->motion_prior->calculate( frame1, frame2 );
 
 
     // ==================================== 
     //      Keypoint identification
     // ==================================== 
-    std::cout << "Extracting keypoints..." << std::endl;
+    if (this->isShowLog()) std::cout << "Extracting keypoints..." << std::endl;
     this->extractor->extract( img, frame1, this->getMap3D() );
 
 
@@ -195,7 +233,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //          Keypoint matching
     // ==================================== 
-    std::cout << "Matching keypoints..." << std::endl;
+    if (this->isShowLog()) std::cout << "Matching keypoints..." << std::endl;
     this->matcher->matchKeypoints( frame1, frame2 );
 
 
@@ -205,15 +243,17 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //      Relative pose calculation
     // ==================================== 
-    std::cout << "Computing relative pose..." << std::endl;
+    if (this->isShowLog()) std::cout << "Computing relative pose..." << std::endl;
     cv::Mat img_copy = img.clone();
     shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, img_copy );
-    
-    if (rel_pose != nullptr)
+
+    if (rel_pose == nullptr)
     {
-        rel_pose->updateParametrization(this->pose_param);
-        this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
+        return 0;
     }
+    
+    rel_pose->updateParametrization(this->pose_param);
+    this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
 
     auto rel_pose_calc_end_time = high_resolution_clock::now();     // Timer
 
@@ -221,7 +261,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ==================================== 
     //              Map update
     // ==================================== 
-    std::cout << "Updating map..." << std::endl;
+    if (this->isShowLog()) std::cout << "Updating map..." << std::endl;
     if (rel_pose != nullptr)
     {
         this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
@@ -239,13 +279,13 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
     // ====================================
     //              Cleanup
     // ====================================
-    std::cout << "Cleaning up..." << std::endl;
+    if (this->isShowLog()) std::cout << "Cleaning up..." << std::endl;
     this->frameListPruning();
 
     auto cleanup_end_time = high_resolution_clock::now();           // Timer
 
 
-    if (show_tracking_log)
+    if (this->isShowLog())
     {
         if (rel_pose != nullptr)
         {
@@ -254,7 +294,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
         std::cout << "Global Pose: \n" << this->frame_list[this->getFrameListLength()-1]->getGlobalPose() << std::endl;
     }
 
-    if (show_timings)
+    if (this->show_timings)
     {
         auto ms0 = duration_cast<milliseconds>(kpts_start_time-preprocess_start_time);
         auto ms1 = duration_cast<milliseconds>(kpts_end_time-kpts_start_time);
@@ -269,6 +309,7 @@ void FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison
         std::cout << "Map update time: " << ms4.count() << "ms" << std::endl;
         std::cout << "Cleanup time: " << ms5.count() << "ms" << std::endl;
     }
+    return 1;
 }
 
 
@@ -311,13 +352,15 @@ void FTracker::drawKeypoints(cv::Mat &src, cv::Mat &dst, int frame_nr)
     cv::drawKeypoints(src, temp_frame->compileCVKeypoints(), dst);
 }
 
-void FTracker::drawKeypointTrails(cv::Mat &img, int trail_length, int frame_nr, int trail_thickness)
+void FTracker::drawKeypointTrails(cv::Mat &img, int frame_nr, int trail_thickness)
 {
     /* Prints a line from the matched keypoints from frame nr <frame_nr> 
        to <frame_nr - max(trail_length, tracking_window_length)>
        Assumption: given more match possibilites optimal forward match 
        is equal to optimal backwards match, and that matches of subsequent
        frames are always available */
+
+    int trail_length = this->kpt_trail_length;
 
     if (frame_nr == -1)
     {
@@ -370,6 +413,12 @@ void FTracker::drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr)
     E_matrix = curr_frame->getRelPose( curr_frame->getFrameNr()-1 )->getEMatrix(); //TODO: Should not be 1, depends on <comparion frame spacing variable>
     F_matrix = fundamentalFromEssential( E_matrix, curr_frame->getKMatrix() );
     epipole = calculateEpipole( F_matrix );
+    if (isnan(epipole.at<double>(2,0)))
+    {
+        epipole = (cv::Mat_<double>(3,1) << curr_frame->getImg().cols/2, 
+                                            curr_frame->getImg().rows/2, 
+                                            1);
+    }
     drawCircle( img_disp, epipole );
 }
 
@@ -393,9 +442,9 @@ void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
     drawEpipolarLines( F_matrix, img_disp, pts2, pts1 );
 }
 
-void FTracker::analysis(YAML::Node& config, cv::Mat& img_disp)
+void FTracker::analysis(cv::Mat& img_disp)
 {
-    if (config["Anlys.pose_calculator"].as<bool>() == true)
+    if (this->is_pose_analysis == true)
     {
         this->pose_calculator->analysis(img_disp, this->getFrame(-1), this->getFrame(-2)); //Change this to be able to handle other than the last two frames
     }

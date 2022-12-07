@@ -26,6 +26,7 @@ class KLTTracker : public Matcher
         cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
         int flags = 0;
         double 	minEigThreshold = 1e-4;
+        double shift_threshold = 0;
 
     public:
         KLTTracker(){};

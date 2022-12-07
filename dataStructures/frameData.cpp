@@ -72,6 +72,19 @@ void FrameData::addKeypoint(shared_ptr<KeyPoint2> kpt)
     this->kpts.push_back(kpt);
 }
 
+void FrameData::registerKeypoints(vector<cv::Point2d>& pts)
+{
+    /* Converts and registers vector<cv::Point> into the AVG Keypoint class
+       and saves it in the frameData class. For more details, see design document*/
+
+    #pragma omp parallel for
+    for( int i = 0; i < pts.size(); i++ )
+    {
+        shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(i, pts[i], this->getFrameNr());
+        this->addKeypoint(keypoint);
+    }
+}
+
 void FrameData::registerKeypoints(vector<shared_ptr<KeyPoint2>> kpts)
 {
     /* Registers vector<shared_ptr<KeyPoint2>> and saves it in the frameData class. 
@@ -94,8 +107,6 @@ void FrameData::registerKeypoints(vector<cv::KeyPoint>& kpts, Mat& descrs)
     {
         shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(i, kpts[i], this->getFrameNr(), descrs.row(i));
         this->addKeypoint(keypoint);
-        //std::cout << "NUm threads: " << omp_get_num_threads() << std::endl;
-        //std::cout << "This is thread num: " << omp_get_thread_num() << std::endl;
     }
 }
 
@@ -211,6 +222,7 @@ void FrameData::addRelPose(shared_ptr<Pose> rel_pose, shared_ptr<FrameData> conn
         this->rel_poses[connecting_frame]:  Registers the pose in <this> frame
     */
     std::unique_lock lock(this->mutex_rel_poses);
+    this->is_movement = true;
     this->rel_poses[connecting_frame->getFrameNr()] = rel_pose;
 }
 
@@ -256,6 +268,21 @@ void FrameData::registerMatches(shared_ptr<FrameData> frame1, shared_ptr<FrameDa
 
         }
     }
+}
+
+void FrameData::registerRelPose(shared_ptr<Pose> rel_pose, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
+{
+    /*
+    Arguments:
+        rel_pose:                   Pose between <frame1> and <frame2>
+        frameX:                     Frame objects connecting the relative pose of interest.
+    Returns:
+        rel_pose:                   Newly created relative pose object between <frame1> and <frame2>.
+    Effect:
+        frameX->rel_poses[frameY]:  Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+    */
+    frame1->addRelPose(rel_pose, frame2);
+    frame2->addRelPose(rel_pose, frame1);
 }
 
 shared_ptr<Pose> FrameData::registerRelPose(Mat E_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
@@ -348,6 +375,12 @@ bool FrameData::isKeyframe()
     */
     std::shared_lock lock(this->mutex_is_keyframe);
     return this->is_keyframe;
+}
+
+bool FrameData::isMovement()
+{
+    std::shared_lock lock(this->mutex_rel_poses);
+    return this->is_movement;
 }
 
 int FrameData::getFrameNr()

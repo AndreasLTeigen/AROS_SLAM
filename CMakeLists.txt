@@ -61,6 +61,8 @@ set(PROJECT_LIB ${PROJECT_NAME}_lib)
 set(AVG_SLAM_MAIN_OBJS
     ${AVG_SLAM_ROOT}/main.cpp
     ${AVG_SLAM_ROOT}/CMakeLists.txt
+    ${AVG_SLAM_ROOT}/AVGSlam.cpp
+    ${AVG_SLAM_ROOT}/AVGSlam.hpp
 )
 
 add_library(${PROJECT_NAME}_lib STATIC ${AVG_SLAM_MAIN_OBJS} ${AVG_SLAM_SRC})

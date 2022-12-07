@@ -22,13 +22,7 @@ class Sequencer2
         std::chrono::time_point<std::chrono::high_resolution_clock> time_prev_frame;
 
     public:
-        Sequencer2( std::string folder_path, 
-                    std::string file_format = "png",
-                    int start_idx = 0,
-                    int frame_skip = 0,
-                    bool grayscale=true,
-                    bool play_mode=false,
-                    int fps_target = -1);
+        Sequencer2( YAML::Node sys_config, YAML::Node data_config, int seq_nr, bool grayscale );
         ~Sequencer2(){};
         bool loadImgPaths();
 

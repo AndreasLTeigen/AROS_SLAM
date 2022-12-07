@@ -4,6 +4,8 @@
 
 #include "preprocessMethods/autocorrelation.hpp"
 #include "preprocessMethods/blur.hpp"
+#include "preprocessMethods/fft.hpp"
+#include "preprocessMethods/homomorphicFilter.hpp"
 
 
 std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
@@ -12,18 +14,26 @@ std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
     {
         return std::make_shared<Autocor>();
     }
-    else if (preprocessor_method == "blur" )
+    else if ( preprocessor_method == "blur" )
     {
         return std::make_shared<Blur>();
     }
+    else if ( preprocessor_method == "fft" )
+    {
+        return std::make_shared<FFT>();
+    }
+    else if (preprocessor_method == "hf")
+    {
+        return std::make_shared<HomomorphicFiltering>();
+    }
     else
     {
-        std::cerr << "ERROR: PREPROCESSOR METHOD NOT FOUND" << std::endl;
+        std::cerr << "Warning: Preprocessor method not found." << std::endl;
         return std::make_shared<NoneProcessor>();
     }
 }
 
 void NoneProcessor::calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )
 {
-    std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
+    //std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

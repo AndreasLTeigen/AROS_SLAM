@@ -1,4 +1,5 @@
 #include <iostream>
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 
 #include "sequencer2.hpp"
@@ -8,21 +9,20 @@ using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
 
-Sequencer2::Sequencer2( std::string folder_path, 
-                        std::string file_format,
-                        int start_idx,
-                        int frame_skip,
-                        bool grayscale,
-                        bool play_mode,
-                        int fps_target)
+Sequencer2::Sequencer2( YAML::Node sys_config, YAML::Node data_config, int seq_nr, bool grayscale )
 {
-    this->folder_path = folder_path;
-    this->file_format = file_format;
     this->grayscale = grayscale;
-    this->play_mode = play_mode;
-    this->frame_skip = frame_skip;
-    this->fps_target = fps_target;
-    this->current_idx = start_idx;
+
+    const YAML::Node& all_seq_names = data_config["Data.sequences"];
+    std::string sequence_name = all_seq_names[seq_nr].as<std::string>();
+    std::cout << "Loading sequence: "  << sequence_name << std::endl;
+
+    this->folder_path = data_config["Data.folder"].as<std::string>() + sequence_name;
+    this->file_format = data_config["Data.file_format"].as<std::string>();
+    this->fps_target = data_config["Data.fps"].as<int>();
+    this->play_mode = sys_config["Seq.auto_start"].as<bool>();
+    this->frame_skip = sys_config["Seq.frame_skip"].as<int>();
+    this->current_idx = sys_config["Seq.starting_frame_nr"].as<int>();
     this->timing = false;
     this->loadImgPaths();
 }

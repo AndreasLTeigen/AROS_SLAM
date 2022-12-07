@@ -25,18 +25,16 @@ class GUI
         GUI();
         ~GUI();
 
-        bool getShutdown();
-
-        void setShutdown(bool value);
         void GUIConfigParser(YAML::Node &config);
 
 
-        void updateFrame(std::shared_ptr<FTracker> tracker);
+        void run(std::shared_ptr<FTracker> tracker);
         void drawEgoMotionLines( std::shared_ptr<FTracker> tracker );
         void drawEgoMotionPoints( std::shared_ptr<FTracker> tracker );
         void drawMapPoints( std::shared_ptr<FTracker> tracker );
         void drawMapPointsOfCurrentFrame( std::shared_ptr<FTracker> tracker );
         void drawCamera(pangolin::OpenGlMatrix &T_wc);
+        void setImageData(unsigned char * imageArray, int size);
 };
 int example_fun();
 

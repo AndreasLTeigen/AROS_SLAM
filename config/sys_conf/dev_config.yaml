@@ -1,0 +1,84 @@
+
+# -----Video In-----
+#IO.source.path: /mnt/c/Users/and_t/Documents/AROS/Database/kitti_grayscale/dataset/sequences/00/image_0/
+#IO.source.path: /mnt/d/andreas/AROS/Datasets/kitti_grayscale/dataset/sequences/00/image_0/
+#IO.source.path: /home/andreas/Documents/Datasets/kitti_odometry_gray/dataset/sequences/00/image_0/     # Workhorse, KITTI
+#IO.source.path: /home/andreas/Documents/Datasets/VAROS2021Dataset/2021-08-17_SEQ1/vehicle0/cam0/B/     # Workhorse, VAROS
+#IO.source.path: /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/sequences/00/image_0/           # Macbook, KITTI
+#IO.source.path: /Users/andreas/Documents/AROS/Datasets/VAROS/cam0_img/A2/                               # Macbook, VAROS
+#IO.source.path: /mnt/c/Users/and_t/Documents/AROS/Database/EuRoC/MH_01_easy/mav0/cam0/data/
+#IO.source.path: /mnt/c/Users/and_t/Documents/AROS/Database/2021-08-17_SEQ1/vehicle0/cam0/B/
+#IO.source.path: /home/andreas/Documents/kitti_dataset/
+#IO.source.file_format: png
+#IO.source.fps: 24
+
+# -----Camera param(KITTI)-----
+#Camera.fx: 718.856
+#Camera.fy: 718.856
+#Camera.cx: 607.1928
+#Camera.cy: 185.2157
+
+# -----Camera param(EuRoC)-----
+#Camera.fx: 458.654
+#Camera.fy: 457.296
+#Camera.cx: 367.215
+#Camera.cy: 248.375
+
+# -----Camera param(VAROS)-----
+#Camera.fx: 985.50724637681159420289855072464
+#Camera.fy: 985.50724637681159420289855072464
+#Camera.cx: 639.5
+#Camera.cy: 359.5
+
+# -----Dataset------
+Dataset: kitti
+Dataset: euroc
+Dataset: varos
+
+# -----Algorithms-----
+Method.preprocessor: blur #hf #fft #autocor #blur
+Method.motion_prior: none #constant #gt #pre_est
+Method.extractor: orb_os #blockFeature #dd #orb #orb_os
+Method.matcher: bf_mono #OF_F #KLT #phaseCorr #bf_mono
+Method.pose_calculator: 5-point #blockShift #motionPrior #reproOpt #G_JET #5-point
+Method.point_reg_3D: none #None #all
+Method.point_cull_3D: none #None #OoW
+
+# -----Parametrisation-----
+Methods.param: lie #std, lie
+
+# -----Analysis------
+Anlys.pose_calculator: true
+
+# -----Incremental Log-----
+ILog.save: false
+ILog.path: output/IncrementalLog/
+
+# -----UI config-----
+UI.display_img: true
+UI.GUI_show: false
+UI.GUI_size_x: 1024
+UI.GUI_size_y: 768
+UI.camera_size: 0.15
+UI.camera_line_width: 1.0
+UI.point_size: 2.0
+UI.line_width: 1.0
+UI.menu_bar_width: 175
+
+# -----Sequencer parameter config-----
+Seq.auto_start: true
+Seq.starting_frame_nr: 1
+Seq.frame_skip: 0
+
+# -----Tracker parameter config-----
+Trck.log.show: false
+Trck.timing_show: false
+Trck.tracking_window_length: 50
+Trck.init_frame_buffer_size: 1
+Trck.out.kpt_trail_length: 1
+Trck.analysis: false
+
+Trck.out.save: true
+Trck.out.name: poses.txt
+Trck.out.path: output/
+Trck.out.clear_at_init: true

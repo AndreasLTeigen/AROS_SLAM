@@ -38,8 +38,8 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
     }
     else
     {
-        std::cerr << "ERROR: EXTRACTION METHOD NOT FOUND" << std::endl;
-        return nullptr;
+        std::cerr << "Warning: Extraction method not found." << std::endl;
+        return std::make_shared<NoneExtractor>();
     }
 }
 
@@ -48,5 +48,5 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
 
 void NoneExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
 {
-    std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
+    //std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

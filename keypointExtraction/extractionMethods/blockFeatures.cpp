@@ -41,8 +41,8 @@ void BlockFeatures::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std
             // Making a keypoint.
             y = cell_height * (i + 0.5);
             x = cell_width * (j + 0.5);
-            center = (cv::Mat_<double>(2,1) << x, y );
             kpt = std::make_shared<KeyPoint2>( i*grid_width + j, x, y, frame->getFrameNr());
+            center = (cv::Mat_<double>(2,1) << x, y );
             kpt->setDescriptor(center, "center");
 
             // Using a part of the image as the kpt descriptor.

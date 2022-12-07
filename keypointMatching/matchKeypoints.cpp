@@ -5,6 +5,7 @@
 #include "matchKeypoints.hpp"
 #include "matchingMethods/bruteForceMatching.hpp"
 #include "matchingMethods/phaseCorrelation.hpp"
+#include "matchingMethods/opticalFlowFarneback.hpp"
 
 using std::string;
 using std::shared_ptr;
@@ -23,9 +24,13 @@ std::shared_ptr<Matcher> getMatcher( string matching_method )
     {
         return std::make_shared<KLTTracker>();
     }
+    else if ( matching_method == "OF_F")
+    {
+        return std::make_shared<OpticalFlowFarneback>();
+    }
     else
     {
-        std::cerr << "ERROR: EXTRACTION METHOD NOT FOUND" << std::endl;
+        std::cerr << "Warning: Matching method not found." << std::endl;
         return std::make_shared<NoneMatcher>();
     }
 }
@@ -35,5 +40,5 @@ std::shared_ptr<Matcher> getMatcher( string matching_method )
 
 void NoneMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
-    std::cerr << "ERROR: KEYPOINT MATCHING ALGORITHM NOT IMPLEMENTED" << std::endl;
+    //std::cerr << "ERROR: KEYPOINT MATCHING ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

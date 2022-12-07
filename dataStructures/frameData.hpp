@@ -17,7 +17,8 @@ class FrameData
         const int frame_nr, img_id;
         int n_keypoints;
         bool is_keyframe = false;
-        cv::Mat img;
+        bool is_movement = false;
+        cv::Mat img;                            //TODO: change this into const
         cv::Mat K_matrix;
         cv::Mat global_pose = cv::Mat::eye(4,4,CV_64F);
         std::vector<std::shared_ptr<KeyPoint2>> kpts;
@@ -46,6 +47,7 @@ class FrameData
         void promoteToKeyframe();
         void demoteFromKeyframe();
         void addKeypoint( std::shared_ptr<KeyPoint2> kpt );
+        void registerKeypoints( std::vector<cv::Point2d>& pts );
         void registerKeypoints(std::vector<std::shared_ptr<KeyPoint2>> kpts);
         void registerKeypoints( std::vector<cv::KeyPoint>& kpts, cv::Mat& descrs );
         void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list );
@@ -55,6 +57,7 @@ class FrameData
         void addRelPose( std::shared_ptr<Pose> rel_pose, std::shared_ptr<FrameData> connecting_frame );
         
         static void registerMatches( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<std::vector<cv::DMatch>>& matches );
+        static void registerRelPose(std::shared_ptr<Pose> rel_pose, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
         static std::shared_ptr<Pose> registerRelPose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
         static std::shared_ptr<Pose> registerGTRelPose(cv::Mat T_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
         static void removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
@@ -63,6 +66,7 @@ class FrameData
 
         // Read functions
         bool isKeyframe();
+        bool isMovement();
         int getFrameNr();
         int getImgId();
         int getNumKeypoints();

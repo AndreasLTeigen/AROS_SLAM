@@ -38,6 +38,7 @@ std::shared_ptr<Pose> P5ORPC::do5pointAlgOutlierRejection(std::shared_ptr<FrameD
     if ( pts1.size() < 5 || pts2.size() < 5 )
     {
         std::cerr << "ERROR: Fewer then 5 matched points are available, cannot do pose calculation" << std::endl;
+        return nullptr;
     }
     E_matrix = cv::findEssentialMat(pts1, pts2, K_matrix, cv::RANSAC, 0.999, 1.0, inliers);
     FrameData::removeOutlierMatches(inliers, frame1, frame2);

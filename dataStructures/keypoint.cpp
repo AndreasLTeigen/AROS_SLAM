@@ -18,6 +18,19 @@ using cv::Mat;
 
 
 
+KeyPoint2::KeyPoint2( int kpt_id, cv::Point pt, int observation_frame_nr )
+{
+    this->setKptID(kpt_id);
+    this->setCoordx(pt.x);
+    this->setCoordy(pt.y);
+    this->setObservationFrameNr(observation_frame_nr);
+    this->setSize(0);
+    this->setAngle(-1);
+    this->setResponse(0);
+    this->setOctave(0);
+    this->setMapPoint(nullptr);
+}
+
 KeyPoint2::KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr )
 {
     this->setKptID(kpt_id);

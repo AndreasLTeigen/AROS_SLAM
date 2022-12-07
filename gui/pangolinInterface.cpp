@@ -27,18 +27,6 @@ GUI::~GUI()
     //TODO: Implement destructor
 }
 
-bool GUI::getShutdown()
-{
-    std::shared_lock lock(this->mutex_shutdown);
-    return shut_down;
-}
-
-void GUI::setShutdown(bool value)
-{
-    std::unique_lock lock(this->mutex_shutdown);
-    this->shut_down = value;
-}
-
 void GUI::GUIConfigParser(YAML::Node &config)
 {
     this->size_x = config["UI.GUI_size_x"].as<int>();
@@ -50,26 +38,25 @@ void GUI::GUIConfigParser(YAML::Node &config)
     this->line_width = config["UI.line_width"].as<double>();
 }
 
-void GUI::updateFrame(std::shared_ptr<FTracker> tracker)
+void GUI::run(std::shared_ptr<FTracker> tracker)
 {
     bool perspective_view_toggle = false; // true -> perspective has just been toggled
     bool top_follow = true; // toggle between top and cam follow
     pangolin::OpenGlMatrix T_wc_openGl, O_w_openGl;
-    cv::Mat temp_T_wc_1, temp_T_wc_2, temp_t_wc_1, temp_t_wc_2;
+    cv::Mat temp_T_wc_1;
     shared_ptr<FrameData> temp_frame1, temp_frame2;
-    temp_T_wc_1 = cv::Mat::zeros(4,4,CV_64F);
-    temp_T_wc_2 = cv::Mat::zeros(4,4,CV_64F);
-    temp_t_wc_1 = cv::Mat::zeros(3,1,CV_64F);
-    temp_t_wc_2 = cv::Mat::zeros(3,1,CV_64F);
+
+    const int width = tracker->getTrackingFrames()[0]->getImg().cols;
+    const int height = tracker->getTrackingFrames()[0]->getImg().rows;
     
 
     pangolin::CreateWindowAndBind("Main",this->size_x,this->size_y);
+    //pangolin::CreateWindowAndBind("Main",this->size_x,2*this->size_y);
 
     // 3D Mouse handler requires depth testing to be enabled
     glEnable(GL_DEPTH_TEST);
 
     // Issue specific OpenGl we might need (
-    //TODO: check if these really do anything
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -80,18 +67,52 @@ void GUI::updateFrame(std::shared_ptr<FTracker> tracker)
     pangolin::Var<bool> menuTopView("menu.Top View",false,false);
     pangolin::Var<bool> menuCameraView("menu.Camera View",false,false);
 
+
+    // ==================================== 
+    //  Initializing point cloud parameters 
+    // ==================================== 
     // Define Projection and initial ModelView matrix
-    pangolin::OpenGlRenderState s_cam(
-        pangolin::ProjectionMatrix(this->size_x,this->size_y,2000,2000,512,389,0.1,1000),
+    pangolin::OpenGlRenderState pc_cam(
+        pangolin::ProjectionMatrix(this->size_x,this->size_y/2.0,2000,2000,512,389,0.1,1000),
         pangolin::ModelViewLookAt(0,-75, -0.1, 0,0,0,0.0,-1.0, 0.0) // Top camera view
     );
+    
 
     // Create Interactive View in window
-    pangolin::View& d_cam = pangolin::CreateDisplay()
-        .SetBounds(0.0, 1.0, pangolin::Attach::Pix(this->menu_bar_width), 1.0, -1024.0f/768.0f)
-        .SetHandler(new pangolin::Handler3D(s_cam));
+    pangolin::View& d_cam = pangolin::Display("point_cloud")
+        .SetAspect(-float(width)/float(height))
+        //.SetBounds(0.0, 0.5, 0.0, 1.0, 2*float(this->size_x)/float(this->size_y))
+        .SetHandler(new pangolin::Handler3D(pc_cam));
 
-    while( !this->getShutdown() )
+    //pangolin::View& d_cam = pangolin::Display("point_cloud")
+    //    .SetBounds(0.0, 0.5, pangolin::Attach::Pix(this->menu_bar_width), 1.0, -1024.0f/768.0f)
+    //    .SetHandler(new pangolin::Handler3D(pc_cam));
+
+
+    // ==================================== 
+    //  Initializing image view parameters 
+    // ==================================== 
+
+    pangolin::GlTexture imageTexture(width,height,GL_RGB,false,0,GL_RGB,GL_UNSIGNED_BYTE);
+    pangolin::View& d_img = pangolin::Display("video_feed")
+        .SetAspect(float(width)/float(height));
+        //.SetBounds(0.5, 1.0, 0.0, 1.0, -float(width)/float(height));
+
+
+
+
+    pangolin::Display("multi")
+        .SetBounds(0.0, 1.0, pangolin::Attach::Pix(this->menu_bar_width), 1.0)
+        .SetLayout(pangolin::LayoutEqual)
+        .AddDisplay(d_img)
+        .AddDisplay(d_cam);
+
+
+    int current_frame_nr = tracker->getFrame(-1)->getFrameNr();
+    cv::Mat img;
+    unsigned char* imageArray = new unsigned char[3*width*height];
+
+    while( !pangolin::ShouldQuit() )
     {
         // Clear screen and activate view to render into
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -104,14 +125,14 @@ void GUI::updateFrame(std::shared_ptr<FTracker> tracker)
         {
             menuTopView = false;
             top_follow = true;
-            s_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,-50, -0.1, 0,0,0,0.0,-1.0, 0.0)); // Top camera view
+            pc_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,-50, -0.1, 0,0,0,0.0,-1.0, 0.0)); // Top camera view
         }
 
         else if ( menuFollowCamera && menuCameraView )
         {
             menuCameraView = false;
             top_follow = false;
-            s_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,-1, -10, 0,0,0,0.0,0.0, 1.0)); // Behind camera view
+            pc_cam.SetModelViewMatrix(pangolin::ModelViewLookAt(0,-1, -10, 0,0,0,0.0,0.0, 1.0)); // Behind camera view
         }
 
         T_wc_openGl = T2OpenGlCameraMatrixFull(temp_T_wc_1);
@@ -121,15 +142,15 @@ void GUI::updateFrame(std::shared_ptr<FTracker> tracker)
             if ( top_follow )
             {
                 O_w_openGl = T2OpenGlCameraMatrixTrans(temp_T_wc_1);
-                s_cam.Follow(O_w_openGl);
+                pc_cam.Follow(O_w_openGl);
             }
             else
             {
-                s_cam.Follow(T_wc_openGl);
+                pc_cam.Follow(T_wc_openGl);
             }
         }
 
-        d_cam.Activate(s_cam);
+        d_cam.Activate(pc_cam);
 
         // Drawing camera shape
         drawCamera(T_wc_openGl);
@@ -146,6 +167,20 @@ void GUI::updateFrame(std::shared_ptr<FTracker> tracker)
 
         // Drawing only mapPoints seen in the last frame
         //this->drawMapPointsOfCurrentFrame( tracker );
+
+
+
+        // Drawing video feed
+        d_img.Activate();
+        if (current_frame_nr != temp_frame1->getFrameNr() && !temp_frame1->getImg().empty())
+        {
+            imageArray = temp_frame1->getImg().data;
+            current_frame_nr = temp_frame1->getFrameNr();
+        }
+        //setImageData(imageArray,3*width*height);
+        imageTexture.Upload(imageArray,GL_RGB,GL_UNSIGNED_BYTE);
+        glColor4f(1.0f,1.0f,1.0f,1.0f);
+        imageTexture.RenderToViewport();
         
         // Swap frames and Process Events
         pangolin::FinishFrame();
@@ -156,10 +191,6 @@ void GUI::drawEgoMotionLines( std::shared_ptr<FTracker> tracker )
 {
     cv::Mat temp_T_wc_1, temp_T_wc_2, temp_t_wc_1, temp_t_wc_2;
     shared_ptr<FrameData> temp_frame1, temp_frame2;
-    temp_T_wc_1 = cv::Mat::zeros(4,4,CV_64F);
-    temp_T_wc_2 = cv::Mat::zeros(4,4,CV_64F);
-    temp_t_wc_1 = cv::Mat::zeros(3,1,CV_64F);
-    temp_t_wc_2 = cv::Mat::zeros(3,1,CV_64F);
 
     glLineWidth(this->line_width);
     glColor4f(0.0f,1.0f,0.0f,0.6f);
@@ -282,19 +313,25 @@ void GUI::drawCamera(pangolin::OpenGlMatrix &T_wc)
     glPopMatrix();
 }
 
+void GUI::setImageData(unsigned char * imageArray, int size){
+  for(int i = 0 ; i < size;i++) {
+    imageArray[i] = (unsigned char)(rand()/(RAND_MAX/255.0));
+  }
+}
+
 int example_fun()
 {
     pangolin::CreateWindowAndBind("Main",640,480);
     glEnable(GL_DEPTH_TEST);
 
-    // Define Projection and initial ModelView matrix
-    pangolin::OpenGlRenderState s_cam(
+    // PointCloud: Define Projection and initial ModelView matrix
+    pangolin::OpenGlRenderState pc_cam(
         pangolin::ProjectionMatrix(640,480,420,420,320,240,0.2,100),
         pangolin::ModelViewLookAt(-2,2,-2, 0,0,0, pangolin::AxisY)
     );
 
-    // Create Interactive View in window
-    pangolin::Handler3D handler(s_cam);
+    // PointCloud: Create Interactive View in window
+    pangolin::Handler3D handler(pc_cam);
     pangolin::View& d_cam = pangolin::CreateDisplay()
             .SetBounds(0.0, 1.0, 0.0, 1.0, -640.0f/480.0f)
             .SetHandler(&handler);
@@ -303,7 +340,7 @@ int example_fun()
     {
         // Clear screen and activate view to render into
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        d_cam.Activate(s_cam);
+        d_cam.Activate(pc_cam);
 
         // Render OpenGL Cube
         pangolin::glDrawColouredCube();

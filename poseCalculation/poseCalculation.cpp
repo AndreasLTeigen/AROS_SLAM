@@ -10,7 +10,7 @@
 
 std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_method )
 {
-    if ( pose_calculation_method == "5-point + outlier removal" )
+    if ( pose_calculation_method == "5-point" )
     {
         return std::make_shared<P5ORPC>();
     }
@@ -32,7 +32,7 @@ std::shared_ptr<PoseCalculator> getPoseCalculator( std::string pose_calculation_
     }
     else
     {
-        std::cerr << "ERROR: POSE CALCULATION METHOD NOT FOUND" << std::endl;
+        std::cerr << "Warning: Pose calculation method not found." << std::endl;
         return std::make_shared<NonePC>();
     }
 }
@@ -41,27 +41,31 @@ ParamID getParametrization( std::string parametrization_method )
 {
     if ( parametrization_method == "std" )
     {
-        std::cout << "METHOD: USING STANDARD PARAMETRIZATION" << std::endl;
+        std::cout << "Method: Using standard parametrization." << std::endl;
         return ParamID::STDPARAM;
     }
     else if ( parametrization_method == "lie")
     {
-        std::cout << "METHOD: USING ANGLE AXIS PARAMETRIZATION" << std::endl;
+        std::cout << "Method: Using angle axis parametrization." << std::endl;
         return ParamID::LIEPARAM;
     }
     else
     {
-        std::cerr << "ERROR: PARAMETRIZATION METHOD NOT FOUND" << std::endl;
+        std::cerr << "Warning: Parametrization method not found." << std::endl;
         return ParamID::NONE;
     }
 }
 
 
+void PoseCalculator::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+{
+    std::cerr << "ERROR: POSE CALCULATION ANALYSIS ALGORITHM NOT IMPLEMENTED" << std::endl;
+}
 
 
 std::shared_ptr<Pose> NonePC::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
-    std::cerr << "ERROR: POSE CALCULATION ALGORITHM NOT IMPLEMENTED" << std::endl;
+    //std::cerr << "ERROR: POSE CALCULATION ALGORITHM NOT IMPLEMENTED" << std::endl;
     return nullptr;
 }
 

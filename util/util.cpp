@@ -222,6 +222,7 @@ cv::Mat calculateEpipole(cv::Mat E_matrix)
     Eigen::Matrix<double, 3, 1> epipole_eigen = lu.kernel();
     cv::eigen2cv(epipole_eigen, epipole);
     epipole = epipole/epipole.at<double>(2);
+    //std::cout << "Drawing epipole: " << epipole << std::endl;
     return epipole;
 }
 
@@ -776,6 +777,16 @@ void writeVector2File(std::string file_path, std::vector<double> &data, bool lin
     else
     {
         std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+}
+
+void clearFile(std::string file_path)
+{
+    std::ofstream file;
+    file.open(file_path);
+    if (file.is_open())
+    {
+        file << "";
     }
 }
 
