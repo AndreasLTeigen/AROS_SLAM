@@ -1,0 +1,112 @@
+
+# -----Sequences-----
+Data.sequences:
+  - abandonedfactory_night/abandonedfactory_night/Hard/P000/image_left  #0
+  - abandonedfactory_night/abandonedfactory_night/Hard/P001/image_left  #1
+  - abandonedfactory_night/abandonedfactory_night/Hard/P002/image_left  #2
+  - abandonedfactory_night/abandonedfactory_night/Hard/P003/image_left  #3
+  - abandonedfactory_night/abandonedfactory_night/Hard/P005/image_left  #4
+  - abandonedfactory_night/abandonedfactory_night/Hard/P006/image_left  #5
+  - abandonedfactory_night/abandonedfactory_night/Hard/P007/image_left  #6
+  - abandonedfactory_night/abandonedfactory_night/Hard/P008/image_left  #7
+  - abandonedfactory_night/abandonedfactory_night/Hard/P009/image_left  #8
+  - abandonedfactory_night/abandonedfactory_night/Hard/P010/image_left  #9
+  - abandonedfactory_night/abandonedfactory_night/Hard/P011/image_left  #10
+  - abandonedfactory_night/abandonedfactory_night/Hard/P012/image_left  #11
+  - abandonedfactory_night/abandonedfactory_night/Hard/P013/image_left  #12
+  - abandonedfactory_night/abandonedfactory_night/Hard/P014/image_left  #13
+  - amusement/amusement/Hard/P000/image_left                            #14
+  - amusement/amusement/Hard/P001/image_left                            #15
+  - amusement/amusement/Hard/P002/image_left                            #16
+  - amusement/amusement/Hard/P003/image_left                            #17
+  - amusement/amusement/Hard/P004/image_left                            #18
+  - amusement/amusement/Hard/P005/image_left                            #19
+  - amusement/amusement/Hard/P006/image_left                            #20
+  - amusement/amusement/Hard/P007/image_left                            #21
+  - carwelding/carwelding/Hard/P000/image_left                          #22
+  - carwelding/carwelding/Hard/P001/image_left                          #23
+  - carwelding/carwelding/Hard/P002/image_left                          #24
+  - carwelding/carwelding/Hard/P003/image_left                          #25
+  - endofworld/endofworld/Hard/P000/image_left                          #26
+  - endofworld/endofworld/Hard/P001/image_left                          #27
+  - endofworld/endofworld/Hard/P002/image_left                          #28
+  - endofworld/endofworld/Hard/P005/image_left                          #29
+  - endofworld/endofworld/Hard/P006/image_left                          #30
+  - gascola/gascola/Hard/P000/image_left                                #31
+  - gascola/gascola/Hard/P001/image_left                                #32
+  - gascola/gascola/Hard/P002/image_left                                #33
+  - gascola/gascola/Hard/P003/image_left                                #34
+  - gascola/gascola/Hard/P004/image_left                                #35
+  - gascola/gascola/Hard/P005/image_left                                #36
+  - gascola/gascola/Hard/P006/image_left                                #37
+  - gascola/gascola/Hard/P007/image_left                                #38
+  - gascola/gascola/Hard/P008/image_left                                #39
+  - gascola/gascola/Hard/P009/image_left                                #40
+  - hospital/hospital/Hard/P037/image_left                              #41
+  - hospital/hospital/Hard/P038/image_left                              #42
+  - hospital/hospital/Hard/P039/image_left                              #43
+  - hospital/hospital/Hard/P040/image_left                              #44
+  - hospital/hospital/Hard/P041/image_left                              #45
+  - hospital/hospital/Hard/P042/image_left                              #46
+  - hospital/hospital/Hard/P043/image_left                              #47
+  - hospital/hospital/Hard/P044/image_left                              #48
+  - hospital/hospital/Hard/P045/image_left                              #49
+  - hospital/hospital/Hard/P046/image_left                              #50
+  - hospital/hospital/Hard/P047/image_left                              #51
+  - hospital/hospital/Hard/P048/image_left                              #52
+  - hospital/hospital/Hard/P049/image_left                              #53
+  - neighborhood/neighborhood/Hard/P000/image_left                      #54
+  - neighborhood/neighborhood/Hard/P001/image_left                      #55
+  - neighborhood/neighborhood/Hard/P002/image_left                      #56
+  - neighborhood/neighborhood/Hard/P003/image_left                      #57
+  - neighborhood/neighborhood/Hard/P004/image_left                      #58
+  - neighborhood/neighborhood/Hard/P005/image_left                      #59
+  - neighborhood/neighborhood/Hard/P006/image_left                      #60
+  - neighborhood/neighborhood/Hard/P007/image_left                      #61
+  - neighborhood/neighborhood/Hard/P008/image_left                      #62
+  - neighborhood/neighborhood/Hard/P009/image_left                      #63
+  - neighborhood/neighborhood/Hard/P010/image_left                      #64
+  - neighborhood/neighborhood/Hard/P011/image_left                      #65
+  - neighborhood/neighborhood/Hard/P012/image_left                      #66
+  - neighborhood/neighborhood/Hard/P013/image_left                      #67
+  - neighborhood/neighborhood/Hard/P014/image_left                      #68
+  - neighborhood/neighborhood/Hard/P015/image_left                      #69
+  - neighborhood/neighborhood/Hard/P016/image_left                      #70
+  - neighborhood/neighborhood/Hard/P017/image_left                      #71
+  - office/office/Hard/P000/image_left                                  #72
+  - office/office/Hard/P001/image_left                                  #73
+  - office/office/Hard/P002/image_left                                  #74
+  - office/office/Hard/P003/image_left                                  #75
+  - office/office/Hard/P004/image_left                                  #76
+  - office/office/Hard/P005/image_left                                  #77
+  - office/office/Hard/P006/image_left                                  #78
+  - office/office/Hard/P007/image_left                                  #79
+  - seasonsforest/seasonsforest/Hard/P001/image_left                    #80
+  - seasonsforest/seasonsforest/Hard/P002/image_left                    #81
+  - seasonsforest/seasonsforest/Hard/P004/image_left                    #82
+  - seasonsforest/seasonsforest/Hard/P005/image_left                    #83
+  - seasonsforest/seasonsforest/Hard/P006/image_left                    #84
+  - soulcity/soulcity/Hard/P000/image_left                              #85
+  - soulcity/soulcity/Hard/P001/image_left                              #86
+  - soulcity/soulcity/Hard/P002/image_left                              #87
+  - soulcity/soulcity/Hard/P003/image_left                              #88
+  - soulcity/soulcity/Hard/P004/image_left                              #89
+  - soulcity/soulcity/Hard/P005/image_left                              #90
+  - soulcity/soulcity/Hard/P008/image_left                              #91
+  - soulcity/soulcity/Hard/P009/image_left                              #92
+
+# -----Source-----
+Data.folder: /home/andreas/Documents/Datasets/tartainair/data/          # Workstation
+
+# -----Meta-----
+Data.file_format: png
+Data.fps: 24
+
+# -----Camera param(KITTI)-----
+Camera.fx: 320.0
+Camera.fy: 320.0
+Camera.cx: 320.0
+Camera.cy: 240.0
+
+# -----Sequence Playlist-----
+Data.playlist: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92]

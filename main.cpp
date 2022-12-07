@@ -43,7 +43,7 @@ int main()
 
     for ( int seq_nr : playlist )
     {
-        std::string out_path = sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>() + std::to_string(seq_nr) + ".txt";
+        std::string out_path = sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>() + "/" + std::to_string(seq_nr) + ".txt";
 
         std::shared_ptr<Sequencer2> seq = std::make_shared<Sequencer2>( sys_config, data_config, seq_nr, true );
         std::shared_ptr<AVGSlam> avg_slam = std::make_shared<AVGSlam>( sys_config, data_config, seq, out_path );

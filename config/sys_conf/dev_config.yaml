@@ -34,9 +34,10 @@
 Dataset: kitti
 Dataset: euroc
 Dataset: varos
+Dataset: tartainair
 
 # -----Algorithms-----
-Method.preprocessor: blur #hf #fft #autocor #blur
+Method.preprocessor: none #hf #fft #autocor #blur
 Method.motion_prior: none #constant #gt #pre_est
 Method.extractor: orb_os #blockFeature #dd #orb #orb_os
 Method.matcher: bf_mono #OF_F #KLT #phaseCorr #bf_mono
