@@ -60,6 +60,8 @@ FTracker::FTracker(YAML::Node config)
 
     this->out_path = config["Trck.out.path"].as<std::string>() + config["Trck.out.name"].as<std::string>();
     this->save_out = config["Trck.out.save"].as<bool>();
+
+    this->save_err_img = config["Err.save_img"].as<bool>();
 }
 
 FTracker::~FTracker()
@@ -249,6 +251,7 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
 
     if (rel_pose == nullptr)
     {
+        if (this->save_err_img) (img, std::to_string(img_id) + ".png", "output/img/");
         return 0;
     }
     

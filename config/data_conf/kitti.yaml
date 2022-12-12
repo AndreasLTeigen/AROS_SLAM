@@ -4,6 +4,14 @@ Data.sequences:
   - KITTI_grayscale/sequences/00/image_0/   #0
   - KITTI_grayscale/sequences/01/image_0/   #1
   - KITTI_grayscale/sequences/02/image_0/   #2
+  - KITTI_grayscale/sequences/03/image_0/   #3
+  - KITTI_grayscale/sequences/04/image_0/   #4
+  - KITTI_grayscale/sequences/05/image_0/   #5
+  - KITTI_grayscale/sequences/06/image_0/   #6
+  - KITTI_grayscale/sequences/07/image_0/   #7
+  - KITTI_grayscale/sequences/08/image_0/   #8
+  - KITTI_grayscale/sequences/09/image_0/   #9
+  - KITTI_grayscale/sequences/10/image_0/   #10
 
 # -----Source-----
 Data.folder: /Users/andreas/Documents/AROS/Datasets/          # Macbook
@@ -19,4 +27,4 @@ Camera.cx: 607.1928
 Camera.cy: 185.2157
 
 # -----Sequence Playlist-----
-Data.playlist: [1,0,2]
+Data.playlist: [0]

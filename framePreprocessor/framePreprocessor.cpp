@@ -3,6 +3,7 @@
 #include "framePreprocessor.hpp"
 
 #include "preprocessMethods/autocorrelation.hpp"
+#include "preprocessMethods/noise.hpp"
 #include "preprocessMethods/blur.hpp"
 #include "preprocessMethods/fft.hpp"
 #include "preprocessMethods/homomorphicFilter.hpp"
@@ -13,6 +14,10 @@ std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
     if ( preprocessor_method == "autocor" )
     {
         return std::make_shared<Autocor>();
+    }
+    else if ( preprocessor_method == "noise" )
+    {
+        return std::make_shared<Noise>();
     }
     else if ( preprocessor_method == "blur" )
     {

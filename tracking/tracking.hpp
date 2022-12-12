@@ -14,7 +14,7 @@
 class FTracker
 {
     private:
-        bool show_timings, show_log, show_analysis, save_out;
+        bool show_timings, show_log, show_analysis, save_out, save_err_img;
         bool is_pose_analysis;
         std::string out_path;
         cv::Mat T_global;
@@ -72,7 +72,6 @@ class FTracker
         void drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr=-1);
         void analysis(cv::Mat& img_disp);
         void kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
-        void kptMatchAnalysisIterationLogWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
         void incremental3DMapTrackingLog(std::shared_ptr<FrameData> frame, std::string ILog_path);
 
         // Functions for error checking

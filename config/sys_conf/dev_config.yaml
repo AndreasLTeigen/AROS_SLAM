@@ -31,13 +31,10 @@
 #Camera.cy: 359.5
 
 # -----Dataset------
-Dataset: kitti
-Dataset: euroc
-Dataset: varos
-Dataset: tartainair
+Dataset: kitti #kitti #euroc #varos #tartainair
 
 # -----Algorithms-----
-Method.preprocessor: none #hf #fft #autocor #blur
+Method.preprocessor: blur #hf #fft #autocor #blur
 Method.motion_prior: none #constant #gt #pre_est
 Method.extractor: orb_os #blockFeature #dd #orb #orb_os
 Method.matcher: bf_mono #OF_F #KLT #phaseCorr #bf_mono
@@ -83,3 +80,6 @@ Trck.out.save: true
 Trck.out.name: poses.txt
 Trck.out.path: output/
 Trck.out.clear_at_init: true
+
+# -----Error handling-----
+Err.save_img: false
