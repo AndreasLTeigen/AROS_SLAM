@@ -36,4 +36,9 @@ void BFMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_p
         }
     }
     FrameData::registerMatches(frame1, frame2, matches);
+
+    if (this->is_logging)
+    {
+        this->num_match_curr = frame1->getMatchedKeypoints(frame2->getFrameNr()).size();
+    }
 }

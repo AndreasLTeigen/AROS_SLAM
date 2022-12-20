@@ -35,7 +35,7 @@ std::shared_ptr<Pose> P5ORPC::do5pointAlgOutlierRejection(std::shared_ptr<FrameD
 
     compileMatchedCVPoints(frame1, frame2, pts1, pts2);
 
-    if ( pts1.size() < 5 || pts2.size() < 5 )
+    if ( pts1.size() <= 5 || pts2.size() <= 5 )
     {
         std::cerr << "ERROR: Fewer then 5 matched points are available, cannot do pose calculation" << std::endl;
         return nullptr;

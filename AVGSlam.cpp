@@ -63,7 +63,7 @@ AVGSlam::AVGSlam( YAML::Node sys_config, YAML::Node data_config, std::shared_ptr
     // ==================================================================
 
     // Initialize this->sequencer and frame tracker
-    this->tracker = std::make_shared<FTracker>(sys_config);
+    this->tracker = std::make_shared<FTracker>(sys_config, seq->getSequenceName());
     this->seq = seq;
 
     if (out_path != "")

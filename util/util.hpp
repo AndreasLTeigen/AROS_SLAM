@@ -87,6 +87,8 @@ void writeTransformation2File(std::string file_path, std::string image_idenifier
 
 void writeVector2File(std::string file_path, std::vector<double> &data, bool linebreak=true);
 
+void writeString2File(std::string file_path, std::string content);
+
 void clearFile(std::string file_path);
 
 std::vector<std::vector<std::string>> readCSVFile(std::string filename, char delim);

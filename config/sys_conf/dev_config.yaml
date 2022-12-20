@@ -31,10 +31,10 @@
 #Camera.cy: 359.5
 
 # -----Dataset------
-Dataset: kitti #kitti #euroc #varos #tartainair
+Dataset: tartanair #kitti #euroc #varos #tartainair
 
 # -----Algorithms-----
-Method.preprocessor: blur #hf #fft #autocor #blur
+Method.preprocessor: none #hf #fft #autocor #blur
 Method.motion_prior: none #constant #gt #pre_est
 Method.extractor: orb_os #blockFeature #dd #orb #orb_os
 Method.matcher: bf_mono #OF_F #KLT #phaseCorr #bf_mono
@@ -53,7 +53,7 @@ ILog.save: false
 ILog.path: output/IncrementalLog/
 
 # -----UI config-----
-UI.display_img: true
+UI.display_img: false
 UI.GUI_show: false
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
@@ -69,6 +69,7 @@ Seq.starting_frame_nr: 1
 Seq.frame_skip: 0
 
 # -----Tracker parameter config-----
+Trck.short_log.show: true
 Trck.log.show: false
 Trck.timing_show: false
 Trck.tracking_window_length: 50
@@ -82,4 +83,7 @@ Trck.out.path: output/
 Trck.out.clear_at_init: true
 
 # -----Error handling-----
-Err.save_img: false
+Err.log: true
+Err.log_path: output/err.txt
+Err.save_img: true
+Err.img_folder: output/img/

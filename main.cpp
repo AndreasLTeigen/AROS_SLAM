@@ -3,7 +3,6 @@
 #include "yaml-cpp/yaml.h"
 
 #include "AVGSlam.hpp"
-#include "test/pangolinMultiview.hpp"
 
 #ifdef PANGOLIN_ACTIVE
     #include "gui/pangolinInterface.hpp"
@@ -55,11 +54,13 @@ int main()
         std::thread tracking_thread;
         if (PANGOLIN_INSTALLED && GUI_show)
         {
+            #ifdef PANGOLIN_ACTIVE
             tracking_thread = std::thread(&AVGSlam::run, avg_slam);
 
             std::shared_ptr<GUI> gui = std::make_shared<GUI>();
             gui->GUIConfigParser(sys_config);
             gui->run( avg_slam->getTracker() );
+            #endif
         }
         else
         {
@@ -70,8 +71,10 @@ int main()
 
         if (PANGOLIN_INSTALLED && GUI_show)
         {
+            #ifdef PANGOLIN_ACTIVE
             avg_slam->setShutdown(true);
             tracking_thread.join();
+            #endif
         }
 
         std::cout << "######################################" << std::endl;

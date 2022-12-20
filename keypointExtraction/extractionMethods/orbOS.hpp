@@ -40,6 +40,7 @@ public:
     cv::Point2i UL, UR, BL, BR;
     std::list<ExtractorNode>::iterator lit;
     bool bNoMore;
+
 };
 
 class ORBextractor
@@ -126,9 +127,7 @@ class ORBOSExtractor : public Extractor
 
         ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORB_SLAM2::ORBextractor(this->nfeatures,this->scaleFactor,this->nlevels,this->fIniThFAST,this->fMinThFAST); // ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
         //ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORBextractor(nFeatures,scaleFactor,nLevels,fIniThFAST,fMinThFAST);
-    
-        //Test for GJET
-        bool non_rot_desc = true;
+
     public:
         ORBOSExtractor(){};
         ~ORBOSExtractor(){};

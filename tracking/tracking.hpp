@@ -14,9 +14,9 @@
 class FTracker
 {
     private:
-        bool show_timings, show_log, show_analysis, save_out, save_err_img;
+        bool show_timings, show_log, show_analysis, save_out, err_log, err_save_img;
         bool is_pose_analysis;
-        std::string out_path;
+        std::string seq_name, out_path, err_log_path, err_img_folder;
         cv::Mat T_global;
 
         std::shared_ptr<Preprocessor> frame_preprocessor;
@@ -40,7 +40,7 @@ class FTracker
         mutable std::shared_mutex mutex_map3D;
 
     public:
-        FTracker( YAML::Node config );
+        FTracker( YAML::Node config, std::string seq_name );
         ~FTracker();
 
         bool isOutSave();
@@ -73,6 +73,7 @@ class FTracker
         void analysis(cv::Mat& img_disp);
         void kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
         void incremental3DMapTrackingLog(std::shared_ptr<FrameData> frame, std::string ILog_path);
+        void logCurrFrameStats(std::string log_path, int img_id);
 
         // Functions for error checking
         float getLongestDistanceMatch(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<KeyPoint2>& kpt1, std::shared_ptr<KeyPoint2>& kpt2);

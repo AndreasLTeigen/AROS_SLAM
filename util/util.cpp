@@ -780,6 +780,21 @@ void writeVector2File(std::string file_path, std::vector<double> &data, bool lin
     }
 }
 
+void writeString2File(std::string file_path, std::string content)
+{
+    std::ofstream file;
+    file.open(file_path, std::ios_base::app);
+    if (file.is_open())
+    {
+        file << content << "\n";
+        file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+}
+
 void clearFile(std::string file_path)
 {
     std::ofstream file;

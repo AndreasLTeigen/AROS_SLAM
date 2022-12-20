@@ -34,8 +34,10 @@ using json = nlohmann::json;
 
 
 
-FTracker::FTracker(YAML::Node config)
+FTracker::FTracker(YAML::Node config, std::string seq_name)
 {
+    this->seq_name = seq_name;
+
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
 
@@ -61,7 +63,10 @@ FTracker::FTracker(YAML::Node config)
     this->out_path = config["Trck.out.path"].as<std::string>() + config["Trck.out.name"].as<std::string>();
     this->save_out = config["Trck.out.save"].as<bool>();
 
-    this->save_err_img = config["Err.save_img"].as<bool>();
+    this->err_log = config["Err.log"].as<bool>();
+    this->err_log_path = config["Err.log_path"].as<std::string>();
+    this->err_save_img = config["Err.save_img"].as<bool>();
+    this->err_img_folder = config["Err.img_folder"].as<std::string>();
 }
 
 FTracker::~FTracker()
@@ -251,7 +256,8 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
 
     if (rel_pose == nullptr)
     {
-        if (this->save_err_img) (img, std::to_string(img_id) + ".png", "output/img/");
+        if (this->err_save_img) saveImage(img, std::to_string(img_id) + ".png", this->err_img_folder);
+        if (this->err_log) this->logCurrFrameStats(this->err_log_path, img_id);
         return 0;
     }
     
@@ -555,6 +561,24 @@ void FTracker::incremental3DMapTrackingLog(shared_ptr<FrameData> frame, string I
     string file_path = ILog + std::to_string(frame->getFrameNr()) + ".json";
     std::ofstream file(file_path);
     file << data.dump(4);
+}
+
+void FTracker::logCurrFrameStats(std::string log_path, int img_id)
+{
+    int num_kpt, num_match;
+    std::string str0, str1, str2, str3;
+
+    num_kpt = this->extractor->getCurrKptNum();
+    num_match = this->matcher->getCurrMatchNum();
+
+    str0 = "Seq: " + this->seq_name;
+    str1 = "Img id: " + std::to_string(img_id);
+    str2 = "Kpts: " + std::to_string(num_kpt);
+    str3 = "Matches: " + std::to_string(num_match);
+    writeString2File(log_path, str0);
+    writeString2File(log_path, str1);
+    writeString2File(log_path, str2);
+    writeString2File(log_path, str3);
 }
 
 //Functions for error checking

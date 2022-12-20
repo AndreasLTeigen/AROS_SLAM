@@ -16,6 +16,7 @@ class Sequencer2
         int max_idx;
         int fps_target;
         bool timing;
+        std::string sequence_name;
         std::string folder_path;
         std::string file_format;
         std::vector<std::string> img_seq;
@@ -29,6 +30,7 @@ class Sequencer2
         // Read functions
         bool hasNextImg();
         int getCurrentIndex();
+        std::string getSequenceName();
         std::string getCurrentPath();
         std::string getCurrentName();
         cv::Mat getCurrentImg();

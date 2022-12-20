@@ -17,6 +17,7 @@ Sequencer2::Sequencer2( YAML::Node sys_config, YAML::Node data_config, int seq_n
     std::string sequence_name = all_seq_names[seq_nr].as<std::string>();
     std::cout << "Loading sequence: "  << sequence_name << std::endl;
 
+    this->sequence_name = sequence_name;
     this->folder_path = data_config["Data.folder"].as<std::string>() + sequence_name;
     this->file_format = data_config["Data.file_format"].as<std::string>();
     this->fps_target = data_config["Data.fps"].as<int>();
@@ -60,6 +61,11 @@ bool Sequencer2::hasNextImg()
 int Sequencer2::getCurrentIndex()
 {
     return this->current_idx;
+}
+
+std::string Sequencer2::getSequenceName()
+{
+    return this->sequence_name;
 }
 
 std::string Sequencer2::getCurrentPath()

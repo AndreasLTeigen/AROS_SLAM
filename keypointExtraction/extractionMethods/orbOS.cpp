@@ -75,6 +75,8 @@ void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, st
 
     (*orbslam_orb_extractor)(img,cv::Mat(),kpts,desc);
 
+    this->num_kpts_curr = kpts.size();
+
     frame->registerKeypoints(kpts, desc);
 }
 

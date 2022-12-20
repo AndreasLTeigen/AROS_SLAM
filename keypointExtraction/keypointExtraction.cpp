@@ -44,7 +44,10 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
 }
 
 
-
+int Extractor::getCurrKptNum()
+{
+    return this->num_kpts_curr;
+}
 
 void NoneExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
 {

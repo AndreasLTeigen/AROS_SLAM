@@ -36,7 +36,10 @@ std::shared_ptr<Matcher> getMatcher( string matching_method )
 }
 
 
-
+int Matcher::getCurrMatchNum()
+{
+    return this->num_match_curr;
+}
 
 void NoneMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
