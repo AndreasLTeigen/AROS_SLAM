@@ -29,6 +29,7 @@ class GUI
 
 
         void run(std::shared_ptr<FTracker> tracker);
+        void runOld(std::shared_ptr<FTracker> tracker);
         void drawEgoMotionLines( std::shared_ptr<FTracker> tracker );
         void drawEgoMotionPoints( std::shared_ptr<FTracker> tracker );
         void drawMapPoints( std::shared_ptr<FTracker> tracker );

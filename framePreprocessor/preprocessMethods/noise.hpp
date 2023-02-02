@@ -7,12 +7,12 @@ class Noise : public Preprocessor
 {
     private:
         float mean = 0;
-        float std = 20;
+        float std = 5;
     public:
         Noise(){};
         ~Noise(){};
 
-        void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )override;
+        void calculate( cv::Mat& img )override;
 };
 
 #endif

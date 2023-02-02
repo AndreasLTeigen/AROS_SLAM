@@ -42,7 +42,7 @@ class HomomorphicFiltering : public Preprocessor
         HomomorphicFiltering(){};
         ~HomomorphicFiltering(){};
 
-        void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )override;
+        void calculate( cv::Mat& img )override;
 };
 
 #endif

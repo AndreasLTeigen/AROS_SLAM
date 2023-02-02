@@ -13,7 +13,7 @@ class Autocor : public Preprocessor
         Autocor(){};
         ~Autocor(){};
 
-        void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )override;
+        void calculate( cv::Mat& img )override;
         int simpleAutocor( cv::Mat& img, cv::Mat& autocor );
         int autocorFilter( cv::Mat& img, cv::Mat& autocor );
         void applyHeatmap( cv::Mat& img, cv::Mat& autocov, std::vector<cv::Rect>& rect_vec );

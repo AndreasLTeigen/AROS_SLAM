@@ -31,7 +31,7 @@
 #Camera.cy: 359.5
 
 # -----Dataset------
-Dataset: tartanair #kitti #euroc #varos #tartainair
+Dataset: kitti #kitti #euroc #varos #tartainair
 
 # -----Algorithms-----
 Method.preprocessor: none #hf #fft #autocor #blur
@@ -39,7 +39,7 @@ Method.motion_prior: none #constant #gt #pre_est
 Method.extractor: orb_os #blockFeature #dd #orb #orb_os
 Method.matcher: bf_mono #OF_F #KLT #phaseCorr #bf_mono
 Method.pose_calculator: 5-point #blockShift #motionPrior #reproOpt #G_JET #5-point
-Method.point_reg_3D: none #None #all
+Method.point_reg_3D: all #None #all
 Method.point_cull_3D: none #None #OoW
 
 # -----Parametrisation-----
@@ -54,7 +54,7 @@ ILog.path: output/IncrementalLog/
 
 # -----UI config-----
 UI.display_img: false
-UI.GUI_show: false
+UI.GUI_show: true
 UI.GUI_size_x: 1024
 UI.GUI_size_y: 768
 UI.camera_size: 0.15
@@ -85,5 +85,5 @@ Trck.out.clear_at_init: true
 # -----Error handling-----
 Err.log: true
 Err.log_path: output/err.txt
-Err.save_img: true
+Err.save_img: false
 Err.img_folder: output/img/

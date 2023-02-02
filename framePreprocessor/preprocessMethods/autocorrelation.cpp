@@ -6,7 +6,7 @@
 using std::vector;
 using std::shared_ptr;
 
-void Autocor::calculate( cv::Mat& img, shared_ptr<FrameData> frame )
+void Autocor::calculate( cv::Mat& img )
 {
     //img = cv::Mat::zeros(img.rows, img.cols, CV_8UC1) + 1;
     //img = cv::Mat::zeros(11, 16, CV_8UC1) + 1;

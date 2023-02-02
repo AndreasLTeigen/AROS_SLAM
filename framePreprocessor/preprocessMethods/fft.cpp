@@ -6,7 +6,7 @@
 
 using cv::Mat;
 
-void FFT::calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )
+void FFT::calculate( cv::Mat& img )
 {
     //std::cout << "Performing fourier transform..." << std::endl;
     Mat out;

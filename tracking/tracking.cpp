@@ -216,7 +216,7 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
     //         Frame preprocessing
     // ====================================
     if (this->isShowLog()) std::cout << "Frame preprocessing..." << std::endl;
-    this->frame_preprocessor->calculate( img, frame1 );
+    this->frame_preprocessor->calculate( img );
 
     auto kpts_start_time = high_resolution_clock::now();            // Timer
 

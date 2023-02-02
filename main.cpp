@@ -46,8 +46,6 @@ int main()
 
         std::shared_ptr<Sequencer2> seq = std::make_shared<Sequencer2>( sys_config, data_config, seq_nr, true );
         std::shared_ptr<AVGSlam> avg_slam = std::make_shared<AVGSlam>( sys_config, data_config, seq, out_path );
-        
-        //pangolinMultiviewTest();
 
         bool GUI_show = sys_config["UI.GUI_show"].as<bool>();
 

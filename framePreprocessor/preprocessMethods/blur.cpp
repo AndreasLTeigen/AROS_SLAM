@@ -4,7 +4,7 @@
 
 
 
-void Blur::calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )
+void Blur::calculate( cv::Mat& img )
 {
     cv::Mat out;
     cv::GaussianBlur(img, out, kernel_size, 0);

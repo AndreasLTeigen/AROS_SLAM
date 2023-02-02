@@ -196,7 +196,7 @@ void dftShift(cv::InputOutputArray _out) {
     merge(planes, out);
 }
 
-void HomomorphicFiltering::calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )
+void HomomorphicFiltering::calculate( cv::Mat& img )
 {
     homomorphicFilter(img, img, this->sigma, this->alpha, this->beta, *this->hpf);
 }

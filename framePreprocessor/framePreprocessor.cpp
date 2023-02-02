@@ -38,7 +38,7 @@ std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
     }
 }
 
-void NoneProcessor::calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )
+void NoneProcessor::calculate( cv::Mat& img )
 {
     //std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

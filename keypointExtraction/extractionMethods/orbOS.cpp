@@ -68,6 +68,7 @@
 using cv::Mat;
 using std::vector;
 
+
 void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
 {
     vector<cv::KeyPoint> kpts;
@@ -79,6 +80,40 @@ void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, st
 
     frame->registerKeypoints(kpts, desc);
 }
+
+
+// FOR EXPERIMENTATION WITH EFFECT OF NOISE AND BLUR ON ORB FEATURES
+/*
+void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+{
+    vector<cv::KeyPoint> kpts;
+    Mat desc;
+
+    cv::Mat out;
+    int noise_std = 10;
+    cv::Size kernel_size = cv::Size(31,31);
+
+    cv::GaussianBlur(img, out, kernel_size, 0);
+
+    out.convertTo(out, CV_32F);
+    cv::Mat noise(img.size(), CV_32F);
+    cv::randn(noise, 0, noise_std);
+    out += noise;
+    cv::threshold(out, out, 255, 255, cv::THRESH_TRUNC);
+    cv::threshold(out, out, 0, 255, cv::THRESH_TOZERO);
+    out.convertTo(out, CV_8UC1);
+
+    //cv::GaussianBlur(out, out, cv::Size(11,11), 0);
+
+    (*orbslam_orb_extractor)(out,cv::Mat(),kpts,desc);
+
+    img = out;
+
+    this->num_kpts_curr = kpts.size();
+
+    frame->registerKeypoints(kpts, desc);
+}
+*/
 
 
 namespace ORB_SLAM2

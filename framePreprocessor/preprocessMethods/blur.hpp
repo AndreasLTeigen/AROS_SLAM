@@ -6,12 +6,12 @@
 class Blur : public Preprocessor
 {
     private:
-        cv::Size kernel_size = cv::Size(53,53);
+        cv::Size kernel_size = cv::Size(5,5);
     public:
         Blur(){};
         ~Blur(){};
 
-        void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )override;
+        void calculate( cv::Mat& img )override;
 };
 
 #endif

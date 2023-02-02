@@ -11,7 +11,7 @@ class Preprocessor
         Preprocessor(){};
         ~Preprocessor(){};
 
-        virtual void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )=0;
+        virtual void calculate( cv::Mat& img )=0;
 };
 
 std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method );
@@ -25,7 +25,7 @@ class NoneProcessor : public Preprocessor
         NoneProcessor(){};
         ~NoneProcessor(){};
 
-        void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )override;
+        void calculate( cv::Mat& img )override;
 };
 
 #endif

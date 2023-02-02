@@ -4,7 +4,7 @@
 
 
 
-void Noise::calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )
+void Noise::calculate( cv::Mat& img )
 {
     //cv::Mat noise(img.size(), img.type());
     cv::Mat out;

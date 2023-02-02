@@ -9,7 +9,7 @@ class FFT : public Preprocessor
         FFT(){};
         ~FFT(){};
 
-        void calculate( cv::Mat& img, std::shared_ptr<FrameData> frame )override;
+        void calculate( cv::Mat& img )override;
 
         cv::Size getOptimalSize( cv::Mat& img );
         void fft( cv::Mat& src, cv::Mat& dst );
