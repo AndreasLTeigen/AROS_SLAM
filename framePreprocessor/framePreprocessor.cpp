@@ -1,3 +1,4 @@
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 
 #include "framePreprocessor.hpp"
@@ -9,8 +10,11 @@
 #include "preprocessMethods/homomorphicFilter.hpp"
 
 
-std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
+std::shared_ptr<Preprocessor> getPreprocessor( YAML::Node config )
 {
+    std::string preprocessor_method = config["Method.preprocessor"].as<std::string>();
+    const YAML::Node pre_pro_config = config["Pre-processing"];
+    
     if ( preprocessor_method == "autocor" )
     {
         return std::make_shared<Autocor>();
@@ -21,7 +25,7 @@ std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
     }
     else if ( preprocessor_method == "blur" )
     {
-        return std::make_shared<Blur>();
+        return std::make_shared<Blur>(pre_pro_config["Blur"]);
     }
     else if ( preprocessor_method == "fft" )
     {
@@ -33,9 +37,14 @@ std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
     }
     else
     {
-        std::cerr << "Warning: Preprocessor method not found." << std::endl;
         return std::make_shared<NoneProcessor>();
     }
+}
+
+NoneProcessor::NoneProcessor()
+{
+    std::cout << std::left;
+    std::cout << std::setw(20) << "Pre-processor:" << "None" << std::endl; 
 }
 
 void NoneProcessor::calculate( cv::Mat& img )

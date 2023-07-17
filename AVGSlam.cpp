@@ -5,7 +5,7 @@
 #include "yaml-cpp/yaml.h"
 
 #include "tracking/tracking.hpp"
-#include "sequencer/sequencer2.hpp"
+#include "sequencer/sequencer3.hpp"
 #include "util/util.hpp"
 
 #include "AVGSlam.hpp"
@@ -20,7 +20,7 @@ using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
 
 
-AVGSlam::AVGSlam( YAML::Node sys_config, YAML::Node data_config, std::shared_ptr<Sequencer2> seq, std::string out_path )
+AVGSlam::AVGSlam( YAML::Node sys_config, YAML::Node data_config, std::shared_ptr<Sequencer3> seq, std::string out_path )
 {
     // =====================================================
     //              Parameter Initialization 
@@ -126,32 +126,39 @@ int AVGSlam::run()
         // Computing based on image
         auto computing_start_time = high_resolution_clock::now();
         trck_success = this->tracker->trackFrame(img_current, idx_current, this->K_matrix);
-        if (trck_success == 0)
+        if (trck_success == 1)
         {
+            std::cout << "Fatal error: Quitting program..." << std::endl;
+            seq->setFinishedFlag(true);
             break;
         }
         auto computing_end_time = high_resolution_clock::now();
 
-        if ( this->tracker->isOutSave() )
+        if (trck_success == 0)
         {
-            //Saving frame ego-motion transformation matrix to file
-            name_current = this->seq->getCurrentName();
-            T_global = this->tracker->getGlobalPose();
-            writeTransformation2File(this->tracker->getOutPath(), name_current, T_global );
-        }
-        
-        if ( this->isVisualize() )
-        {
-            // Visualizing sequencer frame
-            //cv::cvtColor(img_current, img_disp, cv::COLOR_GRAY2BGR);
-            this->tracker->drawKeypoints(img_current, img_disp);
-            //reduceImgContrast(img_disp);
-            //this->tracker->drawEpipolarLinesWithPrev(img_disp);
-            this->tracker->drawEpipoleWithPrev(img_disp);
-            this->tracker->drawKeypointTrails(img_disp);
-            if ( this->isMainThread() )
+            if ( this->tracker->isOutSave() )
             {
-                this->seq->visualizeImg(img_disp);  
+                //Saving frame ego-motion transformation matrix to file
+                name_current = this->seq->getCurrentName();
+                T_global = this->tracker->getGlobalPose();
+                writeTransformation2File(this->tracker->getOutPath(), name_current, T_global );
+            }
+            
+            if ( this->isVisualize() )
+            {
+                // Visualizing sequencer frame
+                //cv::cvtColor(img_current, img_disp, cv::COLOR_GRAY2BGR);
+                this->tracker->drawKeypoints(img_current, img_disp);
+                //reduceImgContrast(img_disp);
+                //this->tracker->drawEpipolarLinesWithPrev(img_disp);
+                this->tracker->drawEpipoleWithPrev(img_disp);
+                this->tracker->drawKeypointTrails(img_disp);
+                this->seq->setFinishedImg(img_disp);
+            }
+
+            if (this->tracker->doAnalysis())
+            {
+                this->tracker->analysis();
             }
         }
 
@@ -159,7 +166,6 @@ int AVGSlam::run()
         this->seq->iterateToNewFrame();
 		if ( this->seq->isFinished() ){
             break;
-			//cv::waitKey(0);
 		}
 
         // Timer calculation
@@ -176,7 +182,7 @@ int AVGSlam::run()
         }
     }
 
-	return 1;
+	return 0;
     
 }
 

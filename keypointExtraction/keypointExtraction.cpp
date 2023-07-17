@@ -7,6 +7,8 @@
 #include "extractionMethods/extraction_gt.hpp"
 #include "extractionMethods/blockFeatures.hpp"
 
+#include "../util/util.hpp"
+
 using std::string;
 using std::vector;
 
@@ -44,12 +46,33 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
 }
 
 
+Extractor::Extractor()
+{
+    if (this->analysis_kpts_count)
+    {
+        clearFile(this->f_kpts_count);
+    }
+}
+
+void Extractor::analysis(  cv::Mat &img, 
+                                std::shared_ptr<FrameData> frame, 
+                                std::shared_ptr<Map3D> map_3d )
+{
+    if (this->analysis_kpts_count)
+    {
+        writeInt2File(this->f_kpts_count, this->num_kpts_curr);
+    }
+}
+
+
 int Extractor::getCurrKptNum()
 {
     return this->num_kpts_curr;
 }
 
-void NoneExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+int NoneExtractor::extract( cv::Mat& img, 
+                            std::shared_ptr<FrameData> frame, 
+                            std::shared_ptr<Map3D> map_3d )
 {
     //std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

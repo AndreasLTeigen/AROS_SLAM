@@ -3,6 +3,7 @@
 
 #include "guiUtil.hpp"
 
+
 pangolin::OpenGlMatrix T2OpenGlCameraMatrixFull(cv::Mat T)
 {
     cv::Mat R(3,3,CV_64F);

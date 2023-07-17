@@ -68,8 +68,9 @@
 using cv::Mat;
 using std::vector;
 
-
-void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+int ORBOSExtractor::extract(    cv::Mat &img, 
+                                std::shared_ptr<FrameData> frame, 
+                                std::shared_ptr<Map3D> map_3d )
 {
     vector<cv::KeyPoint> kpts;
     Mat desc;
@@ -78,7 +79,14 @@ void ORBOSExtractor::extract( cv::Mat &img, std::shared_ptr<FrameData> frame, st
 
     this->num_kpts_curr = kpts.size();
 
-    frame->registerKeypoints(kpts, desc);
+    if (this->num_kpts_curr == 0 )
+    {
+        std::cerr << "ERROR(frame " << frame->getImgId() << "): No keypoints were found" << std::endl;
+        return 1;
+    }
+
+    frame->registerKeypoints(kpts, desc, img);
+    return 0;
 }
 
 

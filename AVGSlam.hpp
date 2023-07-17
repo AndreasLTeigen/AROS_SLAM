@@ -2,7 +2,7 @@
 #define AVGSlam_h
 
 #include "tracking/tracking.hpp"
-#include "sequencer/sequencer2.hpp"
+#include "sequencer/sequencer3.hpp"
 
 class AVGSlam
 {
@@ -10,11 +10,11 @@ class AVGSlam
         bool visualize, is_shutdown, is_main_thread;
 
         std::shared_ptr<FTracker> tracker;
-        std::shared_ptr<Sequencer2> seq;
+        std::shared_ptr<Sequencer3> seq;
         cv::Mat K_matrix;
 
     public:
-        AVGSlam( YAML::Node sys_config, YAML::Node data_config, std::shared_ptr<Sequencer2> seq, std::string out_path = "");
+        AVGSlam( YAML::Node sys_config, YAML::Node data_config, std::shared_ptr<Sequencer3> seq, std::string out_path = "");
         ~AVGSlam(){};
 
         int run();

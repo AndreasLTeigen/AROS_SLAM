@@ -1,6 +1,7 @@
 #ifndef framePreprocessor_h
 #define framePreprocessor_h
 
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 
 #include "../dataStructures/frameData.hpp"
@@ -14,7 +15,7 @@ class Preprocessor
         virtual void calculate( cv::Mat& img )=0;
 };
 
-std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method );
+std::shared_ptr<Preprocessor> getPreprocessor( YAML::Node config );
 
 
 
@@ -22,7 +23,7 @@ std::shared_ptr<Preprocessor> getPreprocessor( std::string preprocessor_method )
 class NoneProcessor : public Preprocessor
 {
     public:
-        NoneProcessor(){};
+        NoneProcessor();
         ~NoneProcessor(){};
 
         void calculate( cv::Mat& img )override;

@@ -16,6 +16,9 @@ Data.sequences:
 # -----Source-----
 Data.folder: /Users/andreas/Documents/AROS/Datasets/          # Macbook
 
+# -----Ground truth-----
+Gt.pose_folder:  /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/poses/00.txt          # Macbook
+
 # -----Meta-----
 Data.file_format: png
 Data.fps: 24

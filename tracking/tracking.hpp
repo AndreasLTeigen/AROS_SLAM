@@ -14,8 +14,9 @@
 class FTracker
 {
     private:
-        bool show_timings, show_log, show_analysis, save_out, err_log, err_save_img;
-        bool is_pose_analysis;
+        bool show_timings, show_log, do_analysis, save_out, err_log, err_save_img;
+        bool do_match_analysis, do_pose_analysis, do_map_reg_analysis;
+        bool do_extraction_analysis;
         std::string seq_name, out_path, err_log_path, err_img_folder;
         cv::Mat T_global;
 
@@ -46,7 +47,7 @@ class FTracker
         bool isOutSave();
         bool isShowLog();
         bool isShowTimings();
-        bool isShowAnalysis();
+        bool doAnalysis();
         std::string getOutPath();
 
         int getCurrentFrameNr();
@@ -70,10 +71,17 @@ class FTracker
         void drawKeypointTrails(cv::Mat &img, int frame_nr=-1, int trail_thickness=2);
         void drawEpipoleWithPrev(cv::Mat &img_disp, int frame_nr1=-1);
         void drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr=-1);
-        void analysis(cv::Mat& img_disp);
+        void analysis();
         void kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx=-1 );
         void incremental3DMapTrackingLog(std::shared_ptr<FrameData> frame, std::string ILog_path);
         void logCurrFrameStats(std::string log_path, int img_id);
+        void printTimings(  int time_preprocessing_ms,
+                            int time_motion_prior_ms,
+                            int time_kpt_extraction_ms,
+                            int time_matching_ms,
+                            int time_pose_calc_ms,
+                            int time_map_update_ms,
+                            int time_cleanup_ms);
 
         // Functions for error checking
         float getLongestDistanceMatch(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<KeyPoint2>& kpt1, std::shared_ptr<KeyPoint2>& kpt2);

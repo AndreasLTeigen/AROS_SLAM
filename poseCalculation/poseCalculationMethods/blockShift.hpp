@@ -11,9 +11,8 @@ class BlockShift : public PoseCalculator
         BlockShift(){};
         ~BlockShift(){};
 
-        std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
+        int calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
         void resetKptMatches( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
-        void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
 };
 
 #endif

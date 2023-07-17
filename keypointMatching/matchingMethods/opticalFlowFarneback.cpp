@@ -9,7 +9,7 @@
 using cv::Mat;
 using std::vector;
 
-void OpticalFlowFarneback::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+int OpticalFlowFarneback::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
     cv::Mat img1, img2;
 
@@ -91,6 +91,8 @@ void OpticalFlowFarneback::matchKeypoints( std::shared_ptr<FrameData> frame1, st
     std::shared_ptr<Pose> rel_pose = std::make_shared<Pose>(E_matrix, frame1, frame2, pts1, pts2);
     FrameData::registerRelPose(rel_pose, frame1, frame2);
     std::cout << rel_pose->getTMatrix() << std::endl;
+
+    return 0;
 }
 
 void OpticalFlowFarneback::visualizeFlow(cv::Mat& img, cv::Mat& flow)

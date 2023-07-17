@@ -27,6 +27,9 @@ class Map3D
         int getNumMapPoints();
         std::shared_ptr<MapPoint> getMapPoint(int idx);
         std::vector<std::shared_ptr<MapPoint>> getAllMapPoints();
+        cv::Mat compileMapPointLocs();
+        std::vector<cv::Point3f> compileCVPoints3f();
+        std::vector<cv::Point3d> compileCVPoints3d();
 
         // Static functions
         static void calculateReprojectionError(cv::Mat uv1, cv::Mat uv2, cv::Mat K1, cv::Mat K2, cv::Mat T1, cv::Mat T2, cv::Mat reproj_error1, cv::Mat reproj_error2);

@@ -7,17 +7,16 @@
 #include "yaml-cpp/yaml.h"
 
 
-struct viewPoint{
-    double x, y, z;
-};
-
 class GUI
 {
     private:
         bool shut_down = false;
-        int size_x, size_y;
+        bool true_color;
+        int map_width, map_height;
         int menu_bar_width;
         double camera_size, camera_line_width, point_size, line_width;
+
+        std::string name_map_gui = "Map";
 
         mutable std::shared_mutex mutex_shutdown;
 
@@ -25,11 +24,13 @@ class GUI
         GUI();
         ~GUI();
 
-        void GUIConfigParser(YAML::Node &config);
+        void GUIConfigParser(YAML::Node& sys_config);
 
 
-        void run(std::shared_ptr<FTracker> tracker);
-        void runOld(std::shared_ptr<FTracker> tracker);
+        void run(   std::shared_ptr<FTracker> tracker, 
+                    std::shared_ptr<Sequencer3> sequencer);
+        void run2(  std::shared_ptr<FTracker> tracker, 
+                    std::shared_ptr<Sequencer3> sequencer);
         void drawEgoMotionLines( std::shared_ptr<FTracker> tracker );
         void drawEgoMotionPoints( std::shared_ptr<FTracker> tracker );
         void drawMapPoints( std::shared_ptr<FTracker> tracker );

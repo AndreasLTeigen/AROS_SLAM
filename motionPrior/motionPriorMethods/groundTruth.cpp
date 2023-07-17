@@ -8,15 +8,44 @@
 #include "groundTruth.hpp"
 #include "../../util/util.hpp"
 
+GroundTruthMP::GroundTruthMP()
+{
+    // ------ KITTI ------
+    YAML::Node config = YAML::LoadFile("config/data_conf/kitti.yaml");
+    std::string path_gt_pose = config["Gt.pose_folder"].as<std::string>();
+    this->poses_gt = readCSVFile(path_gt_pose, ' ');
+}
+
 void GroundTruthMP::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
-    cv::Mat T_wc = this->globalMotionPriorGT(frame1);
-    frame1->setGlobalPose( T_wc );
-    cv::Mat rel_T = relTfromglobalTx2(T_wc, frame2->getGlobalPose());
+    cv::Mat rel_T = this->globalMotionPriorGTKitti(frame1, frame2);
+    //frame1->setGlobalPose( T_wc );
+    //cv::Mat rel_T = relTfromglobalTx2(T_wc, frame2->getGlobalPose());
     FrameData::registerGTRelPose(rel_T, frame1, frame2);
 }
 
-cv::Mat GroundTruthMP::globalMotionPriorGT( std::shared_ptr<FrameData> frame1 )
+cv::Mat GroundTruthMP::globalMotionPriorGTKitti(std::shared_ptr<FrameData> frame1,
+                                                std::shared_ptr<FrameData> frame2 )
+{
+    int img1_id = frame1->getImgId();
+    int img2_id = frame2->getImgId();
+    cv::Mat T_wc1, T_wc2;
+    std::vector<double> gt_pose1, gt_pose2;
+
+    for (int j = 0; j < this->poses_gt[img1_id].size(); ++j)
+    {
+        gt_pose1.push_back(std::stod(poses_gt[img1_id][j]));
+        gt_pose2.push_back(std::stod(poses_gt[img2_id][j]));
+    }
+    T_wc1 = compileTMatrix(gt_pose1);
+    T_wc2 = compileTMatrix(gt_pose2);
+
+    frame1->setGlobalPose( T_wc1 );
+    frame2->setGlobalPose( T_wc2 );
+    return relTfromglobalTx2(T_wc1, T_wc2);
+}
+
+cv::Mat GroundTruthMP::globalMotionPriorGTVaros( std::shared_ptr<FrameData> frame1 )
 {
     YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
 

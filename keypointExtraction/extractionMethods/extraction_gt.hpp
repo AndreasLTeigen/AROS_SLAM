@@ -17,8 +17,14 @@ class ORBNaiveBucketingGTExtractor : public Extractor
         ORBNaiveBucketingGTExtractor(){};
         ~ORBNaiveBucketingGTExtractor(){};
 
-        void extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )override;
-        void depthGTwBucketing(cv::Mat& img, std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, std::shared_ptr<Map3D> map_3d, int h_n_buckets, int w_n_buckets);
+        int extract(cv::Mat& img, 
+                    std::shared_ptr<FrameData> frame, 
+                    std::shared_ptr<Map3D> map_3d )override;
+        void depthGTwBucketing( cv::Mat& img, 
+                                std::shared_ptr<FrameData> frame, 
+                                std::vector<cv::KeyPoint>& kpts, 
+                                std::shared_ptr<Map3D> map_3d, 
+                                int h_n_buckets, int w_n_buckets);
 };
 
 #endif

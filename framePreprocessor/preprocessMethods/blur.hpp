@@ -6,9 +6,9 @@
 class Blur : public Preprocessor
 {
     private:
-        cv::Size kernel_size = cv::Size(5,5);
+        cv::Size kernel_size;
     public:
-        Blur(){};
+        Blur(const YAML::Node config);
         ~Blur(){};
 
         void calculate( cv::Mat& img )override;

@@ -111,7 +111,7 @@ struct ECOptSolver
 
 
 
-std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
+int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     std::cout << "GJET Start" << std::endl;
     // Assumes K_matrix is equal for both frames.
@@ -289,7 +289,7 @@ std::shared_ptr<Pose> GJET::calculate( std::shared_ptr<FrameData> frame1, std::s
     }
 
 
-    return rel_pose;
+    return 0;
 }
 
 double GJET::solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, cv::Mat& v_k )
@@ -398,12 +398,12 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     return GJET::solveQuadraticFormForV( A_k, b_k, c_k, v_k_opt );
 }
 
-void GJET::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+void GJET::analysis( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     int random_idx, canvas_h, canvas_w;
     double hamming_dist;
     cv::Mat img1, img2, F_matrix, A, uv, hamming;
-    cv::Mat canvas(840, 1400, img_disp.type(), cv::Scalar::all(0));
+    cv::Mat canvas(840, 1400, img.type(), cv::Scalar::all(0));
     shared_ptr<KeyPoint2> kpt1, kpt2;
     vector<shared_ptr<KeyPoint2>> matched_kpts1, matched_kpts2;
 
@@ -424,7 +424,7 @@ void GJET::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::
     for (int it = 0; it < num_it+1; ++it )
     {
 
-        copyMakeBorder(img_disp, canvas, 0, canvas.rows-img_disp.rows, 0, canvas.cols-img_disp.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
+        copyMakeBorder(img, canvas, 0, canvas.rows-img.rows, 0, canvas.cols-img.cols, cv::BORDER_CONSTANT, cv::Scalar::all(0) );
         
         F_matrix = matched_kpts1[0]->getDescriptor("F_matrix_log" + std::to_string(it));
         //std::cout << "F_matrix: " << F_matrix << std::endl;

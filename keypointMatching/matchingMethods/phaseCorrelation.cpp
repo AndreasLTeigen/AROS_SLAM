@@ -9,7 +9,7 @@
 using std::vector;
 using std::shared_ptr;
 
-void PhaseCorrelation::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+int PhaseCorrelation::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {   
     double kpt1_x, kpt1_y;
     cv::Point2d shift;
@@ -60,9 +60,10 @@ void PhaseCorrelation::matchKeypoints( std::shared_ptr<FrameData> frame1, std::s
             frame2->addKptToMatchList(kpt2, frame1);
         }
     }
+    return 0;
 }
 
-void KLTTracker::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+int KLTTracker::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {   
     double kpt1_x, kpt1_y;
     vector<cv::Point2f> pts1, pts2;
@@ -103,23 +104,5 @@ void KLTTracker::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_
             frame2->addKptToMatchList(kpt2, frame1);
         }
     }
+    return 0;
 }
-/*
-    for ( int i = 0; i < kpts1.size(); ++i )
-    {
-        center = kpts2[i]->getDescriptor("center");
-        //pts2.push_back(cv::Point(center.at<double>(0,0), center.at<double>(1,0)));
-        loc = (cv::Mat_<double>(2,1) << center.at<double>(0,0), center.at<double>(1,0));
-        pts2.push_back(loc);
-    }
-
-
-    cv::calcOpticalFlowPyrLK(frame2->getImg(), frame1->getImg(), pts2, pts1, status, error);
-
-    for ( int i = 0; i < pts1.rows; ++i )
-    {
-        kpts1[i]->setCoordx(pts1.at<double>(i,0));
-        kpts1[i]->setCoordy(pts1.at<double>(i,1));
-    }
-
-    */

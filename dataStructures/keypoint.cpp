@@ -24,6 +24,7 @@ KeyPoint2::KeyPoint2( int kpt_id, cv::Point pt, int observation_frame_nr )
     this->setCoordx(pt.x);
     this->setCoordy(pt.y);
     this->setObservationFrameNr(observation_frame_nr);
+    this->setColor(0);
     this->setSize(0);
     this->setAngle(-1);
     this->setResponse(0);
@@ -37,6 +38,7 @@ KeyPoint2::KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr )
     this->setCoordx(kpt.pt.x);
     this->setCoordy(kpt.pt.y);
     this->setObservationFrameNr(observation_frame_nr);
+    this->setColor(0);
     this->setSize(kpt.size);
     this->setAngle(kpt.angle);
     this->setResponse(kpt.response);
@@ -50,6 +52,7 @@ KeyPoint2::KeyPoint2( int kpt_id, cv::KeyPoint kpt, int observation_frame_nr, Ma
     this->setCoordx(kpt.pt.x);
     this->setCoordy(kpt.pt.y);
     this->setObservationFrameNr(observation_frame_nr);
+    this->setColor(0);
     this->setSize(kpt.size);
     this->setAngle(kpt.angle);
     this->setResponse(kpt.response);
@@ -64,6 +67,7 @@ KeyPoint2::KeyPoint2( int kpt_id, int x, int y, int observation_frame_nr, double
     this->setCoordx(x);
     this->setCoordy(y);
     this->setObservationFrameNr(observation_frame_nr);
+    this->setColor(0);
     this->setSize(size);
     this->setAngle(angle);
     this->setResponse(response);
@@ -82,6 +86,7 @@ KeyPoint2::KeyPoint2( int kpt_id, cv::Mat xy1, int observation_frame_nr, double 
     this->setCoordx(xy1.at<double>(0,0));
     this->setCoordy(xy1.at<double>(1,0));
     this->setObservationFrameNr(observation_frame_nr);
+    this->setColor(0);
     this->setSize(size);
     this->setAngle(angle);
     this->setResponse(response);
@@ -147,6 +152,12 @@ void KeyPoint2::setObservationFrameNr(int observation_frame_nr)
 {
     std::unique_lock lock(this->mutex_observation_frame_nr);
     this->observation_frame_nr = observation_frame_nr;
+}
+
+void KeyPoint2::setColor( uint8_t color )
+{
+    std::unique_lock lock(this->mutex_color);
+    this->color = color;
 }
 
 void KeyPoint2::setDescriptor(Mat descr, std::string descr_type)
@@ -249,6 +260,12 @@ int KeyPoint2::getObservationFrameNr()
 {
     std::shared_lock lock(this->mutex_observation_frame_nr);
     return this->observation_frame_nr;
+}
+
+uint8_t KeyPoint2::getColor()
+{
+    std::shared_lock lock(this->mutex_color);
+    return this->color;
 }
 
 double KeyPoint2::getAngle()

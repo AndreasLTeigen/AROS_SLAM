@@ -10,13 +10,19 @@
 class BFMatcher : public Matcher
 {
     private:
+        bool do_lowes_ratio_test;
+        int retain_N_best_matches;
         cv::BFMatcher matcher = cv::BFMatcher(cv::NORM_HAMMING, false);
 
     public:
-        BFMatcher(){};
+        BFMatcher(const YAML::Node config);
         ~BFMatcher(){};
 
-        void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+        int matchKeypoints( std::shared_ptr<FrameData> frame1, 
+                            std::shared_ptr<FrameData> frame2 )override;
+        static void matchPruning(   std::shared_ptr<FrameData> frame1, 
+                                    std::shared_ptr<FrameData> frame2,
+                                    int N_remaining);
 };
 
 #endif

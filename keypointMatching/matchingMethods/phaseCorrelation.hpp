@@ -15,7 +15,7 @@ class PhaseCorrelation : public Matcher
         PhaseCorrelation(){};
         ~PhaseCorrelation(){};
 
-        void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+        int matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
 };
 
 class KLTTracker : public Matcher
@@ -32,7 +32,7 @@ class KLTTracker : public Matcher
         KLTTracker(){};
         ~KLTTracker(){};
 
-        void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+        int matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
 };
 
 

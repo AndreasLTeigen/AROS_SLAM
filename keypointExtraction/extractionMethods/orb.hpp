@@ -20,7 +20,9 @@ class ORBExtractor : public Extractor
         ORBExtractor(){};
         ~ORBExtractor(){};
 
-        void extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )override;
+        int extract(    cv::Mat& img, 
+                        std::shared_ptr<FrameData> frame, 
+                        std::shared_ptr<Map3D> map_3d )override;
 };
 
 #endif

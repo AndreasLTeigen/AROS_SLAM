@@ -11,6 +11,7 @@ class MapPoint
 {
     private:
         int id, observation_cnt;
+        uint8_t color;
         double X;
         double Y;
         double Z;
@@ -24,6 +25,7 @@ class MapPoint
 
         // Mutexes
         mutable std::shared_mutex mutex_id;
+        mutable std::shared_mutex mutex_color;
         mutable std::shared_mutex mutex_coord;
         mutable std::shared_mutex mutex_coord_std;
         mutable std::shared_mutex mutex_mean_view_dir;
@@ -41,6 +43,7 @@ class MapPoint
 
         // Write functions
         void iterateObservationCounter();
+        void setColor(uint8_t color);
         void setCoordX(double X);
         void setCoordY(double Y);
         void setCoordZ(double Z);
@@ -58,16 +61,19 @@ class MapPoint
         // Read functions
         int getId();
         int getObservationCounter();
+        uint8_t getColor();
         double getCoordX();
         double getCoordY();
         double getCoordZ();
-        cv::Mat getCoordXYZ();
+        cv::Mat getCoordXYZ1();
         double getSTDX();
         double getSTDY();
         double getSTDZ();
         cv::Mat getMeanViewingDir();
         cv::Mat getRepresentativeDescriptor(std::string descr_type="orb");
         std::weak_ptr<KeyPoint2> getObservationKpt(int kpt_frame_nr);
+        cv::Point3f compileCVPoint3f();
+        cv::Point3d compileCVPoint3d();
 };
 
 

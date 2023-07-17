@@ -27,7 +27,7 @@ using std::vector;
 using std::string;
 using std::shared_ptr;
 using std::chrono::duration;
-using std::chrono::duration_cast;
+using std::chrono::duration;
 using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
 using json = nlohmann::json;
@@ -41,24 +41,30 @@ FTracker::FTracker(YAML::Node config, std::string seq_name)
     this->curr_frame_nr = 0;
     this->T_global = cv::Mat::eye(4,4,CV_64F);
 
-    this->frame_preprocessor = getPreprocessor( config["Method.preprocessor"].as<std::string>() );
+    std::cout << "-------------------------------------------------" << std::endl;
+    std::cout << "Initializing tracker:" << std::endl;
+    this->frame_preprocessor = getPreprocessor(config);
     this->motion_prior = getMotionPrior( config["Method.motion_prior"].as<std::string>() );
     this->extractor = getExtractor( config["Method.extractor"].as<std::string>() );
-    this->matcher = getMatcher( config["Method.matcher"].as<std::string>() );
+    this->matcher = getMatcher(config);
     this->pose_calculator = getPoseCalculator( config["Method.pose_calculator"].as<std::string>() );
     this->map_point_reg = getMapPointRegistrator( config["Method.point_reg_3D"].as<std::string>() );
     this->map_point_cull = getMapPointCuller( config["Method.point_cull_3D"].as<std::string>() );
     this->pose_param = getParametrization( config["Methods.param"].as<std::string>() );
+    std::cout << "-------------------------------------------------" << std::endl;
 
     this->map_3d = std::make_shared<Map3D>();
 
     this->tracking_window_length = config["Trck.tracking_window_length"].as<int>();
-    this->show_analysis = config["Trck.analysis"].as<bool>();
     this->show_timings = config["Trck.timing_show"].as<bool>(); // Split this up or change location
     this->kpt_trail_length = config["Trck.out.kpt_trail_length"].as<int>();
     this->show_log = config["Trck.log.show"].as<bool>();
 
-    this->is_pose_analysis = config["Anlys.pose_calculator"].as<bool>();
+    this->do_analysis = config["Anlys.main_switch"].as<bool>();
+    this->do_extraction_analysis = config["Anlys.kpt_extract"].as<bool>();
+    this->do_match_analysis = config["Anlys.match"].as<bool>();
+    this->do_pose_analysis = config["Anlys.pose_calculator"].as<bool>();
+    this->do_map_reg_analysis = config["Anlys.map_reg"].as<bool>();
 
     this->out_path = config["Trck.out.path"].as<std::string>() + config["Trck.out.name"].as<std::string>();
     this->save_out = config["Trck.out.save"].as<bool>();
@@ -89,9 +95,9 @@ bool FTracker::isShowTimings()
     return this->show_timings;
 }
 
-bool FTracker::isShowAnalysis()
+bool FTracker::doAnalysis()
 {
-    return this->show_analysis;
+    return this->do_analysis;
 }
 
 std::string FTracker::getOutPath()
@@ -201,16 +207,20 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
     /* Core function of FTracker, recieves new image, extracts information
        with chosen methods and redirects to matching / pose prediction
        funcitons */
+    
 
     shared_ptr<FrameData> frame1 = shared_ptr<FrameData>(new FrameData(this->getCurrentFrameNr(), img_id, K_matrix));
     shared_ptr<FrameData> frame2 = this->getFrame(-comparison_frame_spacing);
+
+    //std::cout << "Loading img/frame: " << frame1->getImgId() << " / " << frame1->getFrameNr() << std::endl;
+    //std::cout << "Loading img/frame: " << frame2->getImgId() << " / " << frame2->getFrameNr() << std::endl;
 
     frame1->setImg( img ); // TODO: Remove later when not needed anymore
 
 
     if (this->isShowLog()) std::cout << "Frame nr: " << frame1->getFrameNr() << std::endl;
 
-    auto preprocess_start_time = high_resolution_clock::now();            // Timer
+    auto tracking_start_time = high_resolution_clock::now();            // Timer
 
     // ==================================== 
     //         Frame preprocessing
@@ -218,7 +228,8 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
     if (this->isShowLog()) std::cout << "Frame preprocessing..." << std::endl;
     this->frame_preprocessor->calculate( img );
 
-    auto kpts_start_time = high_resolution_clock::now();            // Timer
+
+    auto preprocess_end_time = high_resolution_clock::now();
 
     // ==================================== 
     //          Motion prior
@@ -227,12 +238,19 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
     this->motion_prior->calculate( frame1, frame2 );
 
 
+    auto motion_prior_end_time = high_resolution_clock::now();            // Timer
+
     // ==================================== 
     //      Keypoint identification
     // ==================================== 
     if (this->isShowLog()) std::cout << "Extracting keypoints..." << std::endl;
-    this->extractor->extract( img, frame1, this->getMap3D() );
-
+    int kpt_extraction_err = this->extractor->extract( img, frame1, 
+                                                        this->getMap3D() );
+    
+    if (kpt_extraction_err == 1)
+    {
+        return 1;
+    }
 
     auto kpts_end_time = high_resolution_clock::now();              // Timer
 
@@ -241,7 +259,12 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
     //          Keypoint matching
     // ==================================== 
     if (this->isShowLog()) std::cout << "Matching keypoints..." << std::endl;
-    this->matcher->matchKeypoints( frame1, frame2 );
+    int matching_err = this->matcher->matchKeypoints( frame1, frame2 );
+    
+    if (matching_err == 1)
+    {
+        return 1;
+    }
 
 
     auto match_end_time = high_resolution_clock::now();             // Timer
@@ -252,28 +275,37 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
     // ==================================== 
     if (this->isShowLog()) std::cout << "Computing relative pose..." << std::endl;
     cv::Mat img_copy = img.clone();
-    shared_ptr<Pose> rel_pose = this->pose_calculator->calculate( frame1, frame2, img_copy );
+    int pose_calc_err = this->pose_calculator->calculate(   frame1, frame2, 
+                                                            img_copy );
 
-    if (rel_pose == nullptr)
+    if (pose_calc_err == 1)
     {
         if (this->err_save_img) saveImage(img, std::to_string(img_id) + ".png", this->err_img_folder);
         if (this->err_log) this->logCurrFrameStats(this->err_log_path, img_id);
-        return 0;
+        return 1;
     }
+    else if (pose_calc_err == 2)
+    {
+        FrameData::removeAllMatches(frame1, frame2);
+        return 2;       // Error, but will recover by dropping active frame.
+    }
+
+    std::shared_ptr<Pose> rel_pose = frame1->getRelPose(frame2->getFrameNr());
+    
     
     rel_pose->updateParametrization(this->pose_param);
     this->updateGlobalPose(rel_pose->getTMatrix(), frame1);
 
     auto rel_pose_calc_end_time = high_resolution_clock::now();     // Timer
 
-
+    
     // ==================================== 
     //              Map update
     // ==================================== 
     if (this->isShowLog()) std::cout << "Updating map..." << std::endl;
     if (rel_pose != nullptr)
     {
-        this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
+        int err = this->map_point_reg->registerMP( frame1, frame2, this->getMap3D() );
     }
 
 
@@ -305,20 +337,16 @@ int FTracker::trackFrame(cv::Mat &img, int img_id, Mat K_matrix, int comparison_
 
     if (this->show_timings)
     {
-        auto ms0 = duration_cast<milliseconds>(kpts_start_time-preprocess_start_time);
-        auto ms1 = duration_cast<milliseconds>(kpts_end_time-kpts_start_time);
-        auto ms2 = duration_cast<milliseconds>(match_end_time-kpts_end_time);
-        auto ms3 = duration_cast<milliseconds>(rel_pose_calc_end_time-match_end_time);
-        auto ms4 = duration_cast<milliseconds>(map_update_end_time-rel_pose_calc_end_time);
-        auto ms5 = duration_cast<milliseconds>(cleanup_end_time-map_update_end_time);
-        std::cout << "Frame preprocessing time: " << ms0.count() << "ms" << std::endl;
-        std::cout << "Keypoint calculation time: " << ms1.count() << "ms" << std::endl;
-        std::cout << "Matching time: " << ms2.count() << "ms" << std::endl;
-        std::cout << "Relalive pose calculation time: " << ms3.count() << "ms" << std::endl;
-        std::cout << "Map update time: " << ms4.count() << "ms" << std::endl;
-        std::cout << "Cleanup time: " << ms5.count() << "ms" << std::endl;
+        this->printTimings(
+            int(duration_cast<milliseconds>(preprocess_end_time-tracking_start_time).count()),
+            int(duration_cast<milliseconds>(motion_prior_end_time-preprocess_end_time).count()),
+            int(duration_cast<milliseconds>(kpts_end_time-motion_prior_end_time).count()),
+            int(duration_cast<milliseconds>(match_end_time-kpts_end_time).count()),
+            int(duration_cast<milliseconds>(rel_pose_calc_end_time-match_end_time).count()),
+            int(duration_cast<milliseconds>(map_update_end_time-rel_pose_calc_end_time).count()),
+            int(duration_cast<milliseconds>(cleanup_end_time-map_update_end_time).count()));
     }
-    return 1;
+    return 0;
 }
 
 
@@ -398,7 +426,9 @@ void FTracker::drawKeypointTrails(cv::Mat &img, int frame_nr, int trail_thicknes
             {
                 temp_kpt1 = match->getKpt1();
                 temp_kpt2 = match->getKpt2();
-                cv::line(img, temp_kpt1->compileCV2DPoint(), temp_kpt2->compileCV2DPoint(), color_blue, trail_thickness);
+                cv::line(img, temp_kpt1->compileCV2DPoint(), 
+                            temp_kpt2->compileCV2DPoint(), 
+                            color_blue, trail_thickness);
                 kpt = match->getConnectingKpt(kpt->getObservationFrameNr()-1);
             }
             else
@@ -451,11 +481,30 @@ void FTracker::drawEpipolarLinesWithPrev(cv::Mat &img_disp, int frame_nr)
     drawEpipolarLines( F_matrix, img_disp, pts2, pts1 );
 }
 
-void FTracker::analysis(cv::Mat& img_disp)
+void FTracker::analysis()
 {
-    if (this->is_pose_analysis == true)
+    cv::Mat img;
+    std::shared_ptr<FrameData> frame1, frame2;
+    std::shared_ptr<Map3D> map;
+    frame1 = this->getFrame(-1);
+    frame2 = this->getFrame(-2);
+    img = frame1->getImg();
+    map = this->getMap3D();
+    if (this->do_extraction_analysis)
     {
-        this->pose_calculator->analysis(img_disp, this->getFrame(-1), this->getFrame(-2)); //Change this to be able to handle other than the last two frames
+        this->extractor->analysis(img, frame1, map);
+    }
+    if (this->do_match_analysis)
+    {
+        this->matcher->analysis(frame1, frame2);
+    }
+    if (this->do_pose_analysis)
+    {
+        this->pose_calculator->analysis(frame1, frame2, img); //Change this to be able to handle other than the last two frames
+    }
+    if (this->do_map_reg_analysis)
+    {
+        this->map_point_reg->analysis(frame1, frame2, map);
     }
 }
 
@@ -579,6 +628,30 @@ void FTracker::logCurrFrameStats(std::string log_path, int img_id)
     writeString2File(log_path, str1);
     writeString2File(log_path, str2);
     writeString2File(log_path, str3);
+}
+
+void FTracker::printTimings(int time_preprocessing_ms,
+                            int time_motion_prior_ms,
+                            int time_kpt_extraction_ms,
+                            int time_matching_ms,
+                            int time_pose_calc_ms,
+                            int time_map_update_ms,
+                            int time_cleanup_ms)
+{
+    std::cout << "Frame preprocessing time: " 
+                << time_preprocessing_ms << "ms" << std::endl;
+    std::cout << "Motion prior time: "
+                << time_motion_prior_ms << "ms" << std::endl;
+    std::cout << "Keypoint calculation time: " 
+                << time_kpt_extraction_ms << "ms" << std::endl;
+    std::cout << "Matching time: " 
+                << time_matching_ms << "ms" << std::endl;
+    std::cout << "Relalive pose calculation time: " 
+                << time_pose_calc_ms << "ms" << std::endl;
+    std::cout << "Map update time: " 
+                << time_map_update_ms << "ms" << std::endl;
+    std::cout << "Cleanup time: " 
+                << time_cleanup_ms << "ms" << std::endl;
 }
 
 //Functions for error checking

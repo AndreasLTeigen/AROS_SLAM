@@ -12,11 +12,22 @@ class Extractor
         // Logging parameters
         int num_kpts_curr = -1;
 
+        // Analysis toggle
+        bool analysis_kpts_count = true;
+
+        // Analysis filenames
+        std::string f_kpts_count = "output/analysis/kpts_count.txt";
+
         
-        Extractor(){};
+        Extractor();
         ~Extractor(){};
 
-        virtual void extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )=0;
+        virtual int extract(cv::Mat& img, 
+                            std::shared_ptr<FrameData> frame, 
+                            std::shared_ptr<Map3D> map_3d )=0;
+        void analysis(  cv::Mat& img, 
+                        std::shared_ptr<FrameData> frame, 
+                        std::shared_ptr<Map3D> map_3d );
 
         int getCurrKptNum();
 };
@@ -32,7 +43,9 @@ class NoneExtractor : public Extractor
         NoneExtractor(){};
         ~NoneExtractor(){};
 
-        void extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )override;
+        int extract(cv::Mat& img, 
+                    std::shared_ptr<FrameData> frame, 
+                    std::shared_ptr<Map3D> map_3d )override;
 };
 
 #endif

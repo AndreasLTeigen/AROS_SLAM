@@ -14,7 +14,9 @@ using std::chrono::high_resolution_clock;
 
 
 
-void BlockFeatures::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+int BlockFeatures::extract( cv::Mat& img, 
+                            std::shared_ptr<FrameData> frame, 
+                            std::shared_ptr<Map3D> map_3d )
 {
     /*
     Arguments:
@@ -54,4 +56,5 @@ void BlockFeatures::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std
             frame->addKeypoint(kpt);
         }
     }
+    return 0;
 }

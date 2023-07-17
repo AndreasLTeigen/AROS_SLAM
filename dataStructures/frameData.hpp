@@ -35,8 +35,9 @@ class FrameData
         mutable std::shared_mutex mutex_matched_kpts;
 
     public:
-        FrameData( int frame_nr, int img_id, cv::Mat K_matrix ) : frame_nr(frame_nr), img_id(img_id)
-                                                                                {this->setKMatrix( K_matrix );} ;
+        FrameData( int frame_nr, int img_id, cv::Mat K_matrix ) : 
+                    frame_nr(frame_nr), img_id(img_id)
+                    {this->setKMatrix( K_matrix );} ;
         ~FrameData();
 
         // Write functions
@@ -49,19 +50,56 @@ class FrameData
         void addKeypoint( std::shared_ptr<KeyPoint2> kpt );
         void registerKeypoints( std::vector<cv::Point2d>& pts );
         void registerKeypoints(std::vector<std::shared_ptr<KeyPoint2>> kpts);
-        void registerKeypoints( std::vector<cv::KeyPoint>& kpts, cv::Mat& descrs );
-        void removeMatchedKeypointsByIdx( int matched_frame_nr, std::vector<int> kpt_idx_list );
-        std::vector<int> removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> connecting_frame );
-        std::vector<int> removeMatchesWithLowConfidence(double threshold, std::shared_ptr<FrameData> connecting_frame);
-        void addKptToMatchList( std::shared_ptr<KeyPoint2> kpt, std::shared_ptr<FrameData> connecting_frame );
-        void addRelPose( std::shared_ptr<Pose> rel_pose, std::shared_ptr<FrameData> connecting_frame );
         
-        static void registerMatches( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<std::vector<cv::DMatch>>& matches );
-        static void registerRelPose(std::shared_ptr<Pose> rel_pose, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
-        static std::shared_ptr<Pose> registerRelPose( cv::Mat E_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
-        static std::shared_ptr<Pose> registerGTRelPose(cv::Mat T_matrix, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);
-        static void removeOutlierMatches( cv::Mat inliers, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
-        static void removeMatchesWithLowConfidence( double threshold, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 );
+        void registerKeypoints( std::vector<cv::KeyPoint>& kpts, 
+                                cv::Mat& descrs );
+
+        void registerKeypoints( std::vector<cv::KeyPoint>& kpts, 
+                                cv::Mat& descrs, cv::Mat& img );
+
+        void removeMatchedKeypointsByIdx(   int matched_frame_nr, 
+                                            std::vector<int> kpt_idx_list );
+
+        void removeAllMatches(std::shared_ptr<FrameData> connecting_frame);
+
+        std::vector<int> removeOutlierMatches( cv::Mat inliers, 
+                                std::shared_ptr<FrameData> connecting_frame );
+
+        std::vector<int> removeMatchesWithLowConfidence(double threshold, 
+                                std::shared_ptr<FrameData> connecting_frame);
+
+        void addKptToMatchList( std::shared_ptr<KeyPoint2> kpt, 
+                            std::shared_ptr<FrameData> connecting_frame );
+
+        void addRelPose(std::shared_ptr<Pose> rel_pose, 
+                        std::shared_ptr<FrameData> connecting_frame );
+        
+        static void registerMatches(std::shared_ptr<FrameData> frame1, 
+                            std::shared_ptr<FrameData> frame2, 
+                            std::vector<std::vector<cv::DMatch>>& matches );
+
+        static void registerRelPose(std::shared_ptr<Pose> rel_pose, 
+                                    std::shared_ptr<FrameData> frame1, 
+                                    std::shared_ptr<FrameData> frame2);
+
+        static std::shared_ptr<Pose> registerRelPose( cv::Mat E_matrix, 
+                                        std::shared_ptr<FrameData> frame1, 
+                                        std::shared_ptr<FrameData> frame2 );
+
+        static std::shared_ptr<Pose> registerGTRelPose(cv::Mat T_matrix, 
+                                        std::shared_ptr<FrameData> frame1, 
+                                        std::shared_ptr<FrameData> frame2);
+
+        static void removeAllMatches(   std::shared_ptr<FrameData> frame1,
+                                        std::shared_ptr<FrameData> frame2);
+
+        static void removeOutlierMatches( cv::Mat inliers, 
+                                        std::shared_ptr<FrameData> frame1, 
+                                        std::shared_ptr<FrameData> frame2 );
+
+        static void removeMatchesWithLowConfidence( double threshold, 
+                                        std::shared_ptr<FrameData> frame1, 
+                                        std::shared_ptr<FrameData> frame2 );
 
 
         // Read functions
@@ -74,23 +112,44 @@ class FrameData
         cv::Mat getKMatrix();
         cv::Mat getGlobalPose();
         std::vector<std::shared_ptr<KeyPoint2>> getKeypoints();
-        std::vector<std::shared_ptr<KeyPoint2>> getMatchedKeypoints( int matched_frame_nr );
+        std::vector<std::shared_ptr<KeyPoint2>> getMatchedKeypoints( 
+                                                    int matched_frame_nr );
         std::shared_ptr<Pose> getRelPose( int rel_frame_nr );
-        std::shared_ptr<Pose> getRelPose( std::shared_ptr<FrameData> rel_frame );
+        std::shared_ptr<Pose> getRelPose(std::shared_ptr<FrameData> rel_frame);
         std::vector<cv::KeyPoint> compileCVKeypoints();
         cv::Mat compileCVDescriptors(std::string descr_type="orb");
         std::vector<cv::Point2f> compileCV2DPoints();
-        cv::Mat compileMatchedCVPointCoords( int matched_frame_nr);
+        cv::Mat compileMatchedPointCoords( int matched_frame_nr );
         std::vector<cv::Point> compileMatchedCVPoints( int matched_frame_nr);
         
-        static cv::Mat compileCVPointCoords( std::vector<std::shared_ptr<KeyPoint2>> kpts );
-        static std::vector<cv::Point2f> compileCV2DPointsN( std::vector<std::shared_ptr<KeyPoint2>> kpts );
-        static std::vector<cv::KeyPoint> compileCVKeypoints( std::vector<std::shared_ptr<KeyPoint2>> kpts );
-        static double calculateAvgMatchDist( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::string descr_type="orb" );
+        static cv::Mat compilePointCoords( 
+                        std::vector<std::shared_ptr<KeyPoint2>> kpts );
 
-        friend void compileMatchedCVPointCoords( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& frame1_points, cv::Mat& frame2_points );
-        friend void compileMatchedCVPoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<cv::Point>& frame1_points, std::vector<cv::Point>& frame2_points );
-        friend void copyMatchedKptsLists( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<std::shared_ptr<KeyPoint2>>& frame1_matched_kpts, std::vector<std::shared_ptr<KeyPoint2>>& frame2_matched_kpts );
+        static std::vector<cv::Point2f> compileCV2DPointsN( 
+                            std::vector<std::shared_ptr<KeyPoint2>> kpts );
+
+        static std::vector<cv::KeyPoint> compileCVKeypoints( 
+                            std::vector<std::shared_ptr<KeyPoint2>> kpts );
+
+        static double calculateAvgMatchDist(std::shared_ptr<FrameData> frame1, 
+                                            std::shared_ptr<FrameData> frame2, 
+                                            std::string descr_type="orb" );
+
+        friend void compileMatchedPointCoords( 
+                                            std::shared_ptr<FrameData> frame1, 
+                                            std::shared_ptr<FrameData> frame2, 
+                                            cv::Mat& pts1, 
+                                            cv::Mat& pts2 );
+
+        friend void compileMatchedCVPoints(std::shared_ptr<FrameData> frame1, 
+                                           std::shared_ptr<FrameData> frame2, 
+                                        std::vector<cv::Point>& frame1_points, 
+                                        std::vector<cv::Point>& frame2_points);
+
+        friend void copyMatchedKptsLists( std::shared_ptr<FrameData> frame1, 
+                                          std::shared_ptr<FrameData> frame2, 
+                std::vector<std::shared_ptr<KeyPoint2>>& frame1_matched_kpts, 
+                std::vector<std::shared_ptr<KeyPoint2>>& frame2_matched_kpts );
 };
 
 #endif

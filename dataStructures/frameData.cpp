@@ -99,13 +99,31 @@ void FrameData::registerKeypoints(vector<shared_ptr<KeyPoint2>> kpts)
 
 void FrameData::registerKeypoints(vector<cv::KeyPoint>& kpts, Mat& descrs)
 {
-    /* Converts and registers vector<cv::KeyPoint> into the AVG Keypoint class
-       and saves it in the frameData class. For more details, see design document*/
+    /* Converts <cv::KeyPoint> objects to <KeyPoint2> objects and adds them
+        to <this> frame's keypoint list. */
 
     #pragma omp parallel for
-    for( int i = 0; i < kpts.size(); i++ )
+    for( int i = 0; i < kpts.size(); ++i )
     {
         shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(i, kpts[i], this->getFrameNr(), descrs.row(i));
+        this->addKeypoint(keypoint);
+    }
+}
+
+void FrameData::registerKeypoints(  vector<cv::KeyPoint>& kpts, Mat& descrs, 
+                                    Mat& img )
+{
+    /* Converts <cv::KeyPoint> objects to <KeyPoint2> objects and adds them
+        to <this> frame's keypoint list. Further registers the keypoint
+        color */
+    
+    #pragma omp parallel for
+    for( int i = 0; i < kpts.size(); ++i )
+    {
+        shared_ptr<KeyPoint2> keypoint = std::make_shared<KeyPoint2>(i, kpts[i], this->getFrameNr(), descrs.row(i));
+        uint8_t color = img.at<uint8_t>(kpts[i].pt.y, kpts[i].pt.x);
+        keypoint->setColor(color);
+
         this->addKeypoint(keypoint);
     }
 }
@@ -131,16 +149,47 @@ void FrameData::removeMatchedKeypointsByIdx(int matched_frame_nr, vector<int> kp
     }
 }
 
-vector<int> FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameData> connecting_frame)
+void FrameData::removeAllMatches(shared_ptr<FrameData> connecting_frame)
 {
     /*
+    Deletes all matches with <connecting_frame>
+    
     Arguments:
-        inliers:                            Mask of inliers/outliers between the ordered lists of 
-                                            <matched_kpts[frameX]> of <this> frame and <connecting_frame>.
-        connecting_frame:                   Frame object connecting matches of interest to <this> frame.
-    Effect:
-        frameX->kpts[Z]->matches[frameY]:   Deletes match object between keypoints in <frame1> and <frame2> 
-                                            corresponding to <inliers> mask.
+        connecting_frame:   Connecting frame which matches are to be removed.
+    
+    Warning:
+        Does not delete the matches from the other frame.
+    */
+
+    int connecting_frame_nr = connecting_frame->getFrameNr();
+
+    std::unique_lock lock(this->mutex_matched_kpts);
+
+    for( shared_ptr<KeyPoint2> kpt : this->matched_kpts[connecting_frame_nr] )
+    {
+        kpt->removeAllMatches(connecting_frame_nr);
+    }
+    this->matched_kpts[connecting_frame_nr].clear();
+}
+
+vector<int> FrameData::removeOutlierMatches(
+                                    cv::Mat inliers, 
+                                    shared_ptr<FrameData> connecting_frame)
+{
+    /*
+    Deletes match object between keypoints in <frame1> and <frame2> 
+    corresponding to <inliers> mask.
+
+    Arguments:
+        inliers:            Mask of inliers/outliers between the ordered lists of 
+                            <matched_kpts[frameX]> of <this> frame and 
+                            <connecting_frame>.
+        connecting_frame:   Frame object connecting matches of interest to 
+                            <this> frame.
+    Returns:
+        removed_matched_keypoint_idx:   Indexes of the removed matches (in 
+                                        <matched_kpts>).
+
     */
 
     shared_ptr<KeyPoint2> kpt1;
@@ -162,7 +211,6 @@ vector<int> FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameDat
             removed_matched_keypoint_idx.push_back(i);
         }
     }
-
     return removed_matched_keypoint_idx;
 }
 
@@ -228,7 +276,9 @@ void FrameData::addRelPose(shared_ptr<Pose> rel_pose, shared_ptr<FrameData> conn
 
 // ----------- Static write functions -------------
 
-void FrameData::registerMatches(shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2, vector<vector<DMatch>>& matches)
+void FrameData::registerMatches(shared_ptr<FrameData> frame1, 
+                                shared_ptr<FrameData> frame2, 
+                                vector<vector<DMatch>>& matches)
 {
     /* 
     Arguments:
@@ -244,11 +294,6 @@ void FrameData::registerMatches(shared_ptr<FrameData> frame1, shared_ptr<FrameDa
 
     vector<cv::DMatch> kpt_match;
     shared_ptr<KeyPoint2> kpt1, kpt2;
-    
-    if ( matches.size() == 0 )
-    {
-        std::cerr << "ERROR: No matches found" << std::endl;
-    }
 
     for(int i = 0; i < matches.size(); i++)
     {
@@ -270,31 +315,38 @@ void FrameData::registerMatches(shared_ptr<FrameData> frame1, shared_ptr<FrameDa
     }
 }
 
-void FrameData::registerRelPose(shared_ptr<Pose> rel_pose, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
+void FrameData::registerRelPose(shared_ptr<Pose> rel_pose, 
+                                shared_ptr<FrameData> frame1, 
+                                shared_ptr<FrameData> frame2)
 {
     /*
+    Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+
     Arguments:
-        rel_pose:                   Pose between <frame1> and <frame2>
-        frameX:                     Frame objects connecting the relative pose of interest.
+        rel_pose:       Pose between <frame1> and <frame2>
+        frameX:         Frame objects connecting the relative pose of interest.
     Returns:
-        rel_pose:                   Newly created relative pose object between <frame1> and <frame2>.
-    Effect:
-        frameX->rel_poses[frameY]:  Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+        rel_pose:       Newly created relative pose object between 
+                        <frame1> and <frame2>.
     */
     frame1->addRelPose(rel_pose, frame2);
     frame2->addRelPose(rel_pose, frame1);
 }
 
-shared_ptr<Pose> FrameData::registerRelPose(Mat E_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
+shared_ptr<Pose> FrameData::registerRelPose(Mat E_matrix, 
+                                            shared_ptr<FrameData> frame1, 
+                                            shared_ptr<FrameData> frame2)
 {
     /*
+    Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+
     Arguments:
-        E_matrix:                   Essential matrix of the transformation between <frame1> and <frame2>
-        frameX:                     Frame objects connecting the relative pose of interest.
+        E_matrix:       Essential matrix of the transformation between <frame1> 
+                        and <frame2>
+        frameX:         Frame objects connecting the relative pose of interest.
     Returns:
-        rel_pose:                   Newly created relative pose object between <frame1> and <frame2>.
-    Effect:
-        frameX->rel_poses[frameY]:  Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+        rel_pose:       Newly created relative pose object between <frame1> 
+                        and <frame2>.  
     */
     shared_ptr<Pose> rel_pose = shared_ptr<Pose>(new Pose(E_matrix, frame1, frame2));
     frame1->addRelPose(rel_pose, frame2);
@@ -302,16 +354,20 @@ shared_ptr<Pose> FrameData::registerRelPose(Mat E_matrix, shared_ptr<FrameData> 
     return rel_pose;
 }
 
-shared_ptr<Pose> FrameData::registerGTRelPose(Mat T_matrix, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
+shared_ptr<Pose> FrameData::registerGTRelPose(  Mat T_matrix, 
+                                                shared_ptr<FrameData> frame1, 
+                                                shared_ptr<FrameData> frame2)
 {
     /*
+    Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+
     Arguments:
-        T_matrix:                   Relative transformation matrix between <frame1> and <frame2>
-        frameX:                     Frame objects connecting the relative pose of interest.
+        T_matrix:       Relative transformation matrix between <frame1> and 
+                        <frame2>
+        frameX:         Frame objects connecting the relative pose of interest.
     Returns:
-        rel_pose:                   Newly created relative pose object between <frame1> and <frame2>.
-    Effect:
-        frameX->rel_poses[frameY]:  Registers relative poses between <frame1> and <frame2> based on <E_matrix>.
+        rel_pose:       Newly created relative pose object between <frame1> 
+                        and <frame2>.
     */
     shared_ptr<Pose> rel_pose = shared_ptr<Pose>(new Pose(frame1, frame2));
     rel_pose->updatePoseVariables(T_matrix);
@@ -320,7 +376,16 @@ shared_ptr<Pose> FrameData::registerGTRelPose(Mat T_matrix, shared_ptr<FrameData
     return rel_pose;
 }
 
-void FrameData::removeOutlierMatches(cv::Mat inliers, shared_ptr<FrameData> frame1, shared_ptr<FrameData> frame2)
+void FrameData::removeAllMatches(   shared_ptr<FrameData> frame1, 
+                                    shared_ptr<FrameData> frame2)
+{
+    frame1->removeAllMatches(frame2);
+    frame2->removeAllMatches(frame1);
+}
+
+void FrameData::removeOutlierMatches(   cv::Mat inliers, 
+                                        shared_ptr<FrameData> frame1, 
+                                        shared_ptr<FrameData> frame2)
 {
     /*
     Arguments:
@@ -421,7 +486,7 @@ Mat FrameData::getKMatrix()
 {
     /*
     Returns:
-        this->K_matrix:     Kamera calibration matrix of <this> frame.
+        this->K_matrix:     Kamera calibration matrix of <this> frame [3 x 3].
     */
     std::shared_lock lock(this->mutex_K_matrix);
     return this->K_matrix.clone();
@@ -546,7 +611,7 @@ vector<cv::Point2f> FrameData::compileCV2DPoints()
 }
 
 
-cv::Mat FrameData::compileMatchedCVPointCoords( int matched_frame_nr)
+cv::Mat FrameData::compileMatchedPointCoords( int matched_frame_nr)
 {
     /*
     Arguments:  
@@ -559,21 +624,8 @@ cv::Mat FrameData::compileMatchedCVPointCoords( int matched_frame_nr)
     std::shared_lock lock(this->mutex_matched_kpts);
 
     vector<shared_ptr<KeyPoint2>> matched_kpts = this->matched_kpts[matched_frame_nr];
-    /*
-    Mat uv(3,matched_kpts.size(), CV_64F);
-    shared_ptr<KeyPoint2> kpt;
-
-    #pragma omp parallel for
-    for (int i = 0; i < matched_kpts.size(); i++)
-    {
-        kpt = matched_kpts[i];
-        uv.at<double>(0,i) = kpt->getCoordX();
-        uv.at<double>(1,i) = kpt->getCoordY();
-        uv.at<double>(2,i) = 1.0;
-    }
-    return uv;
-    */
-    return compileCVPointCoords( matched_kpts );
+    
+    return compilePointCoords( matched_kpts );
 }
 
 std::vector<cv::Point> FrameData::compileMatchedCVPoints( int matched_frame_nr )
@@ -602,7 +654,7 @@ std::vector<cv::Point> FrameData::compileMatchedCVPoints( int matched_frame_nr )
 
 
 // ----------- Static read functions -------------
-cv::Mat FrameData::compileCVPointCoords( std::vector<std::shared_ptr<KeyPoint2>> kpts )
+cv::Mat FrameData::compilePointCoords( std::vector<std::shared_ptr<KeyPoint2>> kpts )
 {
     //TODO: This function does not return pure integer values but rather changes them into inprecice double values, fix this
     Mat uv(3,kpts.size(), CV_64F);
@@ -690,92 +742,46 @@ double FrameData::calculateAvgMatchDist( std::shared_ptr<FrameData> frame1, std:
 
 
 // ----------- Friend functions -------------
-void compileMatchedCVPointCoords(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& frame1_points, cv::Mat& frame2_points )
+void compileMatchedPointCoords(   std::shared_ptr<FrameData> frame1, 
+                                    std::shared_ptr<FrameData> frame2, 
+                                    cv::Mat& frame1_points, 
+                                    cv::Mat& frame2_points )
 {
     /*
     Arguments:
         frameX:         Frame 1 and 2 that connects the matches of interest.
     Returns:
-        frameX_points:  Matrix containing the matched coordinates in homogeneous pixel coordinates 
+        frameX_points:  Matrix containing the coordinates of the matched 
+                        keypoints in homogeneous pixel coordinates 
                         for the respective frame [shape 3 x n].
     */
 
-    std::shared_ptr<FrameData> newest_frame, oldest_frame;
-    cv::Mat newest_frame_points, oldest_frame_points;
+    std::shared_lock lock1(frame1->mutex_matched_kpts);
+    std::shared_lock lock2(frame2->mutex_matched_kpts);
 
-    // Sorting the frames to avoid mutex softlock.
-    if ( frame1->getFrameNr() > frame2->getFrameNr() )
-    {
-        newest_frame = frame1;
-        oldest_frame = frame2;
-    }
-    else
-    {
-        newest_frame = frame2;
-        oldest_frame = frame1;
-    }
-
-    std::shared_lock lock1(newest_frame->mutex_matched_kpts);
-    std::shared_lock lock2(oldest_frame->mutex_matched_kpts);
-
-    newest_frame_points = newest_frame->compileMatchedCVPointCoords( oldest_frame->getFrameNr() );
-    oldest_frame_points = oldest_frame->compileMatchedCVPointCoords( newest_frame->getFrameNr() );
-
-    // Assigns the right point groups to the corresponding original frame.
-    if ( frame1->getFrameNr() > frame2->getFrameNr() )
-    {
-        frame1_points = newest_frame_points;
-        frame2_points = oldest_frame_points;
-    }
-    else
-    {
-        frame2_points = newest_frame_points;
-        frame1_points = oldest_frame_points;
-    }
+    frame1_points = frame1->compileMatchedPointCoords( frame2->getFrameNr() );
+    frame2_points = frame2->compileMatchedPointCoords( frame1->getFrameNr() );
 }
 
-void compileMatchedCVPoints(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::vector<cv::Point>& frame1_points, std::vector<cv::Point>& frame2_points)
+void compileMatchedCVPoints(std::shared_ptr<FrameData> frame1, 
+                            std::shared_ptr<FrameData> frame2, 
+                            std::vector<cv::Point>& pts1, 
+                            std::vector<cv::Point>& pts2)
 {
     /*
     Arguments:
-        frameX:         Frame 1 and 2 that connects the matches of interest.
+        frame1:     Current frame.
+        frame2:     Previous frame.
     Returns:
-        framex_points:  Vector containing the matched points of the respecitve frames
-                        in cv::Points format.
+        ptsX:       Vector containing the matched points of the respecitve 
+                    frames in <cv::Points> format.
     */
-    
-    shared_ptr<FrameData> newest_frame, oldest_frame;
-    vector<cv::Point> newest_frame_points, oldest_frame_points;
 
-    // Sorting the frames to avoid mutex softlock.
-    if ( frame1->getFrameNr() > frame2->getFrameNr() )
-    {
-        newest_frame = frame1;
-        oldest_frame = frame2;
-    }
-    else
-    {
-        newest_frame = frame2;
-        oldest_frame = frame1;
-    }
+    std::shared_lock lock1(frame1->mutex_matched_kpts);
+    std::shared_lock lock2(frame2->mutex_matched_kpts);
 
-    std::shared_lock lock1(newest_frame->mutex_matched_kpts);
-    std::shared_lock lock2(oldest_frame->mutex_matched_kpts);
-
-    newest_frame_points = newest_frame->compileMatchedCVPoints( oldest_frame->getFrameNr() );
-    oldest_frame_points = oldest_frame->compileMatchedCVPoints( newest_frame->getFrameNr() );
-
-    // Assigns the right point groups to the corresponding original frame.
-    if ( frame1->getFrameNr() > frame2->getFrameNr() )
-    {
-        frame1_points = newest_frame_points;
-        frame2_points = oldest_frame_points;
-    }
-    else
-    {
-        frame2_points = newest_frame_points;
-        frame1_points = oldest_frame_points;
-    }
+    pts1 = frame1->compileMatchedCVPoints( frame2->getFrameNr() );
+    pts2 = frame2->compileMatchedCVPoints( frame1->getFrameNr() );
 }
 
 void copyMatchedKptsLists(shared_ptr<FrameData> frame1,shared_ptr<FrameData> frame2, vector<shared_ptr<KeyPoint2>>& frame1_matched_kpts, vector<shared_ptr<KeyPoint2>>& frame2_matched_kpts )

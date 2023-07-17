@@ -11,7 +11,9 @@ class depthGTMPReg : public MapPointRegistrator
         depthGTMPReg(){};
         ~depthGTMPReg(){};
 
-        void registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )override;
+        int registerMP( std::shared_ptr<FrameData> frame1, 
+                        std::shared_ptr<FrameData> frame2, 
+                        std::shared_ptr<Map3D> map_3d )override;
 };
 
 #endif

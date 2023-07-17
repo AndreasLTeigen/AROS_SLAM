@@ -21,7 +21,9 @@ cv::Mat composeEMatrix(cv::Mat& R, cv::Mat& t);
 
 cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K_matrix);
 
-cv::Mat fundamentalFromEssential(cv::Mat E_matrix, cv::Mat K1_matrix, cv::Mat K2_matrix);
+cv::Mat fundamentalFromEssential(   cv::Mat E_matrix, 
+                                    cv::Mat K1_matrix, 
+                                    cv::Mat K2_matrix);
 
 cv::Mat calculateEpipole(cv::Mat E_matrix);
 
@@ -55,19 +57,30 @@ cv::Mat homogenizeArrayRet(const cv::Mat& arr);
 
 void dehomogenizeMatrix(cv::Mat& X);
 
+void removeColumns(cv::Mat& matrix, cv::Mat& mask);
+
 cv::Mat normalizeMat(cv::Mat& vec);
 
 cv::Mat fitQuadraticForm(cv::Mat& x, cv::Mat& y, cv::Mat& z);
 
 cv::Mat sampleQuadraticForm(cv::Mat A, cv::Point center, cv::Size reg_size );
 
-cv::Mat reprojectionError( cv::Mat& xyz1, cv::Mat& uv1, cv::Mat& T, cv::Mat& K );
+cv::Mat reprojectionError(cv::Mat& xyz1, cv::Mat& uv1, cv::Mat& T, cv::Mat& K);
 
 cv::Mat dilateKptWDepth(cv::Mat xy1, double Z, cv::Mat T, cv::Mat K);
 
 cv::Mat projectKpt( cv::Mat XYZ1, cv::Mat T, cv::Mat K );
 
-void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, cv::Mat& uv1, cv::Mat& uv2, cv::Mat& XYZ_I2 );
+void triangulatePointsLinear(   cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, 
+                                cv::Mat& uv1, cv::Mat& uv2, cv::Mat& XYZ_I2 );
+
+void getInlierMask( cv::Mat& F_matrix, cv::Mat& K1, cv::Mat& K2, 
+                    cv::Mat& frame1_points, cv::Mat& frame2_points, 
+                    cv::Mat& inliers, double inlier_threshold);
+
+void computeReprojectionError(  cv::Mat& F_matrix, cv::Mat& K1, cv::Mat& K2,
+                                cv::Mat& frame1_points, cv::Mat& frame2_points,
+                                cv::Mat& reprojection_error );
 
 cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
 
@@ -77,21 +90,35 @@ std::vector<double> transform2stdParam(cv::Mat &T);
 
 bool isInsideImageBounds( double y, double x, int H, int W);
 
-static void meshgrid( const cv::Mat& xgv, const cv::Mat& ygv, cv::Mat& X, cv::Mat& Y );
+static void meshgrid(   const cv::Mat& xgv, const cv::Mat& ygv, 
+                        cv::Mat& X, cv::Mat& Y );
 
 std::string type2str(int type);
 
-void writeParameters2File(std::string file_path, std::string image_idenifier, cv::Mat &T );
+void writeParameters2File(  std::string file_path, 
+                            std::string image_idenifier, 
+                            cv::Mat &T );
 
-void writeTransformation2File(std::string file_path, std::string image_idenifier, cv::Mat &T );
+void writeTransformation2File(  std::string file_path, 
+                                std::string image_idenifier, 
+                                cv::Mat &T );
 
-void writeVector2File(std::string file_path, std::vector<double> &data, bool linebreak=true);
+void writeInt2File( std::string file_path,
+                    int value,
+                    std::string delimiter=",");
+
+void writeVector2File(  std::string file_path, 
+                        std::vector<double> &data, 
+                        bool linebreak=true);
 
 void writeString2File(std::string file_path, std::string content);
 
+void writeMat2File(std::string file_path, cv::Mat& data);
+
 void clearFile(std::string file_path);
 
-std::vector<std::vector<std::string>> readCSVFile(std::string filename, char delim);
+std::vector<std::vector<std::string>> readCSVFile(  std::string filename, 
+                                                    char delim);
 
 bool saveImage( cv::Mat& img, std::string img_name, std::string folder );
 

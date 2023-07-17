@@ -10,11 +10,14 @@ using std::map;
 using std::weak_ptr;
 using std::shared_ptr;
 
-MapPoint::MapPoint(int id, double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, Mat T1)
+MapPoint::MapPoint( int id, double X, double Y, double Z, 
+                    double std_X, double std_Y, double std_Z, 
+                    shared_ptr<KeyPoint2> kpt1, Mat T1)
 {
     // Constructor for map point with depth prior
     this->id = id;
     this->observation_cnt = 1;
+    this->setColor(kpt1->getColor());
     this->setCoordX(X);
     this->setCoordY(Y);
     this->setCoordZ(Z);
@@ -25,10 +28,14 @@ MapPoint::MapPoint(int id, double X, double Y, double Z, double std_X, double st
     this->updateMeanViewDir(T1);
 }
 
-MapPoint::MapPoint(int id, double X, double Y, double Z, double std_X, double std_Y, double std_Z, shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, Mat T1, Mat T2)
+MapPoint::MapPoint( int id, double X, double Y, double Z, 
+                    double std_X, double std_Y, double std_Z, 
+                    shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, 
+                    Mat T1, Mat T2)
 {
     this->id = id;
     this->observation_cnt = 2;
+    this->setColor(kpt1->getColor());
     this->setCoordX(X);
     this->setCoordY(Y);
     this->setCoordZ(Z);
@@ -51,6 +58,12 @@ void MapPoint::iterateObservationCounter()
 {
     std::unique_lock lock(this->mutex_observation_cnt);
     this->observation_cnt += 1;
+}
+
+void MapPoint::setColor(uint8_t color)
+{
+    std::unique_lock lock(this->mutex_color);
+    this->color = color;
 }
 
 void MapPoint::setCoordX(double X)
@@ -170,6 +183,12 @@ int MapPoint::getObservationCounter()
     return this->observation_cnt;
 }
 
+uint8_t MapPoint::getColor()
+{
+    std::shared_lock lock(this->mutex_color);
+    return this->color;
+}
+
 double MapPoint::getCoordX()
 {
     std::shared_lock lock(this->mutex_coord);
@@ -186,6 +205,16 @@ double MapPoint::getCoordZ()
 {
     std::shared_lock lock(this->mutex_coord);
     return this->Z;
+}
+
+cv::Mat MapPoint::getCoordXYZ1()
+{
+    cv::Mat XYZ1;
+    XYZ1 = (cv::Mat_<double>(4,1)<<  this->getCoordX(),
+                                    this->getCoordY(),
+                                    this->getCoordZ(),
+                                    1);
+    return XYZ1;
 }
 
 double MapPoint::getSTDX()
@@ -206,16 +235,6 @@ double MapPoint::getSTDZ()
     return this->std_Z;
 }
 
-cv::Mat MapPoint::getCoordXYZ()
-{
-    cv::Mat XYZ1;
-    XYZ1 = (cv::Mat_<double>(4,1)<<  this->getCoordX(),
-                                    this->getCoordY(),
-                                    this->getCoordZ(),
-                                    1);
-    return XYZ1;
-}
-
 Mat MapPoint::getMeanViewingDir()
 {
     std::shared_lock lock(this->mutex_mean_view_dir);
@@ -232,4 +251,16 @@ weak_ptr<KeyPoint2> MapPoint::getObservationKpt(int kpt_frame_nr)
 {
     std::shared_lock lock(this->mutex_observation_keypoints);
     return this->observation_keypoints[kpt_frame_nr];
+}
+
+cv::Point3f MapPoint::compileCVPoint3f()
+{
+    std::shared_lock lock(this->mutex_coord);
+    return cv::Point3f(float(this->X), float(this->Y), float(this->Z));
+}
+
+cv::Point3d MapPoint::compileCVPoint3d()
+{
+    std::shared_lock lock(this->mutex_coord);
+    return cv::Point3d(this->X, this->Y, this->Z);
 }

@@ -9,15 +9,18 @@ using cv::DMatch;
 using std::vector;
 using std::shared_ptr;
 
+BFMatcher::BFMatcher(const YAML::Node config)
+{
+    std::cout << std::left;
+    std::cout << std::setw(20) << "Matcher:" << "Brute force" << std::endl;
 
-void BFMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
+    this->do_lowes_ratio_test = config["do_lowes_ratio_test"].as<bool>();
+    this->retain_N_best_matches = config["retain_N_best_matches"].as<int>();
+}
+
+int BFMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
     //--Performing brute force matching without cross check and normalized hamming distance
-
-    if (frame1->getNumKeypoints() == 0 )
-    {
-        std::cerr << "ERROR: No keypoints were found" << std::endl;
-    }
     
     vector<vector<DMatch>> matches, matches_temp;
     Mat queryDesc = frame1->compileCVDescriptors();
@@ -26,19 +29,97 @@ void BFMatcher::matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_p
     this->matcher.knnMatch(queryDesc, trainDesc, matches_temp, 2);
 
     //--Lowes ratio test
-    for( int i = 0; i < matches_temp.size(); i++)
+    if (this->do_lowes_ratio_test)
     {
-        if ( matches_temp[i][0].distance < 0.8*matches_temp[i][1].distance)
+        for( int i = 0; i < matches_temp.size(); ++i)
+        {
+            if (matches_temp[i][0].distance < 0.8*matches_temp[i][1].distance)
+            {
+                vector<DMatch> temp;
+                temp.push_back(matches_temp[i][0]);
+                matches.push_back(temp);
+            }
+        }
+    }
+    else
+    {
+        for ( int i = 0; i < matches_temp.size(); ++i )
         {
             vector<DMatch> temp;
             temp.push_back(matches_temp[i][0]);
             matches.push_back(temp);
         }
     }
+
     FrameData::registerMatches(frame1, frame2, matches);
 
-    if (this->is_logging)
+    int num_matches = frame1->getMatchedKeypoints(frame2->getFrameNr()).size();
+
+    this->num_matches = num_matches;
+
+    if (num_matches == 0)
     {
-        this->num_match_curr = frame1->getMatchedKeypoints(frame2->getFrameNr()).size();
+        std::cerr << "ERROR(frame " << frame1->getImgId() << "): No matches found" << std::endl;
+        return 1;
     }
+
+    
+
+
+    if (this->retain_N_best_matches != -1)
+    {
+        this->matchPruning(frame1, frame2, this->retain_N_best_matches);
+    }
+
+    return 0;
+}
+
+void BFMatcher::matchPruning(   shared_ptr<FrameData> frame1,
+                                shared_ptr<FrameData> frame2,
+                                int N_remaining)
+{
+    /*
+    Prunes all but the <N_remaining> matches. Matches are pruned based on
+    their Hamming distance.
+
+    Arguments:
+        frameX:         Frames whose matches with eachother will be pruned.
+        N_remaining:    Number of remaining matches after pruning.
+    
+    Note:
+        <frameX->matched_keypoints> will be directly updated.
+    */
+
+    vector<shared_ptr<KeyPoint2>> match_kpts1 = frame1->getMatchedKeypoints(frame2->getFrameNr());
+    vector<shared_ptr<KeyPoint2>> match_kpts2 = frame2->getMatchedKeypoints(frame1->getFrameNr());
+    vector<int> idxs(N_remaining,-1);
+    vector<double> dists(N_remaining, 255.0);
+
+    for (int i = 0; i < match_kpts1.size(); ++i)
+    {
+        shared_ptr<KeyPoint2> match_kpt1 = match_kpts1[i];
+        double desc_dist = match_kpt1->getHighestConfidenceMatch(frame2->getFrameNr())->getDescrDistance();
+
+        std::vector<double>::iterator it = std::max_element(std::begin(dists), std::end(dists));
+        int largest_retained_dist_idx = std::distance(std::begin(dists), it);
+
+        if (dists[largest_retained_dist_idx] > desc_dist)
+        {
+            idxs[largest_retained_dist_idx] = i;
+            dists[largest_retained_dist_idx] = desc_dist;
+        }
+    }
+
+    cv::Mat inliers = cv::Mat::zeros(1, match_kpts1.size(), CV_8U);
+    for (int i = 0; i < match_kpts1.size(); ++i)
+    {
+        for (int j = 0; j < idxs.size(); ++j)
+        {
+            if (idxs[j] == i)
+            {
+                inliers.at<uchar>(i) = 255;
+            }
+        }
+    }
+    FrameData::removeOutlierMatches(inliers, frame1, frame2);
 }

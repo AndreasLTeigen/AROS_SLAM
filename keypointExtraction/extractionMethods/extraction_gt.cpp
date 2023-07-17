@@ -11,16 +11,24 @@
 
 using std::vector;
 
-void ORBNaiveBucketingGTExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+int ORBNaiveBucketingGTExtractor::extract(  cv::Mat& img, 
+                                            std::shared_ptr<FrameData> frame, 
+                                            std::shared_ptr<Map3D> map_3d )
 {
     vector<cv::KeyPoint> kpts;
     cv::Mat desc;
 
     this->detector->detect( img, kpts );
     this->depthGTwBucketing( img, frame, kpts, map_3d, 20, 20 );
+    return 0;
 }
 
-void ORBNaiveBucketingGTExtractor::depthGTwBucketing( cv::Mat& img, std::shared_ptr<FrameData> frame, std::vector<cv::KeyPoint>& kpts, std::shared_ptr<Map3D> map_3d, int h_n_buckets, int w_n_buckets )
+void ORBNaiveBucketingGTExtractor::depthGTwBucketing( 
+                                cv::Mat& img, 
+                                std::shared_ptr<FrameData> frame, 
+                                std::vector<cv::KeyPoint>& kpts, 
+                                std::shared_ptr<Map3D> map_3d, 
+                                int h_n_buckets, int w_n_buckets )
 {   
     // Find <MapPoints> visible from current frame.
     bool pt_in_image_bounds;
@@ -31,7 +39,7 @@ void ORBNaiveBucketingGTExtractor::depthGTwBucketing( cv::Mat& img, std::shared_
 
     for ( std::shared_ptr<MapPoint> map_point : map_points )
     {
-        XYZ1 = map_point->getCoordXYZ();
+        XYZ1 = map_point->getCoordXYZ1();
         //std::cout << "XYZ1: " << XYZ1 << std::endl;
         cv::Mat xy1 = projectKpt( XYZ1 , frame->getGlobalPose(), frame->getKMatrix() );
         //std::cout << "R-Point: " << xy1 << std::endl;
@@ -40,7 +48,7 @@ void ORBNaiveBucketingGTExtractor::depthGTwBucketing( cv::Mat& img, std::shared_
         {
             std::shared_ptr<KeyPoint2> kpt = std::make_shared<KeyPoint2>( kpt_id_it, xy1, frame->getFrameNr() );
             kpt->setMapPoint(map_point);
-            map_point->addObservation(kpt, map_point->getCoordXYZ(), cv::Mat::zeros(3, 1, CV_64F), frame->getGlobalPose());
+            map_point->addObservation(kpt, map_point->getCoordXYZ1(), cv::Mat::zeros(3, 1, CV_64F), frame->getGlobalPose());
             reprojected_map_points.push_back(kpt);
             kpt_id_it += 1;
         }

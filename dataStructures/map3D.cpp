@@ -19,18 +19,23 @@ Map3D::~Map3D()
 // Write functions
 void Map3D::addMapPoint(std::shared_ptr<MapPoint> map_point)
 {
+    /* Add <map_point> to <Map3D> */
+    
     std::unique_lock lock(this->mutex_map_points);
     this->map_points.push_back(map_point);
 }
 
-void Map3D::createMapPoint(cv::Mat XYZ, cv::Mat XYZ_std, shared_ptr<KeyPoint2> kpt1, cv::Mat T1)
+void Map3D::createMapPoint(cv::Mat XYZ, cv::Mat XYZ_std, 
+                            shared_ptr<KeyPoint2> kpt1, cv::Mat T1)
 {
     /*
+    Creates a map point based on 3D information.
+
     Arguments:
-        XYZ:        Dehomogenized 3D point in the world frame, ordered in same manner 
-                    as kptsX [shape 4 x 1] 
-        XYZ_std:    Standard deviation of 3D point in the world frame, same structure
-                    as XYZ [shape 3 x 1] 
+        XYZ:        Dehomogenized 3D point in the world frame, ordered in same 
+                    manner as kptsX [shape 4 x 1] 
+        XYZ_std:    Standard deviation of 3D point in the world frame, same 
+                    structure as XYZ [shape 3 x 1] 
         kptX:       Keypoint associated with the new mapPoint
         TX:         Global transformation matrices of frameX
     Overview:
@@ -55,19 +60,22 @@ void Map3D::removeMapPoint(int idx)
     this->map_points.erase( this->map_points.begin() + idx );
 }
 
-void Map3D::updateMap(shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ1, cv::Mat XYZ_std)
+void Map3D::updateMap(shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, 
+                        cv::Mat T1, cv::Mat T2, cv::Mat XYZ1, cv::Mat XYZ_std)
 {
     /*
+    Creates new <MapPoint> if a match belong to new track and updates 
+        <MapPoint> if match belongs to existing track.
+
     Arguments:
-        kptX:       Matched keypoints, kpt1 is the new keypoint, kpt2 is the old keypoint.
+        kptX:       Matched keypoints, kpt1 is the new keypoint, kpt2 is the 
+                    old keypoint.
         TX:         Global transformation matrices of frameX.
-        XYZ1:        Dehomogenized 3D point in the world frame, ordered in same manner 
-                    as kptsX [shape 4 x 1].
-        XYZ_std:    Standard deviation of 3D point in the world frame, same structure
-                    as XYZ [shape 3 x 1].
+        XYZ1:       Dehomogenized 3D point in the world frame, ordered in same 
+                    manner as kptsX [shape 4 x 1].
+        XYZ_std:    Standard deviation of 3D point in the world frame, same 
+                    structure as XYZ [shape 3 x 1].
     */
-    // If existing track, register new kpt to track and update position
-    // If new track, create new map point and register both kpts and give position
 
     shared_ptr<MapPoint> temp_map_point;
     int map_point_id = this->getNumMapPoints();
@@ -95,54 +103,36 @@ void Map3D::updateMap(shared_ptr<KeyPoint2> kpt1, shared_ptr<KeyPoint2> kpt2, cv
     }
 }
 
-void Map3D::batchUpdateMap(vector<shared_ptr<KeyPoint2>>& kpts1, vector<shared_ptr<KeyPoint2>>& kpts2, cv::Mat T1, cv::Mat T2, cv::Mat XYZ1, cv::Mat XYZ_std)
+void Map3D::batchUpdateMap( vector<shared_ptr<KeyPoint2>>& kpts1, 
+                            vector<shared_ptr<KeyPoint2>>& kpts2, 
+                            cv::Mat T1, cv::Mat T2, 
+                            cv::Mat XYZ1, cv::Mat XYZ_std)
 {
     /*
+    Creates new <MapPoint> if a match belong to new track and updates 
+        <MapPoint> if match belongs to existing track.
+
     Arguments:
         kptsX:      List of matched keypoints,in order of matches [shape n]
         TX:         Global transformation matrices of frameX
-        XYZ:        Dehomogenized 3D point in the world frame, ordered in same manner 
-                    as kptsX [shape 4 x n] 
-        XYZ_std:    Standard deviation of 3D point in the world frame, same structure
-                    as XYZ [shape 3 x n] 
+        XYZ:        Dehomogenized 3D point in the world frame, ordered in same 
+                    manner as kptsX [shape 4 x n] 
+        XYZ_std:    Standard deviation of 3D point in the world frame, same 
+                    structure as XYZ [shape 3 x n] 
     */
-    // If existing track, register new kpt to track and update position
-    // If new track, create new map point and register both kpts and give position
 
     int N = XYZ1.cols;
-    int frame1_nr = kpts1[0]->getObservationFrameNr();
-    int frame2_nr = kpts2[0]->getObservationFrameNr();
-    cv::Mat new_T;
-    shared_ptr<KeyPoint2> temp_key_point1, temp_key_point2;
-    vector<shared_ptr<KeyPoint2>> new_kpts, exist_kpts;
 
-
-    // Identifying the new and existing keypoint lists
-    //TODO: Find a more efficient way of doing this without copying arrays
-    if ( frame1_nr > frame2_nr )
+    for ( int i = 0; i < N; ++i )
     {
-        new_kpts = kpts1;
-        exist_kpts = kpts2;
-        new_T = T1;
-    }
-    else
-    {
-        new_kpts = kpts2;
-        exist_kpts = kpts1;
-        new_T = T2;
-    }
-
-    for ( int i = 0; i < N; i++ )
-    {
-        temp_key_point1 = new_kpts[i];
-        temp_key_point2 = exist_kpts[i];
-
-        this->updateMap(temp_key_point1, temp_key_point2, T1, T2, XYZ1.col(i), XYZ_std.col(i));
+        this->updateMap(kpts1[i], kpts2[i], T1, T2, 
+                        XYZ1.col(i), XYZ_std.col(i));
     }
 }
 
 void Map3D::resetMap()
 {
+    /* Removes all <MapPoints> in <Map3D> */
     std::unique_lock lock(this->mutex_map_points);
     this->map_points.clear();
 }
@@ -169,13 +159,58 @@ vector<std::shared_ptr<MapPoint>> Map3D::getAllMapPoints()
     return this->map_points;
 }
 
+cv::Mat Map3D::compileMapPointLocs()
+{
+    std::shared_lock(this->mutex_map_points);
+    int N = this->getNumMapPoints();
+    cv::Mat map_points_loc = cv::Mat::zeros(4, N, CV_64F);
+
+    for ( int i = 0; i < N; ++i )
+    {
+        this->getMapPoint(i)->getCoordXYZ1().copyTo(map_points_loc.col(i));
+    }
+    return map_points_loc;
+}
+
+vector<cv::Point3f> Map3D::compileCVPoints3f()
+{
+    std::shared_lock lock(this->mutex_map_points);
+    int N = this->getNumMapPoints();
+    std::vector<cv::Point3f> map_points3f( N );
+
+    #pragma omp parallel for
+    for ( int i = 0; i < N; ++i )
+    {
+        map_points3f[i] = this->getMapPoint(i)->compileCVPoint3f();
+    }
+    return map_points3f;
+}
+
+vector<cv::Point3d> Map3D::compileCVPoints3d()
+{
+    std::shared_lock lock(this->mutex_map_points);
+    int N = this->getNumMapPoints();
+    std::vector<cv::Point3d> map_points3d( N );
+
+    #pragma omp parallel for
+    for ( int i = 0; i < N; ++i )
+    {
+        map_points3d[i] = this->getMapPoint(i)->compileCVPoint3d();
+    }
+    return map_points3d;
+}
+
 
 // Static functions
-void Map3D::calculateReprojectionError(cv::Mat uv1, cv::Mat uv2, cv::Mat K1, cv::Mat K2, cv::Mat T1, cv::Mat T2, cv::Mat reproj_error1, cv::Mat reproj_error2)
+void Map3D::calculateReprojectionError( cv::Mat uv1, cv::Mat uv2, cv::Mat K1, 
+                                        cv::Mat K2, cv::Mat T1, cv::Mat T2, 
+                                        cv::Mat reproj_error1, 
+                                        cv::Mat reproj_error2)
 {
     /*
     Arguments: 
-        uv:             Homogeneous pixel coordinates in image 1 and 2 [shape 3 x n].
+        uv:             Homogeneous pixel coordinates in image 1 and 2 
+                        [shape 3 x n].
         K:              Kalibration matrix for image 1 and 2 [shape 3 x 3].
         T:              Global extrinsic matrix of frame 1 and 2 [shape 4 x 4].
     Returns:
@@ -184,12 +219,16 @@ void Map3D::calculateReprojectionError(cv::Mat uv1, cv::Mat uv2, cv::Mat K1, cv:
     */
 }
 
-cv::Mat Map3D::calculate3DUncertainty(cv::Mat XYZ, cv::Mat uv1, cv::Mat uv2, cv::Mat K1, cv::Mat K2, cv::Mat T1, cv::Mat T2)
+cv::Mat Map3D::calculate3DUncertainty(  cv::Mat XYZ, 
+                                        cv::Mat uv1, cv::Mat uv2, 
+                                        cv::Mat K1, cv::Mat K2, 
+                                        cv::Mat T1, cv::Mat T2)
 {
     /*
     Arguments: 
         XYZ:            Dehomogenized 3D point in the world frame [shape 4 x n].
-        uv:             Homogeneous pixel coordinates in image 1 and 2 [shape 3 x n].
+        uv:             Homogeneous pixel coordinates in image 1 and 2 
+                        [shape 3 x n].
         K:              Kalibration matrix for image 1 and 2 [shape 3 x 3].
         T:              Extrinsic matrix between frame 1 and 2 [shape 4 x 4].
     Returns:

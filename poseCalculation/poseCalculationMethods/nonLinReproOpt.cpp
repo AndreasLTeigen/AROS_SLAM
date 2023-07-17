@@ -53,8 +53,8 @@ void ReproOpt::kptTriangulationLinear( std::shared_ptr<FrameData> frame1, std::s
     K2 = frame2->getKMatrix();
     
     copyMatchedKptsLists( frame1, frame2, kpts1, kpts2 );         //TODO: Copying is inneficient and might lead to larger overhead, change it
-    uv1_1 = FrameData::compileCVPointCoords( kpts1 );
-    uv1_2 = FrameData::compileCVPointCoords( kpts2 );
+    uv1_1 = FrameData::compilePointCoords( kpts1 );
+    uv1_2 = FrameData::compilePointCoords( kpts2 );
     std::shared_ptr<Pose> rel_pose = frame1->getRelPose(frame2);
     cv::Mat T_rel = rel_pose->getTMatrix().rowRange(0,3).colRange(0,4);
     //--------------------------------------------
@@ -101,7 +101,7 @@ double ReproOpt::residual( cv::Mat& T_rel, cv::Mat& K1, cv::Mat& K2, cv::Mat& XY
     return res;
 }
 
-std::shared_ptr<Pose> ReproOpt::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
+int ReproOpt::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     // Function is copying out uv1_1 and uv1_2 two separate times, this will cause some significant slowdown of the
     //  process.
@@ -118,8 +118,8 @@ std::shared_ptr<Pose> ReproOpt::calculate( std::shared_ptr<FrameData> frame1, st
     K2 = frame2->getKMatrix();
 
     copyMatchedKptsLists( frame1, frame2, kpts1, kpts2 );         //TODO: Copying is inneficient and might lead to larger overhead, change it
-    uv1_1 = FrameData::compileCVPointCoords( kpts1 );
-    uv1_2 = FrameData::compileCVPointCoords( kpts2 );
+    uv1_1 = FrameData::compilePointCoords( kpts1 );
+    uv1_2 = FrameData::compilePointCoords( kpts2 );
     T_rel = rel_pose->getTMatrix();
     //--------------------------------------------
 
@@ -129,10 +129,5 @@ std::shared_ptr<Pose> ReproOpt::calculate( std::shared_ptr<FrameData> frame1, st
     //XYZ1 = T1 * XYZ1;
     //dehomogenizeMatrix( XYZ1 );
 
-    return rel_pose;
-}
-
-void ReproOpt::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
-{
-    std::cerr << "ERROR: POSE CALCULATION ANALYSIS ALGORITHM NOT IMPLEMENTED" << std::endl;
+    return 0;
 }

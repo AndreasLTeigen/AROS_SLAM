@@ -8,12 +8,16 @@
 
 class GroundTruthMP : public MotionPrior
 {
+    private:
+        std::vector<std::vector<std::string>> poses_gt;
     public:
-        GroundTruthMP(){};
+        GroundTruthMP();
         ~GroundTruthMP(){};
 
         void calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
-        cv::Mat globalMotionPriorGT( std::shared_ptr<FrameData> frame1 );
+        cv::Mat globalMotionPriorGTKitti(   std::shared_ptr<FrameData> frame1,
+                                            std::shared_ptr<FrameData> frame2 );
+        cv::Mat globalMotionPriorGTVaros( std::shared_ptr<FrameData> frame1 );
 };
 
 #endif

@@ -405,15 +405,50 @@ cv::Mat homogenizeArrayRet(const cv::Mat& arr)
     return ret;
 }
 
+/* Dehomogenizes all points in the matrix in place */
 void dehomogenizeMatrix(cv::Mat& X)
 {
+    /*
+    Arguments:
+        X:      Homogeneous matrix of mD(2D/3D etc) points [N, m+1].
+    */
     int num_rows = X.rows;
 
     #pragma omp parallel for
-    for ( int i = 0; i < X.cols; i++ )
+    for ( int i = 0; i < X.cols; ++i )
     {
         X.col(i) = X.col(i) / X.at<double>(num_rows-1,i);
     }
+}
+
+/* Remove columns of <matrix> based on binary <mask>(uchar) */
+void removeColumns(cv::Mat& matrix, cv::Mat& mask)
+{
+    /*
+    Arguments:
+        matrix:     Matrix which collumns are to be removed. [n x m] (double)
+        mask:       Binary mask of collumns to remove (1=remove). 
+                    [1 x m] (uchar)
+    */
+
+    int num_cols1 = matrix.cols;
+    int num_remove = cv::sum(mask)[0]/255;
+    int num_cols2 = num_cols1 - num_remove;
+    cv::Mat new_matrix = cv::Mat::zeros(matrix.rows, num_cols2, CV_64F);
+
+    int it = 0;
+    for ( int i = 0; i < num_cols1; ++i )
+    {
+        if ( mask.at<uchar>(0,i) == 0 )
+        {
+            for ( int j = 0; j < matrix.rows; ++j )
+            {
+                new_matrix.at<double>(j, it) = matrix.at<double>(j, i);
+            }
+            it++;
+        }
+    }
+    matrix = new_matrix;
 }
 
 cv::Mat normalizeMat(cv::Mat& vec)
@@ -581,17 +616,21 @@ cv::Mat projectKpt(cv::Mat XYZ1, cv::Mat T, cv::Mat K )
     //return cv::Mat::zeros(3, 1, CV_64F);
 }
 
-void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, cv::Mat& uv1, cv::Mat& uv2, cv::Mat& XYZ_I2 )
+void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, 
+                              cv::Mat& uv1, cv::Mat& uv2, cv::Mat& XYZ_I2 )
 {
     /*
     Arguments:
         rel_T:      Relative transformation from image 2 to image 1 [3 x 4].
         K1:         Intrinsic camera matrix for image 1 [3 x 3].
         K2:         Intrinsic camera matrix for image 2 [3 x 3].
-        uv1:        Non-normalized coordinates of keypoints in image 1 [2 x N]/[3 x N].
-        uv2:        Non-normalized coordinates of keypoints in image 2 [2 x N]/[3 x N].
+        uv1:        Non-normalized coordinates of keypoints in image 1 
+                    [2 x N]/[3 x N].
+        uv2:        Non-normalized coordinates of keypoints in image 2 
+                    [2 x N]/[3 x N].
     Returns:
-        XYZ_I2:     Triangulated points in 3D coordinates with respect to image 2, homogenized [3xN].
+        XYZ_I2:     Triangulated points in 3D coordinates with respect to 
+                    image 1, homogenized [3xN].
     */
     cv::Mat_<double> coord_3D;
 
@@ -613,8 +652,84 @@ void triangulatePointsLinear( cv::Mat& rel_T, cv::Mat& K1, cv::Mat& K2, cv::Mat&
     uv1.row(1) = (uv1.row(1) - cy1) / fy1;
     uv2.row(1) = (uv2.row(1) - cy2) / fy2;
 
-    cv::triangulatePoints(cv::Mat::eye(3,4, CV_64F), rel_T, uv1, uv2, coord_3D);
+    cv::triangulatePoints(  cv::Mat::eye(3,4, CV_64F), rel_T, 
+                            uv1, uv2, coord_3D);
     XYZ_I2 = coord_3D;
+}
+
+void getInlierMask( cv::Mat& F_matrix, cv::Mat& K1, cv::Mat& K2,
+                    cv::Mat& frame1_points, cv::Mat& frame2_points,
+                    cv::Mat& inliers, double inlier_threshold )
+{
+    /*
+    Computes the inliers according to the motion model in F_matrix.
+
+    Arguments:
+        F_matrix:           Fundamendal matrix from frame 2 to frame 1 
+                            [shape 3 x 3].
+        KX:                 Camera matrix for frame X [shape 3 x 3].
+        frameX_points:      Points matched between frames, sorted and in
+                            homogeneous coordinates [shape 4 x N].
+        inlier_threshold:   Max distance from the epipolar line while still
+                            considered an inlier.
+    Returns:
+        inliners:           Mask of inliners and outliers, 255 denoting inlier
+                            and 0 denoting outlier [type CV_8UC1][shape 1 x N].
+    */
+   double a, b, c, y0, y1, distance;
+   cv::Mat epiline, x_k, y_k;
+    for ( int i = 0; i < frame1_points.cols; ++i )
+    {
+        y_k = frame1_points.col(i);
+        x_k = frame2_points.col(i);
+
+        epiline = F_matrix * x_k;
+        a = epiline.at<double>(0);
+        b = epiline.at<double>(1);
+        c = epiline.at<double>(2);
+        y0 = y_k.at<double>(0);
+        y1 = y_k.at<double>(1);
+        distance = std::abs(a*y0 + b*y1 + c)/std::sqrt(a*a + b*b);
+        if (distance <= inlier_threshold)
+        {
+            inliers.at<uint8_t>(0,i) = 255;
+        }
+    }
+}
+
+void computeReprojectionError(  cv::Mat& F_matrix, cv::Mat& K1, cv::Mat& K2,
+                                cv::Mat& frame1_points, cv::Mat& frame2_points,
+                                cv::Mat& reprojection_error )
+{
+    /*
+    Computes the reprojection error according to the motion model in F_matrix.
+
+    Arguments:
+        F_matrix:           Fundamendal matrix from frame 2 to frame 1 
+                            [shape 3 x 3].
+        KX:                 Camera matrix for frame X [shape 3 x 3].
+        frameX_points:      Points matched between frames, sorted and in
+                            homogeneous coordinates [shape 4 x N].
+    Returns:
+        reprojection_error: Reprojection error of <frame1_points> given 
+                            <frame2_points> and <F_matrix> [shape 1 x N].
+    */
+   double a, b, c, y0, y1, distance;
+   cv::Mat epiline, x_k, y_k;
+    for ( int i = 0; i < frame1_points.cols; ++i )
+    {
+        y_k = frame1_points.col(i);
+        x_k = frame2_points.col(i);
+
+        epiline = F_matrix * x_k;
+        a = epiline.at<double>(0);
+        b = epiline.at<double>(1);
+        c = epiline.at<double>(2);
+        y0 = y_k.at<double>(0);
+        y1 = y_k.at<double>(1);
+        distance = std::abs(a*y0 + b*y1 + c)/std::sqrt(a*a + b*b);
+        reprojection_error.at<double>(0,i) = distance;
+    }
 }
 
 cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs )
@@ -758,7 +873,24 @@ void writeTransformation2File(std::string file_path, std::string image_idenifier
     }
 }
 
-void writeVector2File(std::string file_path, std::vector<double> &data, bool linebreak)
+void writeInt2File( std::string file_path, int value, std::string delimiter )
+{
+    std::ofstream file;
+    file.open(file_path, std::ios_base::app);
+    if (file.is_open())
+    {
+        file << value << delimiter;
+        file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+}
+
+void writeVector2File(  std::string file_path, 
+                        std::vector<double> &data, 
+                        bool linebreak)
 {
     std::ofstream file;
     file.open(file_path, std::ios_base::app);
@@ -792,6 +924,17 @@ void writeString2File(std::string file_path, std::string content)
     else
     {
         std::cout << "Unable to open file: " << file_path << std::endl;
+    }
+}
+
+void writeMat2File(std::string file_path, cv::Mat& data)
+{
+    std::ofstream file;
+    file.open(file_path, std::ios_base::app);
+    if (file.is_open())
+    {
+        file << data << "\n";
+        file.close();
     }
 }
 

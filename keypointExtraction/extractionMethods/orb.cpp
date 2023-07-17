@@ -14,7 +14,9 @@ using cv::Mat;
 using cv::KeyPoint;
 using cv::Ptr;
 
-void ORBExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std::shared_ptr<Map3D> map_3d )
+int ORBExtractor::extract(  cv::Mat& img, 
+                            std::shared_ptr<FrameData> frame, 
+                            std::shared_ptr<Map3D> map_3d )
 {
     vector<cv::KeyPoint> kpts;
     Mat desc;
@@ -36,4 +38,6 @@ void ORBExtractor::extract( cv::Mat& img, std::shared_ptr<FrameData> frame, std:
 
     std::cout << "Extract: " << ms1.count() << "ms" << std::endl;
     std::cout << "Registration: " << ms3.count() << "ms" << std::endl;
+    
+    return 0;
 }

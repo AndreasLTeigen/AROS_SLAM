@@ -147,12 +147,14 @@ class GJET : public PoseCalculator
         GJET(){};
         ~GJET(){};
 
-        std::shared_ptr<Pose> calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
+        int calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
 
         static double solveQuadraticFormForV( cv::Mat& A_k, cv::Mat& b_k, cv::Mat& c_k, cv::Mat& v_k );
         static cv::Mat solveKKT( cv::Mat& A, cv::Mat& g, cv::Mat& b, cv::Mat& h );
         static double epipolarConstrainedOptimization( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt );
-        void analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+        void analysis(  std::shared_ptr<FrameData> frame1, 
+                        std::shared_ptr<FrameData> frame2, 
+                        cv::Mat& img );
         bool ceresLogToFile(int img_nr, ceres::Solver::Summary summary, std::string file_path="output/ceresLog.txt");
 
         // Evaluation functions

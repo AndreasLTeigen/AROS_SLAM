@@ -18,11 +18,12 @@ class KeyPoint2
         int kpt_id;             // Unique per frame identifier
         double x;
         double y;
-        double angle;           
+        double angle;
         int octave;             // Pyramid layer from which keypoint was extracted
         double response;        //  response by which the most strong keypoints have been selected
         double size;            //  diameter of meaningfull keypoint neighborhood
         int observation_frame_nr;
+        uint8_t color;
         std::map<std::string, cv::Mat> descriptors;
         std::map<int, std::vector<std::shared_ptr<Match>>> matches;
 
@@ -37,6 +38,7 @@ class KeyPoint2
         mutable std::shared_mutex mutex_response;
         mutable std::shared_mutex mutex_size;
         mutable std::shared_mutex mutex_observation_frame_nr;
+        mutable std::shared_mutex mutex_color;
         mutable std::shared_mutex mutex_descriptors;
         mutable std::shared_mutex mutex_matches_map;
         mutable std::shared_mutex mutex_map_point;
@@ -56,11 +58,11 @@ class KeyPoint2
         void setCoordx(double x);
         void setCoordy(double y);
         void setAngle(double angle);
-        void setMapPointID(int mapPoint_id); //TODO: Should be able to remove this function
         void setOctave(int octave);
         void setResponse(int response);
         void setSize(int size);
         void setObservationFrameNr(int observation_frame_nr);
+        void setColor(uint8_t color);
         void setDescriptor(cv::Mat descr, std::string descr_type="orb");
         void setMapPoint(std::shared_ptr<MapPoint> map_point);
         void addMatch(std::shared_ptr<Match> match, int matched_frame_nr);
@@ -77,6 +79,7 @@ class KeyPoint2
         cv::Mat getLoc();
         int getOctave();
         int getObservationFrameNr();
+        uint8_t getColor();
         double getAngle();
         double getResponse();
         double getSize();

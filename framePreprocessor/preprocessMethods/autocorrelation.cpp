@@ -71,7 +71,7 @@ int Autocor::autocorFilter( cv::Mat& img, cv::Mat& autocor )
         autocor_vec[step_m] = cv::sum(cv::mean(dst))[0];
     }
     autocor = cv::Mat(autocor_vec, CV_64F);
-    return 1;
+    return 0;
 }
 
 int Autocor::simpleAutocor( cv::Mat& img, cv::Mat& autocor )
@@ -97,7 +97,7 @@ int Autocor::simpleAutocor( cv::Mat& img, cv::Mat& autocor )
     //double mean = cv::sum(cv::mean(img))[0];
     //autocor = (autocor - mean*mean);
     autocor = autocor / autocor.at<double>(0,0);
-    return 1;
+    return 0;
 }
 
 void Autocor::applyHeatmap( cv::Mat& img, cv::Mat& autocov, vector<cv::Rect>& rect_vec )

@@ -44,7 +44,7 @@ int main()
     {
         std::string out_path = sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>() + "/" + std::to_string(seq_nr) + ".txt";
 
-        std::shared_ptr<Sequencer2> seq = std::make_shared<Sequencer2>( sys_config, data_config, seq_nr, true );
+        std::shared_ptr<Sequencer3> seq = std::make_shared<Sequencer3>( sys_config, data_config, seq_nr, true );
         std::shared_ptr<AVGSlam> avg_slam = std::make_shared<AVGSlam>( sys_config, data_config, seq, out_path );
 
         bool GUI_show = sys_config["UI.GUI_show"].as<bool>();
@@ -57,7 +57,8 @@ int main()
 
             std::shared_ptr<GUI> gui = std::make_shared<GUI>();
             gui->GUIConfigParser(sys_config);
-            gui->run( avg_slam->getTracker() );
+
+            gui->run( avg_slam->getTracker(), seq );
             #endif
         }
         else

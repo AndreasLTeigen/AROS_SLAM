@@ -21,7 +21,7 @@ class OpticalFlowFarneback : public Matcher
         OpticalFlowFarneback(){};
         ~OpticalFlowFarneback(){};
 
-        void matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
+        int matchKeypoints( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )override;
         void visualizeFlow( cv::Mat& img, cv::Mat& flow );
 };
 

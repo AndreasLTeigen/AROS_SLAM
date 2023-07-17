@@ -7,7 +7,7 @@
 using std::vector;
 using std::shared_ptr;
 
-std::shared_ptr<Pose> BlockShift::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
+int BlockShift::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
     // Assumes K_matrix is equal for both frames.
     cv::Mat E_matrix, K_matrix, inliers, center;
@@ -20,7 +20,7 @@ std::shared_ptr<Pose> BlockShift::calculate( std::shared_ptr<FrameData> frame1, 
     if ( pts1.size() <= 5 )
     {
         resetKptMatches(frame1, frame2);
-        return nullptr;
+        return 1;
     }
 
     K_matrix = frame2->getKMatrix();
@@ -29,16 +29,11 @@ std::shared_ptr<Pose> BlockShift::calculate( std::shared_ptr<FrameData> frame1, 
     FrameData::removeOutlierMatches(inliers, frame1, frame2);
     std::shared_ptr<Pose> rel_pose = FrameData::registerRelPose(E_matrix, frame1, frame2);
 
-    return rel_pose;
+    return 0;
 }
 
 void BlockShift::resetKptMatches( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
 {
     // Removes all matches between frame1 and frame2.
     FrameData::removeMatchesWithLowConfidence(1, frame1, frame2);
-}
-
-void BlockShift::analysis( cv::Mat &img_disp, std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2 )
-{
-    std::cerr << "ERROR: POSE CALCULATION ANALYSIS ALGORITHM NOT IMPLEMENTED" << std::endl;
 }

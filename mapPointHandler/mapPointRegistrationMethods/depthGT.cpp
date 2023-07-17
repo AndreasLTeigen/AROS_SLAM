@@ -12,7 +12,9 @@
 
 
 
-void depthGTMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, std::shared_ptr<Map3D> map_3d )
+int depthGTMPReg::registerMP(   std::shared_ptr<FrameData> frame1, 
+                                std::shared_ptr<FrameData> frame2, 
+                                std::shared_ptr<Map3D> map_3d )
 {
     YAML::Node config = YAML::LoadFile("config/gt_config.yaml");
 
@@ -28,6 +30,7 @@ void depthGTMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_pt
     if(depth_gt.empty())
     {
         std::cout << "ERROR: COULD NOT READ THE DEPTH GROUND TRUTH: " << depth_gt_path << std::endl;
+        return 1;
     }
     
 
@@ -53,4 +56,5 @@ void depthGTMPReg::registerMP( std::shared_ptr<FrameData> frame1, std::shared_pt
     //depth_p = int(depth_gt.at<ushort>(719, 1279));
     //std::cout << depth_p << std::endl;
     //std::cout << depth_p*max_depth_m /  max_depth_p << std::endl;
+    return 0;
 }
