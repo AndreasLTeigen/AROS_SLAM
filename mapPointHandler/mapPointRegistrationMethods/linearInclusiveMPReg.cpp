@@ -67,6 +67,8 @@ int LinIncMPReg::registerMP( std::shared_ptr<FrameData> frame1,
     uncertainty_3D = Map3D::calculate3DUncertainty(X, uv1, uv2, K1, K2, T1, T2); //TODO: Implement this function
     
     map_3d->batchUpdateMap( kpts1, kpts2, T1, T2, X, uncertainty_3D);
+    
+    return 0;
 }
 
 

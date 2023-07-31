@@ -27,7 +27,7 @@ using std::vector;
 using std::string;
 using std::shared_ptr;
 using std::chrono::duration;
-using std::chrono::duration;
+using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
 using json = nlohmann::json;

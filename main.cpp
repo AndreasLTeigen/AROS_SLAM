@@ -42,7 +42,13 @@ int main()
 
     for ( int seq_nr : playlist )
     {
+        // Setting up output folder.
         std::string out_path = sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>() + "/" + std::to_string(seq_nr) + ".txt";
+        if (!std::filesystem::is_directory(sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>()))
+        {
+            std::cout << "Creating output directory..." << std::endl;
+            std::filesystem::create_directory(sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>());
+        }
 
         std::shared_ptr<Sequencer3> seq = std::make_shared<Sequencer3>( sys_config, data_config, seq_nr, true );
         std::shared_ptr<AVGSlam> avg_slam = std::make_shared<AVGSlam>( sys_config, data_config, seq, out_path );
@@ -53,6 +59,7 @@ int main()
         if (PANGOLIN_INSTALLED && GUI_show)
         {
             #ifdef PANGOLIN_ACTIVE
+            std::cout << "PANGOLING ACTIVE\n";
             tracking_thread = std::thread(&AVGSlam::run, avg_slam);
 
             std::shared_ptr<GUI> gui = std::make_shared<GUI>();

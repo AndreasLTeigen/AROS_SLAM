@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <sys/stat.h>
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
