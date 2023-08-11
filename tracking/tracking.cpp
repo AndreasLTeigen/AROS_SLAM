@@ -27,7 +27,7 @@ using std::vector;
 using std::string;
 using std::shared_ptr;
 using std::chrono::duration;
-using std::chrono::duration;
+using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 using std::chrono::high_resolution_clock;
 using json = nlohmann::json;
@@ -183,7 +183,8 @@ void FTracker::setGlobalPose(cv::Mat T_global)
 
 void FTracker::updateGlobalPose(cv::Mat T_rel, shared_ptr<FrameData> current_frame)
 {
-    this->setGlobalPose(this->getGlobalPose() * T_rel);
+    this->setGlobalPose(this->getGlobalPose() * inverseTMatrix(T_rel));
+    // this->setGlobalPose(T_rel * this->getGlobalPose());
     current_frame->setGlobalPose(this->getGlobalPose());
 }
 
@@ -546,9 +547,9 @@ void FTracker::kptMatchAnalysisWithPrev( cv::Mat &img_disp, int frame_idx )
         random_idx = rand() % matched_kpts1.size();
         kpt1 = matched_kpts1[random_idx];
         kpt2 = matched_kpts2[random_idx];
-        KeyPoint2::drawEnchancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
-        //KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 400), cv::Size(31,31), F_matrix, kpt2);
-        KeyPoint2::drawEnchancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
+        KeyPoint2::drawEnhancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat());
+        //KeyPoint2::drawEnhancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 400), cv::Size(31,31), F_matrix, kpt2);
+        KeyPoint2::drawEnhancedKeyPoint( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2);
         hamming_dist = cv::norm(kpt1->getDescriptor("orb"), kpt2->getDescriptor("orb"), cv::NORM_HAMMING);
         drawIndicator(canvas, 100*(255 - 2*hamming_dist) / 255, cv::Point((border + size.width)*i, 620));
     }

@@ -35,9 +35,9 @@ class PoseCalculator
                     std::shared_ptr<FrameData> frame1, 
                     std::shared_ptr<FrameData> frame2, 
                     cv::Mat& img )=0;
-        void analysis(  std::shared_ptr<FrameData> frame1, 
-                        std::shared_ptr<FrameData> frame2,
-                        cv::Mat& img );
+        virtual void analysis(  std::shared_ptr<FrameData> frame1, 
+                                std::shared_ptr<FrameData> frame2,
+                                cv::Mat& img );
         bool isStationaryFrame( std::vector<cv::Point> pts1, 
                                 std::vector<cv::Point> pts2);
 };

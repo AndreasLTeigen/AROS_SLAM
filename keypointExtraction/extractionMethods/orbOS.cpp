@@ -85,6 +85,11 @@ int ORBOSExtractor::extract(    cv::Mat &img,
         return 1;
     }
 
+
+    // FOR GJET EXPERIMENTATION
+    cv::Ptr<cv::ORB> orb = cv::ORB::create();
+    orb->compute(img, kpts, desc);
+
     frame->registerKeypoints(kpts, desc, img);
     return 0;
 }

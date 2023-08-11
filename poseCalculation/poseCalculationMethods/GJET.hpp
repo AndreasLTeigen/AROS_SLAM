@@ -66,6 +66,9 @@ class LossFunction
 
         bool validDescriptorRegion( double x, double y, int border );
         static int calculateDescriptorRadius(int patch_size, int kpt_size);
+
+        // Test
+        virtual cv::Mat collectDescriptorDistance(cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size_=n_reg_size);
         
 };
 
@@ -90,8 +93,8 @@ class DJETLoss : public LossFunction
         void linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
-        void collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A );
-        std::vector<cv::KeyPoint> generateLocalKpts( double kpt_x, double kpt_y, double kpt_size, const cv::Mat& img );
+        cv::Mat collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size_=n_reg_size )override;
+        std::vector<cv::KeyPoint> generateLocalKpts( double kpt_x, double kpt_y, std::shared_ptr<KeyPoint2> kpt2, const cv::Mat& img, int reg_size_ );
         //cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
         //void computeParaboloidNormalForAll( std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img );
@@ -154,7 +157,7 @@ class GJET : public PoseCalculator
         static double epipolarConstrainedOptimization( const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt );
         void analysis(  std::shared_ptr<FrameData> frame1, 
                         std::shared_ptr<FrameData> frame2, 
-                        cv::Mat& img );
+                        cv::Mat& img )override;
         bool ceresLogToFile(int img_nr, ceres::Solver::Summary summary, std::string file_path="output/ceresLog.txt");
 
         // Evaluation functions
