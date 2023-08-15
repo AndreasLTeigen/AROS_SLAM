@@ -446,6 +446,7 @@ void GJET::analysis( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
             random_idx = i;
             kpt1 = matched_kpts1[random_idx];
             kpt2 = matched_kpts2[random_idx];
+
             hamming = kpt1->getDescriptor("hamming_log" + std::to_string(it));
             A = kpt1->getDescriptor("quad_fit_log" + std::to_string(it));
             cv::Mat z;
@@ -457,7 +458,7 @@ void GJET::analysis( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
                 // std::cout << hamming.size() << std::endl;
                 hamming = hamming.reshape(1,31);
                 // std::cout << hamming.size() << std::endl;
-                std::cout << hamming << std::endl;
+                // std::cout << hamming << std::endl;
             }
             KeyPoint2::drawEnhancedKeyPoint( canvas, img2, kpt2, cv::Point((border + size.width)*i, 400), size, cv::Mat()); // Previous keypoint
             KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 510), size, F_matrix, kpt2, z, it, false, false ); // Keypoint before iteration step and no heat map
@@ -782,22 +783,48 @@ cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPo
     y_k_x = y_k.at<double>(0,0);
     y_k_y = y_k.at<double>(1,0);
 
-    int frame1_nr = kpt2->getObservationFrameNr() +1;
-    std::shared_ptr<KeyPoint2> kpt1 = kpt2->getHighestConfidenceMatch(frame1_nr)->getConnectingKpt(frame1_nr);
-    target_desc = kpt1->getDescriptor(this->descriptor_name);
-    // target_desc = kpt2->getDescriptor(this->descriptor_name);
+    // int frame1_nr = kpt2->getObservationFrameNr() +1;
+    // std::shared_ptr<KeyPoint2> kpt1 = kpt2->getHighestConfidenceMatch(frame1_nr)->getConnectingKpt(frame1_nr);
+    // target_desc = kpt1->getDescriptor(this->descriptor_name);
+    target_desc = kpt2->getDescriptor(this->descriptor_name);
 
-    // local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, reg_size_ );
-    local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt1, this->img, reg_size_ );
+    local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, reg_size_ );
+    // local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt1, this->img, reg_size_ );
     this->computeDescriptors(this->img, local_kpts, local_descs);
     hamming_dists = computeHammingDistance(target_desc, local_descs);
-    //this->printLocalHammingDists(hamming_dists, n_reg_size);
     this->generateCoordinateVectors(y_k_x, y_k_y, reg_size_, x, y);
     z = hamming_dists.t();
+
+    this->printLocalHammingDists(z, n_reg_size);
 
     A = fitQuadraticForm(x, y, z);
 
 
+    // std::cout << "Kpt nr: " << kpt1->getKptId() << std::endl;
+    // std::cout << "target_desc: " << target_desc << std::endl;
+    // cv::Mat desc_test, desc_test2;
+    // vector<cv::KeyPoint> kpt_test;
+    // kpt_test.push_back(kpt1->compileCVKeyPoint());
+    // cv::Ptr<cv::ORB> orb2 = cv::ORB::create();
+    // orb2->compute(this->img, kpt_test, desc_test);
+    // // this->computeDescriptors(this->img, kpt_test, desc_test);
+    // std::cout << "desc_test : " << desc_test << std::endl;
+
+    // // this->computeDescriptors(this->img, kpt_test, desc_test2);
+    // this->orb->compute(this->img, kpt_test, desc_test2);
+    // std::cout << "desc_test2: " << desc_test2 << std::endl;
+
+    // cv::Mat h_dist = computeHammingDistance(target_desc, desc_test);
+    // std::cout << h_dist << std::endl;
+    // std::cout << computeHammingDistance(desc_test, local_descs) << std::endl;
+    // std::cout << "Kpt: \n\tAngle: " << kpt_test[0].angle \
+    //         << "\n\tclass_id: " << kpt_test[0].class_id \
+    //         << "\n\toctave: " << kpt_test[0].octave \
+    //         << "\n\tpt: " << kpt_test[0].pt \
+    //         << "\n\tresponse: " << kpt_test[0].response \
+    //         << "\n\tsize: " << kpt_test[0].size << std::endl;
+    // std::string input;
+    // std::cin >> input;
 
     //Test
     return z; // Returns the raw hamming distances.
@@ -819,8 +846,6 @@ vector<cv::KeyPoint> DJETLoss::generateLocalKpts( double kpt_x, double kpt_y, st
     double x, y, ref_x, ref_y;
     vector<cv::KeyPoint> local_kpts;
 
-    std::cout << "Angle: " << kpt2->getAngle() << std::endl;
-
     ref_x = kpt_x - reg_size_/2; 
     ref_y = kpt_y - reg_size_/2;
 
@@ -831,7 +856,6 @@ vector<cv::KeyPoint> DJETLoss::generateLocalKpts( double kpt_x, double kpt_y, st
         {
             x = ref_x + col_j;
             local_kpts.push_back(cv::KeyPoint(x,y,size, angle, response, octave));
-            std::cout << local_kpts[row_i*reg_size_ + col_j].angle << std::endl;
         }
     }
     

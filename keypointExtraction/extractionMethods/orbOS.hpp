@@ -125,7 +125,12 @@ class ORBOSExtractor : public Extractor
         int fIniThFAST = 20;
         int fMinThFAST = 7;
 
-        ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORB_SLAM2::ORBextractor(this->nfeatures,this->scaleFactor,this->nlevels,this->fIniThFAST,this->fMinThFAST); // ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        ORB_SLAM2::ORBextractor* orbslam_orb_extractor = \
+                    new ORB_SLAM2::ORBextractor(this->nfeatures,
+                                                this->scaleFactor,
+                                                this->nlevels,
+                                                this->fIniThFAST,
+                                                this->fMinThFAST); // ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
         //ORB_SLAM2::ORBextractor* orbslam_orb_extractor = new ORBextractor(nFeatures,scaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     public:

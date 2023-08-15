@@ -25,21 +25,22 @@ class LossFunction
 
         int nfeatures = 500;
         float scaleFactor = 1.2f;
-        int nlevels = 8;
-        int edgeThreshold = 19;
+        int nlevels = 1;//8;
+        int edgeThreshold = 31;//19;
         int firstLevel = 0;
         int WTA_K = 2;
         int patchSize = 31;
         int fastThreshold = 20;
-        cv::Ptr<cv::ORB> orb = cv::ORB::create( nfeatures,
-                                                scaleFactor,
-                                                nlevels,
-                                                edgeThreshold,
-                                                firstLevel,
-                                                WTA_K,
-                                                cv::ORB::FAST_SCORE,
-                                                patchSize,
-                                                fastThreshold);
+        // cv::Ptr<cv::ORB> orb = cv::ORB::create( nfeatures,
+        //                                         scaleFactor,
+        //                                         nlevels,
+        //                                         edgeThreshold,
+        //                                         firstLevel,
+        //                                         WTA_K,
+        //                                         cv::ORB::FAST_SCORE,
+        //                                         patchSize,
+        //                                         fastThreshold);
+        cv::Ptr<cv::ORB> orb = cv::ORB::create();
     public:
         LossFunction(cv::Mat& img);
         LossFunction(int W, int H);
@@ -75,7 +76,7 @@ class LossFunction
 class DJETLoss : public LossFunction
 {
     private:
-        bool precompDescriptors = true;
+        bool precompDescriptors = false;
         int reg_size = n_reg_size;//7;
 
         cv::Mat img;

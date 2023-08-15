@@ -38,7 +38,7 @@ ILog.path: output/IncrementalLog/
 
 # -----UI config-----
 UI.display_img: true
-UI.GUI_show: true
+UI.GUI_show: false
 UI.map_width: 1024
 UI.map_height: 768
 UI.camera_size: 0.15

@@ -87,8 +87,22 @@ int ORBOSExtractor::extract(    cv::Mat &img,
 
 
     // FOR GJET EXPERIMENTATION
-    cv::Ptr<cv::ORB> orb = cv::ORB::create();
-    orb->compute(img, kpts, desc);
+    // cv::Ptr<cv::ORB> orb = cv::ORB::create(500, 1.2f, 1, 19, 0, 2, cv::ORB::FAST_SCORE, 31, 20);
+    // cv::Ptr<cv::ORB> orb = cv::ORB::create();
+    // orb->compute(img, kpts, desc);
+
+    // int id = 398;
+    // cv::Mat desc_test;
+    // vector<cv::KeyPoint> kpt_test{kpts[id]};
+    // orb->compute(img, kpt_test, desc_test);
+    // std::cout << desc.row(id) << std::endl;
+    // std::cout << desc_test << std::endl;
+    // std::cout << "Kpt: \n\tAngle: " << kpt_test[0].angle \
+    //             << "\n\tclass_id: " << kpt_test[0].class_id \
+    //             << "\n\toctave: " << kpt_test[0].octave \
+    //             << "\n\tpt: " << kpt_test[0].pt \
+    //             << "\n\tresponse: " << kpt_test[0].response \
+    //             << "\n\tsize: " << kpt_test[0].size << std::endl;
 
     frame->registerKeypoints(kpts, desc, img);
     return 0;
