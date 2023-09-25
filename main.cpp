@@ -49,10 +49,6 @@ int main()
             std::cout << "Creating output directory..." << std::endl;
             std::filesystem::create_directory(sys_config["Trck.out.path"].as<std::string>() + sys_config["Dataset"].as<std::string>());
         }
-<<<<<<< HEAD
-=======
-
->>>>>>> bc344303ae73b0871a2fc6a863b8de9f0e84ac78
 
         std::shared_ptr<Sequencer3> seq = std::make_shared<Sequencer3>( sys_config, data_config, seq_nr, true );
         std::shared_ptr<AVGSlam> avg_slam = std::make_shared<AVGSlam>( sys_config, data_config, seq, out_path );
