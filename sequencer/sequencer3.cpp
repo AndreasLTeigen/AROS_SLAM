@@ -96,6 +96,8 @@ cv::Mat Sequencer3::getCurrentImg()
 void Sequencer3::visualizeImg(cv::Mat& img)
 {
     /* Legacy function */
+    cv::imshow("Out", img);
+    cv::waitKey(1);
 }
 
 cv::Mat Sequencer3::getVisualizationImg()

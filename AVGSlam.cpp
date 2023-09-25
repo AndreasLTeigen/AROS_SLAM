@@ -154,6 +154,10 @@ int AVGSlam::run()
                 this->tracker->drawEpipoleWithPrev(img_disp);
                 this->tracker->drawKeypointTrails(img_disp);
                 this->seq->setFinishedImg(img_disp);
+                if ( this->isMainThread())
+                {
+                    this->seq->visualizeImg(img_disp);
+                }
             }
 
             if (this->tracker->doAnalysis())
