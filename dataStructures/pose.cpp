@@ -364,7 +364,7 @@ void Pose::decomposeEMatrixSlow(Mat &E_matrix, Mat &R, Mat &t)
 
     vector<cv::Point> pts1, pts2;
     compileMatchedCVPoints(temp_frame1, temp_frame2, pts1, pts2);
-    num_points = cv::recoverPose( E_matrix, pts1, pts2, temp_frame1->getKMatrix(), R, t );
+    num_points = cv::recoverPose( E_matrix, pts2, pts1, temp_frame1->getKMatrix(), R, t );
 }
 
 void Pose::write2File( std::string file_path, ParamID parametrization_id )

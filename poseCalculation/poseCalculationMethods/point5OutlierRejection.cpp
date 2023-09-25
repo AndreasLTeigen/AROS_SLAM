@@ -56,7 +56,7 @@ int P5ORPC::do5pointAlgOutlierRejection(std::shared_ptr<FrameData> frame1,
     // E_matrix = cv::findEssentialMat(pts1, pts2, K_matrix, cv::RANSAC, 0.999, 
     //                                 1.0, inliers);
 
-    E_matrix = cv::findEssentialMat(pts1, pts2, K_matrix, cv::USAC_DEFAULT, 
+    E_matrix = cv::findEssentialMat(pts2, pts1, K_matrix, cv::USAC_DEFAULT, 
                                     0.999, 1.0, inliers);
 
     // If no motion hypothesis with 5 or more points can be established,

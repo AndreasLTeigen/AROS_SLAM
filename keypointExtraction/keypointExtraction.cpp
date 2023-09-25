@@ -75,4 +75,5 @@ int NoneExtractor::extract( cv::Mat& img,
                             std::shared_ptr<Map3D> map_3d )
 {
     //std::cerr << "ERROR: KEYPOINT EXTRACTION ALGORITHM NOT IMPLEMENTED" << std::endl;
+    return 0;
 }
