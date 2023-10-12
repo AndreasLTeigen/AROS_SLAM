@@ -3,6 +3,7 @@
 #include "keypointExtraction.hpp"
 #include "extractionMethods/orb.hpp"
 #include "extractionMethods/orbOS.hpp"
+// #include "extractionMethods/orb_test.hpp"
 #include "extractionMethods/bucketing.hpp"
 #include "extractionMethods/extraction_gt.hpp"
 #include "extractionMethods/blockFeatures.hpp"
@@ -38,6 +39,10 @@ std::shared_ptr<Extractor> getExtractor( string extractor_method )
     {
         return std::make_shared<BlockFeatures>();
     }
+    // else if (extractor_method == "orb_test")
+    // {
+    //     return std::make_shared<KptExtractor>();
+    // }
     else
     {
         std::cerr << "Warning: Extraction method not found." << std::endl;

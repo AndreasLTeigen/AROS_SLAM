@@ -31,9 +31,14 @@ Sequencer3::Sequencer3( YAML::Node sys_config, YAML::Node data_config, int seq_n
 
 bool Sequencer3::loadImgPaths()
 {
+    std::string img_path;
     for (const auto & entry : std::filesystem::directory_iterator(this->folder_path))
     {
-        this->img_seq.push_back(entry.path());
+        img_path = entry.path();
+        if (img_path.find("._") == std::string::npos) // Needed to remove strange error caused by "external" drive.
+        {
+            img_seq.push_back(img_path);
+        }
     }
 
     std::sort(this->img_seq.begin(), this->img_seq.end());

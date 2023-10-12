@@ -1,6 +1,7 @@
 #include <cmath>
 #include <memory>
 #include <ceres/ceres.h>
+#include <yaml-cpp/yaml.h>
 #include <opencv2/opencv.hpp>
 
 #include "GJET.hpp"
@@ -119,6 +120,8 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     std::vector<cv::Point> pts1, pts2;
     std::shared_ptr<Pose> rel_pose;
     std::shared_ptr<LossFunction> loss_func;
+
+    // YAML::Node config = YAML::LoadFile("config.yaml");
 
     compileMatchedCVPoints( frame1, frame2, pts1, pts2 );
     E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
@@ -280,15 +283,15 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     }
 
     //############################ EVALUATION ############################
-    matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
-    matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
-    int old_mean = this->avg_match_score;
-    this->n += 1;
-    this->n_matches += matched_kpts1.size();
-    this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAvgMatchScore( img, matched_kpts1, matched_kpts2, loss_func ), this->n);
-    this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
-    std::cout << "Avg match score: " << avg_match_score << std::endl;
-    std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
+    // matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
+    // matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
+    // int old_mean = this->avg_match_score;
+    // this->n += 1;
+    // this->n_matches += matched_kpts1.size();
+    // this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAvgMatchScore( img, matched_kpts1, matched_kpts2, loss_func ), this->n);
+    // this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
+    // std::cout << "Avg match score: " << avg_match_score << std::endl;
+    // std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
     //######################################################################
 
     // Reverting keypoints to initial locations for blank slate with next image
@@ -523,6 +526,7 @@ double GJET::calculateAvgMatchScore(cv::Mat& img,
         }
     }
     loss_func->computeDescriptors(img, y_k_list, d_y_k_list);
+    std::cout << "Average match score not updated correctly, fix line above" << std::endl;
 
     int i = 0;
     for ( int n = 0; n < matched_kpts1.size(); ++n )
@@ -790,12 +794,21 @@ cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPo
 
     local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, reg_size_ );
     // local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt1, this->img, reg_size_ );
-    this->computeDescriptors(this->img, local_kpts, local_descs);
+
+    // this->computeDescriptors(this->img, local_kpts, local_descs);
+    int a = local_kpts.size();
+    this->orb->compute( this->img, local_kpts, local_descs );
+    int b = local_kpts.size();
+    if (a != b)
+    {
+        std::cout << "WARNING: Retrieving invalid descriptor! " << a << " -> " << b << std::endl;
+    }
+    
     hamming_dists = computeHammingDistance(target_desc, local_descs);
     this->generateCoordinateVectors(y_k_x, y_k_y, reg_size_, x, y);
     z = hamming_dists.t();
 
-    this->printLocalHammingDists(z, n_reg_size);
+    // this->printLocalHammingDists(z, n_reg_size);
 
     A = fitQuadraticForm(x, y, z);
 
@@ -1173,7 +1186,7 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
                 kpt2 = m_kpts2[n];
                 cv::Mat A;
                 cv::Mat y_k = kpt1->getLoc();
-                cv::Mat hamming = this->loss_func->collectDescriptorDistance(y_k, kpt2, A, 31);
+                cv::Mat hamming = this->loss_func->collectDescriptorDistance(y_k, kpt2, A, 7);
                 kpt1->setDescriptor(hamming, "hamming");
 
                 this->logKptState( kpt1, F_matrix );

@@ -15,7 +15,8 @@ Data.sequences:
 
 # -----Source-----
 # Data.folder: /Users/andreas/Documents/AROS/Datasets/          # Macbook
-Data.folder: /mnt/c/Users/and_t/Documents/AROS/Database/
+# Data.folder: /mnt/c/Users/and_t/Documents/AROS/Database/      # Work laptop
+Data.folder: /mnt/c/Users/andre/Documents/Datasets/           # Desktop
 
 # -----Ground truth-----
 Gt.pose_folder:  /Users/andreas/Documents/AROS/Datasets/KITTI_grayscale/poses/00.txt          # Macbook

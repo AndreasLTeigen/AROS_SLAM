@@ -121,7 +121,7 @@ class ORBOSExtractor : public Extractor
     private:
         int nfeatures = 500;
         float scaleFactor = 1.2f;
-        int nlevels = 1;//8;
+        int nlevels = 1;
         int fIniThFAST = 20;
         int fMinThFAST = 7;
 
