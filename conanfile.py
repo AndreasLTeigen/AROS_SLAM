@@ -16,7 +16,7 @@ class avg_slam_conan(ConanFile):
     def requirements(self):
         self.requires("cmake/3.20.4")
         self.requires("eigen/3.3.9")
-        self.requires("opencv/4.5.1")
+        self.requires("opencv/4.5.2")
         # self.requires("ceres-solver/2.1.0")
         self.requires("ceres-solver/2.0.0")
         self.requires("yaml-cpp/0.6.3")
