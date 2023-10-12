@@ -7,7 +7,7 @@ Method.preprocessor: none #hf #fft #autocor #blur
 Method.motion_prior: none #constant #gt #pre_est
 Method.extractor: orb_os #blockFeature #dd #orb #orb_os
 Method.matcher: BFMatcher #OF_F #KLT #phaseCorr #BFMatcher
-Method.pose_calculator: 5-point #blockShift #motionPrior #reproOpt #G_JET #5-point
+Method.pose_calculator: G_JET #blockShift #motionPrior #reproOpt #G_JET #5-point
 Method.point_reg_3D: none #None #all
 Method.point_cull_3D: none #None #OoW
 

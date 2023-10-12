@@ -25,7 +25,11 @@ struct ECOptSolver
                     const shared_ptr<KeyPoint2> kpt1,
                     const shared_ptr<KeyPoint2> kpt2,
                     const shared_ptr<Parametrization> parametrization, 
-                    const shared_ptr<LossFunction> loss_func )
+                    const shared_ptr<LossFunction> loss_func,
+                    const bool baseline,
+                    const bool kpt_free,
+                    const int n_reg_size,
+                    const double epsylon )
                 {
                     K1_ = K1;
                     K2_ = K2;
@@ -33,6 +37,11 @@ struct ECOptSolver
                     kpt2_ = kpt2,
                     loss_func_ = loss_func;
                     parametrization_ = parametrization;
+
+                    baseline_ = baseline;
+                    kpt_free_ = kpt_free;
+                    n_reg_size_ = n_reg_size;
+                    epsylon_ = epsylon;
 
                     cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
                     residual_.at<double>(0,0) = 10000;
@@ -43,7 +52,7 @@ struct ECOptSolver
     bool operator()( const double* p, const double* Y, double* residual ) const
     {
         cv::Mat y_k;
-        if (kpt_free && !baseline)
+        if (kpt_free_ && !baseline_)
         {
             y_k = (cv::Mat_<double>(3,1)<<  Y[0],
                                             Y[1],
@@ -56,7 +65,7 @@ struct ECOptSolver
                                             1);
         }
 
-        if ( !loss_func_->validKptLoc( y_k.at<double>(0,0), y_k.at<double>(1,0), kpt1_->getSize() ) && kpt_free)
+        if ( !loss_func_->validKptLoc( y_k.at<double>(0,0), y_k.at<double>(1,0), kpt1_->getSize() ) && kpt_free_)
         {
             residual[0] = kpt1_->getDescriptor("residual").at<double>(0,0);
         }
@@ -86,8 +95,8 @@ struct ECOptSolver
             
             if (false)
             {
-                residual[0] += (100*(cv::norm(v_k_opt) - (n_reg_size-epsylon))
-                                *(cv::norm(v_k_opt) - (n_reg_size-epsylon)));
+                residual[0] += (100*(cv::norm(v_k_opt) - (n_reg_size_-epsylon_))
+                                *(cv::norm(v_k_opt) - (n_reg_size_-epsylon_)));
             }
 
             cv::Mat residual_ = cv::Mat::zeros(1,1,CV_64F);
@@ -100,6 +109,9 @@ struct ECOptSolver
         return true;
     }
 
+    bool baseline_, kpt_free_;
+    int n_reg_size_;
+    double epsylon_;
     cv::Mat K1_, K2_, A_k_;
     shared_ptr<KeyPoint2> kpt1_, kpt2_;
     shared_ptr<LossFunction> loss_func_;
@@ -110,7 +122,17 @@ struct ECOptSolver
 
 
 
-
+GJET::GJET()
+{
+    YAML::Node config = YAML::LoadFile("poseCalculation/poseCalculationMethods/config.yaml");
+    this->linear = config["GJET.linear"].as<bool>();
+    this->baseline = config["GJET.baseline"].as<bool>();
+    this->kpt_free = config["GJET.kpt_free"].as<bool>();
+    this->use_motion_prior = config["GJET.use_motion_prior"].as<bool>();
+    this->revert_kpt = config["GJET.revert_kpt"].as<bool>();
+    this->n_reg_size = config["GJET.n_reg_size"].as<int>();
+    this->epsylon = config["GJET.epsylon"].as<double>();
+}
 
 int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
 {
@@ -121,14 +143,12 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     std::shared_ptr<Pose> rel_pose;
     std::shared_ptr<LossFunction> loss_func;
 
-    // YAML::Node config = YAML::LoadFile("config.yaml");
-
     compileMatchedCVPoints( frame1, frame2, pts1, pts2 );
     E_matrix = cv::findEssentialMat( pts1, pts2, frame1->getKMatrix(), cv::RANSAC, 0.999, 1.0, inliers );
 
     FrameData::removeOutlierMatches( inliers, frame1, frame2 );
 
-    if (use_motion_prior)
+    if (this->use_motion_prior)
     {
         rel_pose = frame1->getRelPose( frame2 );
     }
@@ -143,7 +163,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
 
 
     //shared_ptr<LossFunction> loss_func = std::make_shared<LossFunction>(img);
-    if (baseline)
+    if (this->baseline)
     {
         loss_func = std::make_shared<ReprojectionLoss>(img);
     }
@@ -195,7 +215,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
 
             //std::cout << "[" << point2D[0] << ", " << point2D[1] << "]" << std::endl;
             ceres::CostFunction* cost_function = new ceres::NumericDiffCostFunction<ECOptSolver, ceres::CENTRAL, 1, 6, 2>(
-                new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func));
+                new ECOptSolver(frame1->getKMatrix(), frame2->getKMatrix(), kpt1, kpt2, parametrization, loss_func, this->baseline, this->kpt_free, this->n_reg_size, this->epsylon));
             problem.AddResidualBlock(cost_function, nullptr, p, points2D.back()->loc_);
             itUpdate.addEvalKpt(kpt1, kpt2);
         }
@@ -268,15 +288,15 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
 
     KeyPointUpdate::removeInvalidMatches(frame1, frame2);
 
-    if (baseline && !linear && !kpt_free)
+    if (this->baseline && !this->linear && !this->kpt_free)
     {
         itUpdate.registerOptKptPosReprErr( frame1, frame2, F_matrix );
     }
-    if (baseline && linear)
+    if (this->baseline && this->linear)
     {
         itUpdate.registerOptKptPosLinear( frame1, frame2 );
     }
-    if (kpt_free && !baseline)
+    if (this->kpt_free && !this->baseline)
     {
         itUpdate.logY_k_opt(frame1, frame2, F_matrix, points2D);
         KeyPointUpdate::removeInvalidMatches(frame1, frame2);
@@ -295,7 +315,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     //######################################################################
 
     // Reverting keypoints to initial locations for blank slate with next image
-    if (revert_kpt && !kpt_free && !baseline)
+    if (this->revert_kpt && !this->kpt_free && !this->baseline)
     {
         itUpdate.revertKptsToInit();
     }
@@ -596,12 +616,16 @@ LossFunction::LossFunction(cv::Mat& img)
 {
     this->W = img.cols;
     this->H = img.rows;
+    YAML::Node config = YAML::LoadFile("poseCalculation/poseCalculationMethods/config.yaml");
+    this->n_reg_size = config["GJET.n_reg_size"].as<int>();
 }
 
 LossFunction::LossFunction(int W, int H)
 {
     this->W = W;
     this->H = H;
+    YAML::Node config = YAML::LoadFile("poseCalculation/poseCalculationMethods/config.yaml");
+    this->n_reg_size = config["GJET.n_reg_size"].as<int>();
 }
 
 int LossFunction::getImgWidth()
@@ -663,7 +687,7 @@ int LossFunction::calculateDescriptorRadius(int patch_size, int kpt_size)
 }
 
 // Test
-cv::Mat LossFunction::collectDescriptorDistance(cv::Mat& y_k, shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size_)
+cv::Mat LossFunction::collectDescriptorDistance(cv::Mat& y_k, shared_ptr<KeyPoint2> kpt2, cv::Mat& A)
 {
     return cv::Mat();
 }
@@ -706,7 +730,7 @@ double DJETLoss::calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr
 bool DJETLoss::validKptLoc( double x, double y, int kpt_size )
 {
     int desc_radius = this->calculateDescriptorRadius(this->patchSize, kpt_size);
-    return this->validDescriptorRegion( x, y, desc_radius + this->reg_size );
+    return this->validDescriptorRegion( x, y, desc_radius + this->n_reg_size );
 }
 
 bool DJETLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, double x_update, double y_update )
@@ -778,7 +802,7 @@ void DJETLoss::computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>&
 }
 
 
-cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size_ )
+cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
 {
     double y_k_x, y_k_y;
     cv::Mat local_descs, target_desc, hamming_dists, x, y, z;
@@ -792,7 +816,7 @@ cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPo
     // target_desc = kpt1->getDescriptor(this->descriptor_name);
     target_desc = kpt2->getDescriptor(this->descriptor_name);
 
-    local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, reg_size_ );
+    local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, this->n_reg_size );
     // local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt1, this->img, reg_size_ );
 
     // this->computeDescriptors(this->img, local_kpts, local_descs);
@@ -805,13 +829,12 @@ cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPo
     }
     
     hamming_dists = computeHammingDistance(target_desc, local_descs);
-    this->generateCoordinateVectors(y_k_x, y_k_y, reg_size_, x, y);
+    this->generateCoordinateVectors(y_k_x, y_k_y, this->n_reg_size, x, y);
     z = hamming_dists.t();
 
     // this->printLocalHammingDists(z, n_reg_size);
 
     A = fitQuadraticForm(x, y, z);
-
 
     // std::cout << "Kpt nr: " << kpt1->getKptId() << std::endl;
     // std::cout << "target_desc: " << target_desc << std::endl;
@@ -1098,12 +1121,16 @@ KeyPointUpdate::KeyPointUpdate(   cv::Mat& img, double* p, cv::Mat K1, cv::Mat K
     this->K1 = K1;
     this->K2 = K2;
     this->parametrization = parametrization;
+
+    YAML::Node config = YAML::LoadFile("poseCalculation/poseCalculationMethods/config.yaml");
+    this->baseline = config["GJET.baseline"].as<bool>();
+    this->kpt_free = config["GJET.kpt_free"].as<bool>();
 }
 
 
 void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_evaluation_point)
 {
-    if (new_evaluation_point && !baseline && !kpt_free)
+    if (new_evaluation_point && !this->baseline && !this->kpt_free)
     {
         std::cout << "NEW EVAL" << std::endl;
         double tot_loss = 0;
@@ -1186,7 +1213,7 @@ void KeyPointUpdate::PrepareForEvaluation(bool evaluate_jacobians, bool new_eval
                 kpt2 = m_kpts2[n];
                 cv::Mat A;
                 cv::Mat y_k = kpt1->getLoc();
-                cv::Mat hamming = this->loss_func->collectDescriptorDistance(y_k, kpt2, A, 7);
+                cv::Mat hamming = this->loss_func->collectDescriptorDistance(y_k, kpt2, A);
                 kpt1->setDescriptor(hamming, "hamming");
 
                 this->logKptState( kpt1, F_matrix );

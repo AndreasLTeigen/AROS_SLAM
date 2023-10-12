@@ -9,18 +9,10 @@
 #include "../../dataStructures/pose.hpp"
 #include "../../dataStructures/parametrization.hpp"
 
-static bool linear = false;
-static bool baseline = false;
-static bool kpt_free = false;
-static bool use_motion_prior = false;
-static bool revert_kpt = true;
-static int n_reg_size = 7;
-static double epsylon = 1.5;
-
 class LossFunction
 {
     protected:
-        int W, H;
+        int W, H, n_reg_size;
         ParamID paramId = ParamID::LIEPARAM;
 
         int nfeatures = 500;
@@ -69,7 +61,7 @@ class LossFunction
         static int calculateDescriptorRadius(int patch_size, int kpt_size);
 
         // Test
-        virtual cv::Mat collectDescriptorDistance(cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size_=n_reg_size);
+        virtual cv::Mat collectDescriptorDistance(cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A);
         
 };
 
@@ -77,7 +69,7 @@ class DJETLoss : public LossFunction
 {
     private:
         bool precompDescriptors = false;
-        int reg_size = n_reg_size;//7;
+        // int reg_size = n_reg_size;//7;
 
         cv::Mat img;
         std::vector<std::vector<cv::Mat>> descriptor_map;
@@ -94,7 +86,7 @@ class DJETLoss : public LossFunction
         void linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
-        cv::Mat collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size_=n_reg_size )override;
+        cv::Mat collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
         std::vector<cv::KeyPoint> generateLocalKpts( double kpt_x, double kpt_y, std::shared_ptr<KeyPoint2> kpt2, const cv::Mat& img, int reg_size_ );
         //cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
@@ -137,6 +129,15 @@ class GJET : public PoseCalculator
     private:
         ParamID paramId = ParamID::LIEPARAM;
 
+        // Settings
+        bool linear;
+        bool baseline;
+        bool kpt_free;
+        bool use_motion_prior;
+        bool revert_kpt;
+        int n_reg_size;
+        double epsylon;
+
         // Toggle Functions
         bool iteration_log = false;
 
@@ -148,7 +149,7 @@ class GJET : public PoseCalculator
         int n_matches = 0;
 
     public:
-        GJET(){};
+        GJET();
         ~GJET(){};
 
         int calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )override;
@@ -185,6 +186,9 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         std::shared_ptr<LossFunction> loss_func;
         std::shared_ptr<Parametrization> parametrization;
         std::vector<std::shared_ptr<KeyPoint2>> m_kpts1, m_kpts2;
+
+        bool baseline;
+        bool kpt_free;
     public:
         KeyPointUpdate(    cv::Mat& img, double* p, cv::Mat K1, cv::Mat K2, 
                             std::shared_ptr<LossFunction> loss_func, 
