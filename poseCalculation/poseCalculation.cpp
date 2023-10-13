@@ -4,7 +4,7 @@
 #include "poseCalculation.hpp"
 #include "poseCalculationMethods/point5OutlierRejection.hpp"
 #include "poseCalculationMethods/nonLinReproOpt.hpp"
-#include "poseCalculationMethods/GJET.hpp"
+#include "poseCalculationMethods/GJET2.hpp"
 #include "poseCalculationMethods/copyMotionPrior.hpp"
 #include "poseCalculationMethods/blockShift.hpp"
 
