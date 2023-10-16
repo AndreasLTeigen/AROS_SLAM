@@ -68,7 +68,7 @@ class LossFunction
 class DJETLoss : public LossFunction
 {
     private:
-        bool precompDescriptors = false;
+        bool precompDescriptors = true;
         // int reg_size = n_reg_size;//7;
 
         cv::Mat img;
@@ -139,7 +139,8 @@ class GJET : public PoseCalculator
         double epsylon;
 
         // Toggle Functions
-        bool iteration_log = false;
+        bool iteration_log = true;
+        bool match_score_loc = true;
 
         // Evaluation variables
         double avg_match_score = 0;
@@ -208,6 +209,7 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         
         void addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
                          std::shared_ptr<KeyPoint2> kpt2);
+        void setUpdated(bool value);
 
         double calculateScale(cv::Mat& v_k_opt);
 

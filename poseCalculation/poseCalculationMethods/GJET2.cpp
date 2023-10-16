@@ -242,8 +242,8 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     //options.linear_solver_type = ceres::ITERATIVE_SCHUR;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 100;
-    options.num_threads = 1;
+    options.max_num_iterations = 20;
+    options.num_threads = 100;
     //options.initial_trust_region_radius = 1;
     //options.max_trust_region_radius = 100;
     //options.logging_type = ceres::LoggingType::SILENT;
@@ -251,15 +251,33 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     if (!linear)
     {
         // Solve!
-        ceres::Solver::Summary summary;
-        ceres::Solve(options, &problem, &summary);
-        std::cout << summary.BriefReport() << "\n";
-
-        if ( this->iteration_log )
+        for (int i = 0; i < 5; ++i)
         {
-            ceresLogToFile(frame1->getImgId(), summary);
+            ceres::Solver::Summary summary;
+            ceres::Solve(options, &problem, &summary);
+            std::cout << summary.BriefReport() << "\n";
+
+            // Logging
+            if ( this->iteration_log )
+            {
+                ceresLogToFile(frame1->getImgId(), summary);
+            }
+            // Early stopping if no improvement is found.
+            if ( itUpdate.isUpdated() )
+            {
+                itUpdate.setUpdated(false);
+            }
+            else
+            {
+                break;
+            }
         }
     }
+
+    // if ( this->match_scre_log )
+    // {
+
+    // }
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -822,8 +840,8 @@ cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPo
     local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, this->n_reg_size );
     // local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt1, this->img, reg_size_ );
 
-    // this->computeDescriptors(this->img, local_kpts, local_descs);
     int a = local_kpts.size();
+    // this->computeDescriptors(this->img, local_kpts, local_descs);
     this->orb->compute( this->img, local_kpts, local_descs );
     int b = local_kpts.size();
     if (a != b)
@@ -1367,6 +1385,11 @@ void KeyPointUpdate::revertKptsToInit()
         kpt1->setCoordx(loc.at<double>(0,0));
         kpt1->setCoordy(loc.at<double>(1,0));
     }
+}
+
+void KeyPointUpdate::setUpdated(bool value)
+{
+    this->updated = value;
 }
 
 void KeyPointUpdate::addEvalKpt( std::shared_ptr<KeyPoint2> kpt1,
