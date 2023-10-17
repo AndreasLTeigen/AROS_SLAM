@@ -652,6 +652,30 @@ std::vector<cv::Point> FrameData::compileMatchedCVPoints( int matched_frame_nr )
     return matched_points;
 }
 
+std::vector<cv::KeyPoint> FrameData::compileMatchedCVKeyPoints( int matched_frame_nr )
+{
+    /*
+    Arguments:
+        matched_frame_nr:   Frame nr of connecting frame with matches of interest.
+    Returns:
+        matched_keypoints:  Vector containing the matched keypoints of "this" frame in a
+                            cv::KeyPoint format.
+    */
+    std::shared_lock lock(this->mutex_matched_kpts);
+
+    shared_ptr<KeyPoint2> kpt;
+    vector<shared_ptr<KeyPoint2>> matched_kpts = this->matched_kpts[matched_frame_nr];
+    vector<cv::KeyPoint> matched_cv_kpts(matched_kpts.size());
+
+    #pragma omp parallel for
+    for (int i = 0; i < matched_kpts.size(); i++)
+    {
+        kpt = matched_kpts[i];
+        matched_cv_kpts[ i ] = kpt->compileCVKeyPoint();
+    }
+    return matched_cv_kpts;
+}
+
 
 // ----------- Static read functions -------------
 cv::Mat FrameData::compilePointCoords( std::vector<std::shared_ptr<KeyPoint2>> kpts )
@@ -782,6 +806,27 @@ void compileMatchedCVPoints(std::shared_ptr<FrameData> frame1,
 
     pts1 = frame1->compileMatchedCVPoints( frame2->getFrameNr() );
     pts2 = frame2->compileMatchedCVPoints( frame1->getFrameNr() );
+}
+
+void compileMatchedCVKeyPoints( std::shared_ptr<FrameData> frame1, 
+                                std::shared_ptr<FrameData> frame2, 
+                                std::vector<cv::KeyPoint>& pts1, 
+                                std::vector<cv::KeyPoint>& pts2)
+{
+    /*
+    Arguments:
+        frame1:     Current frame.
+        frame2:     Previous frame.
+    Returns:
+        ptsX:       Vector containing the matched points of the respecitve 
+                    frames in <cv::KeyPoint> format.
+    */
+
+    std::shared_lock lock1(frame1->mutex_matched_kpts);
+    std::shared_lock lock2(frame2->mutex_matched_kpts);
+
+    pts1 = frame1->compileMatchedCVKeyPoints( frame2->getFrameNr() );
+    pts2 = frame2->compileMatchedCVKeyPoints( frame1->getFrameNr() );
 }
 
 void copyMatchedKptsLists(shared_ptr<FrameData> frame1,shared_ptr<FrameData> frame2, vector<shared_ptr<KeyPoint2>>& frame1_matched_kpts, vector<shared_ptr<KeyPoint2>>& frame2_matched_kpts )

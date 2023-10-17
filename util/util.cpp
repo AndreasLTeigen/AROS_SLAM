@@ -748,6 +748,13 @@ cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs )
     cv::Mat hamming_dists = cv::Mat::zeros(1, N, CV_64F);
     for ( int i = 0; i < N; ++i )
     {
+        if (target_desc.size() != region_descs.row(i).size())
+        {
+            std::cout << i << std::endl;
+            std::cout << target_desc << std::endl;
+            std::cout << region_descs.row(i) << std::endl;
+            std::cout << region_descs.size() << std::endl;
+        }
         hamming_dists.at<double>(0, i) = cv::norm(target_desc, region_descs.row(i), cv::NORM_HAMMING);
     }
     return hamming_dists;

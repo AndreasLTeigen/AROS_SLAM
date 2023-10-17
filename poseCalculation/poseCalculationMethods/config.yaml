@@ -5,3 +5,5 @@ GJET.use_motion_prior: false
 GJET.revert_kpt: true         # Revert keypoint and descriptor to original values.
 GJET.n_reg_size: 7            # Descriptor sampling area.
 GJET.epsylon: 1.5
+GJET.precom_descriptors: true
+GJET.descriptor_name: GJETDesc

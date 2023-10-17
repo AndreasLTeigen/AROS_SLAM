@@ -579,7 +579,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
             double b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
             //std::cout << "a: " << a << ", b: " << b << std::endl; 
 
-            std::cout << "Epiline: " << kpt->getLoc().t() * epiline << std::endl;
+            // std::cout << "Epiline: " << kpt->getLoc().t() * epiline << std::endl;
 
 
             // Checking intersects in all vertices of the image patch

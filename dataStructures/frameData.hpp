@@ -121,6 +121,7 @@ class FrameData
         std::vector<cv::Point2f> compileCV2DPoints();
         cv::Mat compileMatchedPointCoords( int matched_frame_nr );
         std::vector<cv::Point> compileMatchedCVPoints( int matched_frame_nr);
+        std::vector<cv::KeyPoint> compileMatchedCVKeyPoints(int matched_frame_nr);
         
         static cv::Mat compilePointCoords( 
                         std::vector<std::shared_ptr<KeyPoint2>> kpts );
@@ -145,6 +146,11 @@ class FrameData
                                            std::shared_ptr<FrameData> frame2, 
                                         std::vector<cv::Point>& frame1_points, 
                                         std::vector<cv::Point>& frame2_points);
+
+        friend void compileMatchedCVKeyPoints(  std::shared_ptr<FrameData> frame1, 
+                                                std::shared_ptr<FrameData> frame2, 
+                                        std::vector<cv::KeyPoint>& frame1_points, 
+                                        std::vector<cv::KeyPoint>& frame2_points);
 
         friend void copyMatchedKptsLists( std::shared_ptr<FrameData> frame1, 
                                           std::shared_ptr<FrameData> frame2, 

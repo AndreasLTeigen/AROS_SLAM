@@ -170,7 +170,13 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     else
     {
         loss_func = std::make_shared<DJETLoss>(img, matched_kpts1, matched_kpts2);
+        // Precomputed angle dependent descriptors (for speed)
+        if (loss_func->doPrecomputeDescriptors())
+        {
+            loss_func->prepareZeroAngleKeypoints(frame2);
+        }
     }
+
     
     // ------ CERES test -------------
     int N = matched_kpts1.size();
@@ -206,7 +212,8 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
             std::cout << kpt2->getKptId() << std::endl;
         }
 
-        if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) )
+        if( loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize()) \
+            && loss_func->validKptLoc( kpt2->getCoordX(), kpt2->getCoordY(), kpt2->getSize()))
         {
             //double point2D[2] = new {kpt1->getCoordX(), kpt1->getCoordY()};
             points2D.push_back(std::make_shared<Point2DGJET>(kpt1->getCoordX(), kpt1->getCoordY()));
@@ -243,7 +250,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
     options.max_num_iterations = 20;
-    options.num_threads = 100;
+    options.num_threads = 16;
     //options.initial_trust_region_radius = 1;
     //options.max_trust_region_radius = 100;
     //options.logging_type = ceres::LoggingType::SILENT;
@@ -272,12 +279,8 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
                 break;
             }
         }
+        std::cout << "End" << std::endl;
     }
-
-    // if ( this->match_scre_log )
-    // {
-
-    // }
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -324,15 +327,6 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     }
 
     //############################ EVALUATION ############################
-    // matched_kpts1 = frame1->getMatchedKeypoints( frame2->getFrameNr() );
-    // matched_kpts2 = frame2->getMatchedKeypoints( frame1->getFrameNr() );
-    // int old_mean = this->avg_match_score;
-    // this->n += 1;
-    // this->n_matches += matched_kpts1.size();
-    // this->avg_match_score = iterativeAverage(this->avg_match_score, GJET::calculateAvgMatchScore( img, matched_kpts1, matched_kpts2, loss_func ), this->n);
-    // this->avg_calculated_descs = iterativeAverage(this->avg_calculated_descs, loss_func->calculated_descs/matched_kpts1.size(), this->n);
-    // std::cout << "Avg match score: " << avg_match_score << std::endl;
-    // std::cout << "Avg calculated_descs: " << this->avg_calculated_descs << std::endl;
     //######################################################################
 
     // Reverting keypoints to initial locations for blank slate with next image
@@ -500,7 +494,7 @@ void GJET::analysis( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
                 z = sampleQuadraticForm(A, cv::Point(uv.at<double>(0,0),uv.at<double>(1,0)), cv::Size(kpt1->getSize(),kpt1->getSize()) );
                 hamming = kpt1->getDescriptor("hamming_log"+std::to_string(it));
                 // std::cout << hamming.size() << std::endl;
-                hamming = hamming.reshape(1,31);
+                hamming = hamming.reshape(1, this->n_reg_size);//31);
                 // std::cout << hamming.size() << std::endl;
                 // std::cout << hamming << std::endl;
             }
@@ -511,7 +505,8 @@ void GJET::analysis( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
             KeyPoint2::drawKptHeatMapAnalysis( canvas, img1, kpt1, cv::Point((border + size.width)*i, 840), size, F_matrix, kpt2, z, it, true, true ); // Keypoint after iteration step with linearized heat map
         }
 
-        saveImage(canvas, std::to_string(frame1->getFrameNr()) + "_" + std::to_string(it) + ".png", "output/img/");
+        bool success = saveImage(canvas, std::to_string(frame1->getFrameNr()) + "_" + std::to_string(it) + ".png", "output/img/");
+        std::cout << success << std::endl;
         //cv::imshow("KeyPoint Log iteration: " + std::to_string(it), canvas);
         //cv::waitKey(0);
     }
@@ -541,77 +536,6 @@ bool GJET::ceresLogToFile(int img_nr, ceres::Solver::Summary summary, std::strin
     return true;
 }
 
-double GJET::calculateAvgMatchScore(cv::Mat& img,
-                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
-                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2,
-                                        std::shared_ptr<LossFunction> loss_func )
-{
-    double avg_accum = 0;
-    cv::Mat d_x_k, d_y_k, y_k_opt;
-    cv::Mat d_y_k_list, hamming;
-    vector<cv::KeyPoint> y_k_list;
-    shared_ptr<KeyPoint2> kpt1, kpt2;
-    for ( int n = 0; n < matched_kpts1.size(); ++n )
-    {
-        kpt1 = matched_kpts1[n];
-        kpt2 = matched_kpts2[n];
-        y_k_opt = kpt1->getDescriptor("y_k_opt");
-        if ( !y_k_opt.empty() && loss_func->validKptLoc( y_k_opt.at<double>(0,0), y_k_opt.at<double>(1,0), kpt1->getSize() ))
-        {
-            cv::KeyPoint kpt_cv = cv::KeyPoint(y_k_opt.at<double>(0,0), y_k_opt.at<double>(1,0), kpt1->getSize());
-            y_k_list.push_back(kpt_cv);
-        }
-        else
-        {
-            KeyPointUpdate::invalidateMatch(kpt1, kpt2);
-        }
-    }
-    loss_func->computeDescriptors(img, y_k_list, d_y_k_list);
-    std::cout << "Average match score not updated correctly, fix line above" << std::endl;
-
-    int i = 0;
-    for ( int n = 0; n < matched_kpts1.size(); ++n )
-    {
-        kpt1 = matched_kpts1[n];
-        kpt2 = matched_kpts2[n];
-        if (KeyPointUpdate::validMatch(kpt1, kpt2))
-        {
-            d_x_k = kpt2->getDescriptor("orb");
-            d_y_k = d_y_k_list.row(i);
-            hamming = computeHammingDistance(d_x_k, d_y_k);
-            avg_accum += hamming.at<double>(0,0);
-            i++;
-        }
-    }
-    avg_accum = avg_accum / i;
-    return avg_accum;
-}
-
-
-double GJET::iterateMatchScoreVarianceN(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
-                                        std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, 
-                                        double old_varianceN, double old_mean, double mean)
-{
-    double accum, x_n;
-    shared_ptr<KeyPoint2> kpt1, kpt2;
-    cv::Mat desc1, desc2, hamming;
-
-    accum = old_varianceN;
-    for (int i = 0; i < matched_kpts1.size(); ++i)
-    {
-        kpt1 = matched_kpts1[i];
-        kpt2 = matched_kpts2[i];
-
-        desc1 = kpt1->getDescriptor("orb");
-        desc2 = kpt2->getDescriptor("orb");
-
-        hamming = computeHammingDistance(desc1, desc2);
-        x_n = hamming.at<double>(0,0);
-        accum = accum + (x_n - old_mean)*(x_n - mean);
-    }
-    return accum;
-}
-
 
 
 
@@ -639,6 +563,7 @@ LossFunction::LossFunction(cv::Mat& img)
     this->H = img.rows;
     YAML::Node config = YAML::LoadFile("poseCalculation/poseCalculationMethods/config.yaml");
     this->n_reg_size = config["GJET.n_reg_size"].as<int>();
+    this->descriptor_name = config["GJET.descriptor_name"].as<std::string>();
 }
 
 LossFunction::LossFunction(int W, int H)
@@ -647,6 +572,7 @@ LossFunction::LossFunction(int W, int H)
     this->H = H;
     YAML::Node config = YAML::LoadFile("poseCalculation/poseCalculationMethods/config.yaml");
     this->n_reg_size = config["GJET.n_reg_size"].as<int>();
+    this->descriptor_name = config["GJET.descriptor_name"].as<std::string>();
 }
 
 int LossFunction::getImgWidth()
@@ -708,7 +634,7 @@ int LossFunction::calculateDescriptorRadius(int patch_size, int kpt_size)
 }
 
 // Test
-cv::Mat LossFunction::collectDescriptorDistance(cv::Mat& y_k, shared_ptr<KeyPoint2> kpt2, cv::Mat& A)
+cv::Mat LossFunction::collectDescriptorDistance(cv::Mat& y_k, shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size)
 {
     return cv::Mat();
 }
@@ -732,6 +658,11 @@ DJETLoss::DJETLoss(cv::Mat& img, std::vector<std::shared_ptr<KeyPoint2>>& matche
         auto ms1 = duration_cast<milliseconds>(t2-t1);
         std::cout << "Dense descriptor calculation time: " << ms1.count() << "ms" << std::endl;
     }
+}
+
+bool DJETLoss::doPrecomputeDescriptors()
+{
+    return this->precompDescriptors;
 }
 
 double DJETLoss::calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)
@@ -823,11 +754,16 @@ void DJETLoss::computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>&
 }
 
 
-cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )
+cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size )
 {
     double y_k_x, y_k_y;
     cv::Mat local_descs, target_desc, hamming_dists, x, y, z;
     vector<cv::KeyPoint> local_kpts;
+
+    if (reg_size==-1)
+    {
+        reg_size = this->n_reg_size;
+    }
 
     y_k_x = y_k.at<double>(0,0);
     y_k_y = y_k.at<double>(1,0);
@@ -837,20 +773,32 @@ cv::Mat DJETLoss::collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPo
     // target_desc = kpt1->getDescriptor(this->descriptor_name);
     target_desc = kpt2->getDescriptor(this->descriptor_name);
 
-    local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, this->n_reg_size );
+    if (this->precompDescriptors)
+    {
+        local_kpts = this->generateLocalKptsNoAngle( y_k_x, y_k_y, kpt2, this->img, reg_size );
+    }
+    else
+    {
+        local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt2, this->img, reg_size );
+    }
     // local_kpts = this->generateLocalKpts( y_k_x, y_k_y, kpt1, this->img, reg_size_ );
 
     int a = local_kpts.size();
-    // this->computeDescriptors(this->img, local_kpts, local_descs);
-    this->orb->compute( this->img, local_kpts, local_descs );
+    this->computeDescriptors(this->img, local_kpts, local_descs);
+    // this->orb->compute( this->img, local_kpts, local_descs );
     int b = local_kpts.size();
     if (a != b)
     {
         std::cout << "WARNING: Retrieving invalid descriptor! " << a << " -> " << b << std::endl;
     }
-    
+
+    if (target_desc.empty())
+    {
+        std::cout << kpt2->getLoc() << std::endl;
+        std::cout << this->validKptLoc(kpt2->getCoordX(), kpt2->getCoordY(), kpt2->getSize()) << std::endl;
+    }
     hamming_dists = computeHammingDistance(target_desc, local_descs);
-    this->generateCoordinateVectors(y_k_x, y_k_y, this->n_reg_size, x, y);
+    this->generateCoordinateVectors(y_k_x, y_k_y, reg_size, x, y);
     z = hamming_dists.t();
 
     // this->printLocalHammingDists(z, n_reg_size);
@@ -913,6 +861,32 @@ vector<cv::KeyPoint> DJETLoss::generateLocalKpts( double kpt_x, double kpt_y, st
         {
             x = ref_x + col_j;
             local_kpts.push_back(cv::KeyPoint(x,y,size, angle, response, octave));
+        }
+    }
+    
+    return local_kpts;
+}
+
+vector<cv::KeyPoint> DJETLoss::generateLocalKptsNoAngle( double kpt_x, double kpt_y, std::shared_ptr<KeyPoint2> kpt2, const cv::Mat& img, int reg_size_ )
+{
+    // Assumes the local region around the keypoint will produce all valid descriptors.
+    
+    int octave = kpt2->getOctave();
+    double size = kpt2->getSize();
+    double response = kpt2->getResponse();
+    double x, y, ref_x, ref_y;
+    vector<cv::KeyPoint> local_kpts;
+
+    ref_x = kpt_x - reg_size_/2; 
+    ref_y = kpt_y - reg_size_/2;
+
+    for ( int row_i = 0; row_i < reg_size_; ++row_i )
+    {
+        y = ref_y + row_i;
+        for ( int col_j = 0; col_j < reg_size_; ++col_j )
+        {
+            x = ref_x + col_j;
+            local_kpts.push_back(cv::KeyPoint(x,y,size, 0, response, octave));
         }
     }
     
@@ -1034,6 +1008,55 @@ void DJETLoss::printCalculatedDescsLog()
 {
     std::cout << "Total number of descriptors calculated: " << this->calculated_descs << std::endl;
 }
+
+void DJETLoss::prepareZeroAngleKeypoints(shared_ptr<FrameData> frame2)
+{
+    cv::Mat desc;
+
+    vector<cv::KeyPoint> kpts2_cv = frame2->compileCVKeypoints();
+
+    vector<cv::KeyPoint> kpts2_cv_valid;
+    cv::KeyPoint kpt2;
+    for (int i = 0; i < kpts2_cv.size(); ++i)
+    {
+        kpt2 = kpts2_cv[i];
+        kpt2.angle = 0;
+        if (validKptLoc(double(kpt2.pt.x), double(kpt2.pt.y), kpt2.size))
+        {
+            kpts2_cv_valid.push_back(kpt2);
+        }
+    }
+
+    cv::Mat img = frame2->getImg();
+
+    int a = kpts2_cv_valid.size();
+    this->orb->compute( img, kpts2_cv_valid, desc );
+    int b = kpts2_cv_valid.size();
+
+    if (a != b)
+    {
+        std::cerr << "ERROR: Descriptors could not be calculated!" << std::endl;
+    }
+    std::cout << a << " -> " << b << std::endl; // TODO: Convert back to using ORB-SLAM extractor.
+
+    vector<shared_ptr<KeyPoint2>> kpts2 = frame2->getKeypoints();
+    int cnt = 0;
+    for (int i = 0; i < kpts2.size(); ++i)
+    {
+        if(this->validKptLoc(kpts2[i]->getCoordX(), kpts2[i]->getCoordY(), kpts2[i]->getSize()))
+        {
+            kpts2[i]->setDescriptor(desc.row(cnt), this->descriptor_name);
+            // std::cout << "i: " << i << "\t cnt: " << cnt << std::endl;
+            // std::cout << kpts2[i]->getLoc() << std::endl;
+            // std::cout << kpts2_cv_valid[cnt].pt << std::endl;
+            // std::cout << "-------------------" << std::endl;
+            cnt += 1;
+        }
+    }
+    std::cout << "COUNTER: " << cnt << std::endl;
+}
+
+
 
 
 
@@ -1249,7 +1272,7 @@ double KeyPointUpdate::evaluate()
                 kpt2 = m_kpts2[n];
                 cv::Mat A;
                 cv::Mat y_k = kpt1->getLoc();
-                cv::Mat hamming = this->loss_func->collectDescriptorDistance(y_k, kpt2, A);
+                cv::Mat hamming = this->loss_func->collectDescriptorDistance(y_k, kpt2, A);//, 31);
                 kpt1->setDescriptor(hamming, "hamming");
 
                 this->logKptState( kpt1, F_matrix );

@@ -23,16 +23,16 @@ class LossFunction
         int WTA_K = 2;
         int patchSize = 31;
         int fastThreshold = 20;
-        // cv::Ptr<cv::ORB> orb = cv::ORB::create( nfeatures,
-        //                                         scaleFactor,
-        //                                         nlevels,
-        //                                         edgeThreshold,
-        //                                         firstLevel,
-        //                                         WTA_K,
-        //                                         cv::ORB::FAST_SCORE,
-        //                                         patchSize,
-        //                                         fastThreshold);
-        cv::Ptr<cv::ORB> orb = cv::ORB::create();
+        cv::Ptr<cv::ORB> orb = cv::ORB::create( nfeatures,
+                                                scaleFactor,
+                                                nlevels,
+                                                edgeThreshold,
+                                                firstLevel,
+                                                WTA_K,
+                                                cv::ORB::FAST_SCORE,
+                                                patchSize,
+                                                fastThreshold);
+        // cv::Ptr<cv::ORB> orb = cv::ORB::create();
     public:
         LossFunction(cv::Mat& img);
         LossFunction(int W, int H);
@@ -48,9 +48,11 @@ class LossFunction
 
         virtual double calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)=0;
         virtual double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)=0;
+        virtual bool doPrecomputeDescriptors()=0;
         virtual bool validKptLoc( double x, double y, int kpt_size )=0;
         virtual bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, double x_update, double y_update )=0;
         virtual void linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )=0;
+        virtual void prepareZeroAngleKeypoints(std::shared_ptr<FrameData> frame2)=0;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
         double calculateTotalLoss(cv::Mat& F_matrix,
@@ -61,7 +63,7 @@ class LossFunction
         static int calculateDescriptorRadius(int patch_size, int kpt_size);
 
         // Test
-        virtual cv::Mat collectDescriptorDistance(cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A);
+        virtual cv::Mat collectDescriptorDistance(cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size=-1);
         
 };
 
@@ -79,6 +81,7 @@ class DJETLoss : public LossFunction
                                 std::vector<std::shared_ptr<KeyPoint2>>& matched_kpts2);
         ~DJETLoss(){};
 
+        bool doPrecomputeDescriptors()override;
         double calculateKptLoss(const cv::Mat& F_matrix, const cv::Mat& A_d_k, const cv::Mat& x_k, const cv::Mat& y_k, cv::Mat& v_k_opt)override;
         double calculateKptLoss(const cv::Mat& F_matrix, const std::shared_ptr<KeyPoint2> kpt1, const std::shared_ptr<KeyPoint2> kpt2, cv::Mat& v_k_opt)override;
         bool validKptLoc( double x, double y, int kpt_size )override;
@@ -86,8 +89,9 @@ class DJETLoss : public LossFunction
         void linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
         void computeDescriptors(const cv::Mat& img, std::vector<cv::KeyPoint>& kpt, cv::Mat& desc);
 
-        cv::Mat collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
+        cv::Mat collectDescriptorDistance( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A, int reg_size=-1 )override;
         std::vector<cv::KeyPoint> generateLocalKpts( double kpt_x, double kpt_y, std::shared_ptr<KeyPoint2> kpt2, const cv::Mat& img, int reg_size_ );
+        std::vector<cv::KeyPoint> generateLocalKptsNoAngle( double kpt_x, double kpt_y, std::shared_ptr<KeyPoint2> kpt2, const cv::Mat& img, int reg_size_ );
         //cv::Mat computeHammingDistance( cv::Mat& target_desc, cv::Mat& region_descs );
         void generateCoordinateVectors(double x_c, double y_c, int size, cv::Mat& x, cv::Mat& y);
         //void computeParaboloidNormalForAll( std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, cv::Mat& img );
@@ -98,6 +102,8 @@ class DJETLoss : public LossFunction
         void printLocalHammingDists( cv::Mat& hamming_dist_arr, int s );
         void printDescriptorMapFill();
         void printCalculatedDescsLog();
+
+        void prepareZeroAngleKeypoints(std::shared_ptr<FrameData> frame2)override;
 };
 
 class ReprojectionLoss : public LossFunction
@@ -111,6 +117,12 @@ class ReprojectionLoss : public LossFunction
         bool validKptLoc( double x, double y, int kpt_size )override;
         bool updateKeypoint( std::shared_ptr<KeyPoint2> kpt, double x_update, double y_update )override;
         void linearizeLossFunction( cv::Mat& y_k, std::shared_ptr<KeyPoint2> kpt2, cv::Mat& A )override;
+
+
+        // Not used, just because of virtual function in base class.
+        bool doPrecomputeDescriptors(){return false;};
+        void prepareZeroAngleKeypoints(std::shared_ptr<FrameData> frame2){};
+
 };
 
 
@@ -162,17 +174,6 @@ class GJET : public PoseCalculator
                         std::shared_ptr<FrameData> frame2, 
                         cv::Mat& img )override;
         bool ceresLogToFile(int img_nr, ceres::Solver::Summary summary, std::string file_path="output/ceresLog.txt");
-
-        // Evaluation functions
-        static double calculateAvgMatchScore(cv::Mat& img,
-                                                std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
-                                                std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2,
-                                                std::shared_ptr<LossFunction> loss_func );
-        static double calculateAverageMatchScore(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
-                                                    std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2);
-        static double iterateMatchScoreVarianceN(std::vector<std::shared_ptr<KeyPoint2>> matched_kpts1, 
-                                                    std::vector<std::shared_ptr<KeyPoint2>> matched_kpts2, 
-                                                    double old_varianceN, double old_mean, double mean);
 };
 
 class KeyPointUpdate : public ceres::EvaluationCallback
