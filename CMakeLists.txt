@@ -157,11 +157,10 @@ endif()
 
 
 # Including packages manually if needed
-if(${pangolin_active})
+if(${pangolin_active} AND NOT ${is_mac_os})
 
   #INCLUDING X11 MANUALLY
   find_package(X11 REQUIRED)
-
   message(STATUS "X11_FOUND = ${X11_FOUND}")
   message(STATUS "X11_INCLUDE_DIR = ${X11_INCLUDE_DIR}")
   message(STATUS "X11_LIBRARIES = ${X11_LIBRARIES}")

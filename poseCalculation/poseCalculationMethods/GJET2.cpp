@@ -405,9 +405,9 @@ double GJET::epipolarConstrainedOptimization(const cv::Mat& F_matrix, const cv::
     x1_k = x_k;
 
     // Helping definitions
-    F_d = I_s * F_matrix.t();
+    F_d = I_s * F_matrix;
     F_d_x = F_d*x1_k;
-    q_31 = -(y1_k.t()) * F_matrix.t() * (x1_k);
+    q_31 = -(y1_k.t()) * F_matrix * (x1_k);
     
     // KKT sub matrixes/vectors
     A_k = I_s * A_d_k * I_s.t();
