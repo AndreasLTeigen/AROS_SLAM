@@ -70,6 +70,9 @@ int main()
         }
         else
         {
+            std::cout << "PANGOLIN NOT ACTIVE\n";
+            std::cout << PANGOLIN_INSTALLED << std::endl;
+            std::cout << GUI_show << std::endl;
             avg_slam->run();
         }
 
