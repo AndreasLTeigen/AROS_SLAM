@@ -282,6 +282,14 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
         std::cout << "End" << std::endl;
     }
 
+    // TEMPORARY
+    if(p[5] > 0)
+    {
+        p[3] = -p[3];
+        p[4] = -p[4];
+        p[5] = -p[5];
+    }
+
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
     {
