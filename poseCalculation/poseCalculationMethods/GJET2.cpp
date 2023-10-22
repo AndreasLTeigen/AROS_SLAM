@@ -239,6 +239,8 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     }
     */
 
+   std::cout << *rel_pose->getParametrization(this->paramId) << std::endl;
+
     EarlyStoppingCheck early_stopping_check(itUpdate);
 
     // Configure the solver
@@ -252,8 +254,8 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     options.max_num_iterations = 20;
     options.num_threads = 16;
     //options.initial_trust_region_radius = 1;
-    //options.max_trust_region_radius = 100;
-    //options.logging_type = ceres::LoggingType::SILENT;
+    // options.max_trust_region_radius = 10;
+    options.logging_type = ceres::LoggingType::SILENT;
 
     if (!linear)
     {
@@ -282,13 +284,11 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
         std::cout << "End" << std::endl;
     }
 
-    // TEMPORARY
-    if(p[5] > 0)
-    {
-        p[3] = -p[3];
-        p[4] = -p[4];
-        p[5] = -p[5];
-    }
+    // NORM of translation
+    double norm = std::sqrt(p[3]*p[3] + p[4]*p[4] + p[5]*p[5]);
+    p[3] = p[3] / norm;
+    p[4] = p[4] / norm;
+    p[5] = p[5] / norm;
 
     std::cout << "p: ";
     for (int i = 0; i < 6; i++)
@@ -304,6 +304,16 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
 
     int n = sizeof(p) / sizeof(p[0]);
     vector<double> p_vec(p, p + n);
+
+    // TEMPORARY
+    if(p[5] > 0)
+    {
+        // p[3] = -p[3];
+        // p[4] = -p[4];
+        // p[5] = -p[5];
+        std::cout << "REVERSE!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+        cv::waitKey(0);
+    }
 
     rel_pose->setPose( p_vec, this->paramId );
 
@@ -1553,7 +1563,7 @@ ceres::CallbackReturnType EarlyStoppingCheck::operator()(const ceres::IterationS
 {
     // std::cout << "ITERATION CALLBACK: \n";
     double current_loss = this->itUpdate.evaluate();
-    std::cout << "Current loss: " << current_loss << "\t" << "Best loss: " << this->itUpdate.getBestLoss() << std::endl;
+    // std::cout << "Current loss: " << current_loss << "\t" << "Best loss: " << this->itUpdate.getBestLoss() << std::endl;
     if ( this->itUpdate.isUpdated() )
     {
         return ceres::SOLVER_TERMINATE_SUCCESSFULLY;

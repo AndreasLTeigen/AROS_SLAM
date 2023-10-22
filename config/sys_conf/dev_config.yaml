@@ -5,9 +5,9 @@ Dataset: kitti #kitti #euroc #varos #tartainair
 # -----Algorithms-----
 Method.preprocessor: none #hf #fft #autocor #blur
 Method.motion_prior: none #constant #gt #pre_est
-Method.extractor: orb_os #blockFeature #dd #orb #orb_os
+Method.extractor: orb #blockFeature #dd #orb #orb_os
 Method.matcher: BFMatcher #OF_F #KLT #phaseCorr #BFMatcher
-Method.pose_calculator: G_JET #blockShift #motionPrior #reproOpt #G_JET #5-point
+Method.pose_calculator: 5-point #blockShift #motionPrior #reproOpt #G_JET #5-point
 Method.point_reg_3D: none #None #all
 Method.point_cull_3D: none #None #OoW
 
@@ -38,7 +38,7 @@ ILog.path: output/IncrementalLog/
 
 # -----UI config-----
 UI.display_img: true
-UI.GUI_show: true
+UI.GUI_show: false
 UI.map_width: 1024
 UI.map_height: 768
 UI.camera_size: 0.15
@@ -50,12 +50,12 @@ UI.true_color: true
 
 # -----Sequencer parameter config-----
 Seq.auto_start: true
-Seq.starting_frame_nr: 0
+Seq.starting_frame_nr: 80
 Seq.frame_skip: 0
 
 # -----Tracker parameter config-----
 Trck.short_log.show: true
-Trck.log.show: true
+Trck.log.show: false
 Trck.timing_show: true
 Trck.tracking_window_length: 50
 Trck.init_frame_buffer_size: 1
