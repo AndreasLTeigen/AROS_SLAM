@@ -492,7 +492,6 @@ void LieParam::composeRMatrixAndTParam(std::vector<double>& param, cv::Mat& R, c
     
     cv::Rodrigues(rot, R);
 
-
     t = (cv::Mat_<double>(3,1) <<
             param[3],
             param[4],

@@ -305,24 +305,27 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     int n = sizeof(p) / sizeof(p[0]);
     vector<double> p_vec(p, p + n);
 
-    // TEMPORARY
-    if(p[5] > 0)
+    for (int i = 0; i < 6; i++)
     {
-        // p[3] = -p[3];
-        // p[4] = -p[4];
-        // p[5] = -p[5];
-        std::cout << "REVERSE!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-        cv::waitKey(0);
+        std::cout << p_vec[i] << ", ";
     }
+    std::cout << "\n";
 
-    rel_pose->setPose( p_vec, this->paramId );
+    // rel_pose->setPose( p_vec, this->paramId );
 
     //std::cout << rel_pose->getTMatrix() << std::endl;
-    cv::Mat R_matrix = rel_pose->getRMatrix();
-    cv::Mat t_vector = rel_pose->gettvector();
-    t_vector = normalizeMat(t_vector);
-    rel_pose->updatePoseVariables( R_matrix, t_vector );
-    rel_pose->updateParametrization(this->paramId); // This function call can be removed
+    // cv::Mat R_matrix = rel_pose->getRMatrix();
+    // cv::Mat t_vector = rel_pose->gettvector();
+    // t_vector = normalizeMat(t_vector);
+    // rel_pose->updatePoseVariables( R_matrix, t_vector );
+    // rel_pose->updateParametrization(this->paramId); // This function call can be removed
+
+    cv::Mat R, t;
+    parametrization->composeRMatrixAndTParam(p_vec, R, t);
+    t = normalizeMat(t);
+    E_matrix = composeEMatrix(R,t);
+    rel_pose->setPose(E_matrix);
+    rel_pose->updateParametrization(this->paramId);
     std::cout << "p_corr: " << *rel_pose->getParametrization(this->paramId) << "\n";
 
     F_matrix = fundamentalFromEssential( rel_pose->getEMatrix(), frame1->getKMatrix(), frame2->getKMatrix() );
@@ -1055,7 +1058,7 @@ void DJETLoss::prepareZeroAngleKeypoints(shared_ptr<FrameData> frame2)
     {
         std::cerr << "ERROR: Descriptors could not be calculated!" << std::endl;
     }
-    std::cout << a << " -> " << b << std::endl; // TODO: Convert back to using ORB-SLAM extractor.
+    // std::cout << a << " -> " << b << std::endl;
 
     vector<shared_ptr<KeyPoint2>> kpts2 = frame2->getKeypoints();
     int cnt = 0;
@@ -1064,14 +1067,9 @@ void DJETLoss::prepareZeroAngleKeypoints(shared_ptr<FrameData> frame2)
         if(this->validKptLoc(kpts2[i]->getCoordX(), kpts2[i]->getCoordY(), kpts2[i]->getSize()))
         {
             kpts2[i]->setDescriptor(desc.row(cnt), this->descriptor_name);
-            // std::cout << "i: " << i << "\t cnt: " << cnt << std::endl;
-            // std::cout << kpts2[i]->getLoc() << std::endl;
-            // std::cout << kpts2_cv_valid[cnt].pt << std::endl;
-            // std::cout << "-------------------" << std::endl;
             cnt += 1;
         }
     }
-    std::cout << "COUNTER: " << cnt << std::endl;
 }
 
 
