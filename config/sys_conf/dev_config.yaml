@@ -50,7 +50,7 @@ UI.true_color: true
 
 # -----Sequencer parameter config-----
 Seq.auto_start: true
-Seq.starting_frame_nr: 80
+Seq.starting_frame_nr: 0
 Seq.frame_skip: 0
 
 # -----Tracker parameter config-----

@@ -137,17 +137,18 @@ GJET::GJET()
 
     bool precomp_descriptor = config["GJET.precomp_descriptors"].as<bool>();
     std::string desc_name = config["GJET.descriptor_name"].as<std::string>();
-    if (precomp_descriptor && desc_name=="orb")
+    if (!this->baseline)
     {
-        std::cerr << "ERROR: If you precomp_descriptors is true, descriptor_name \
-                        can not be 'orb'!" << std::endl;
+        if (precomp_descriptor && desc_name=="orb")
+        {
+            std::cerr << "ERROR: If you precomp_descriptors is true, descriptor_name \
+                            can not be 'orb'!" << std::endl;
+        }
+        else if (!precomp_descriptor && desc_name!="orb")
+        {
+            std::cerr << "ERROR: If you precomp_descriptors is false, descriptor_name must be 'orb'!" << std::endl;
+        }
     }
-    else if (!precomp_descriptor && desc_name!="orb")
-    {
-        std::cerr << "ERROR: If you precomp_descriptors is false, descriptor_name \
-                        must be 'orb'!" << std::endl;
-    }
-    
 }
 
 int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& img )
@@ -249,6 +250,14 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
 
     EarlyStoppingCheck early_stopping_check(itUpdate);
 
+    int num_it = 20;
+    int num_update = 5;
+    if (this->baseline)
+    {
+        num_it = 100;
+        num_update = 1;
+    }
+
     // Configure the solver
     ceres::Solver::Options options;
     options.callbacks.push_back(&early_stopping_check);
@@ -257,7 +266,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     //options.linear_solver_type = ceres::ITERATIVE_SCHUR;
     options.linear_solver_type = ceres::DENSE_QR;
     options.minimizer_progress_to_stdout = true;
-    options.max_num_iterations = 20;
+    options.max_num_iterations = num_it;
     options.num_threads = 16;
     //options.initial_trust_region_radius = 1;
     // options.max_trust_region_radius = 10;
@@ -266,7 +275,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     if (!linear)
     {
         // Solve!
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < num_update; ++i)
         {
             ceres::Solver::Summary summary;
             ceres::Solve(options, &problem, &summary);
@@ -316,16 +325,6 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     }
     std::cout << "\n";
 
-    // --------------- LOGGING ---------------
-    if (loss_func->doPrecomputeDescriptors())
-    {
-        loss_func->prepareZeroAngleKeypoints(frame1);
-    }
-    this->logDescriptorDistance(frame1->getImgId(), loss_func,
-                                itUpdate.getMKpts1(),
-                                itUpdate.getMKpts2());
-    // ---------------------------------------
-
     // rel_pose->setPose( p_vec, this->paramId );
 
     //std::cout << rel_pose->getTMatrix() << std::endl;
@@ -334,6 +333,23 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     // t_vector = normalizeMat(t_vector);
     // rel_pose->updatePoseVariables( R_matrix, t_vector );
     // rel_pose->updateParametrization(this->paramId); // This function call can be removed
+
+        // --------------- LOGGING ---------------
+    if (this->baseline)
+    {
+        itUpdate.logOptimalPosDescriptorDistance(this->hamming_log_file);
+    }
+    else
+    {
+        if (loss_func->doPrecomputeDescriptors())
+        {
+            loss_func->prepareZeroAngleKeypoints(frame1);
+        }
+        this->logDescriptorDistance(frame1->getImgId(), loss_func,
+                                    itUpdate.getMKpts1(),
+                                    itUpdate.getMKpts2());
+    }
+    // ---------------------------------------
 
     cv::Mat R, t;
     parametrization->composeRMatrixAndTParam(p_vec, R, t);
@@ -351,6 +367,7 @@ int GJET::calculate( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameDat
     if (this->baseline && !this->linear && !this->kpt_free)
     {
         itUpdate.registerOptKptPosReprErr( frame1, frame2, F_matrix );
+        // itUpdate.logDescriptorDistanceOfOptKptPos(frame1, frame2)
     }
     if (this->baseline && this->linear)
     {
@@ -1162,8 +1179,6 @@ double ReprojectionLoss::calculateKptLoss(const cv::Mat& F_matrix, const std::sh
     x_k = kpt2->getLoc();
 
     epiline = F_matrix * x_k;
-    //epiline = x_k.t() * F_matrix;
-    //std::cout << epiline << std::endl;
     a = epiline.at<double>(0);
     b = epiline.at<double>(1);
     c = epiline.at<double>(2);
@@ -1186,7 +1201,7 @@ bool ReprojectionLoss::validKptLoc( double x, double y, int kpt_size )
 {
     // Keypoint has to be inside a border equal to the descriptor radius.
     int desc_radius = this->calculateDescriptorRadius(this->patchSize, kpt_size);
-    return validDescriptorRegion( x, y, desc_radius );
+    return validDescriptorRegion( x, y, desc_radius+1 );
 }
 
 bool ReprojectionLoss::updateKeypoint( std::shared_ptr<KeyPoint2> kpt, double x_update, double y_update )
@@ -1359,7 +1374,135 @@ double KeyPointUpdate::evaluate()
         this->it_num += 1;
         return tot_loss;
     }
+    else if(this->baseline)
+    {
+        double tot_loss = 0;
+        double loss;
+        cv::Mat R, t, A, y_k, x_k, v_k_opt, y_k_opt, E_matrix, F_matrix;
+        shared_ptr<KeyPoint2> kpt1, kpt2;
+
+        vector<double> p_vec;
+        for ( int i = 0; i < 6; ++i )
+        {
+            p_vec.push_back(this->p[i]);
+        }
+
+        this->parametrization->composeRMatrixAndTParam( p_vec, R, t );
+        E_matrix = composeEMatrix( R, t );
+        F_matrix = fundamentalFromEssential( E_matrix, this->K1, this->K2 );
+        
+        for ( int n = 0; n < this->m_kpts1.size(); ++n )
+        {
+            kpt1 = m_kpts1[n];
+            kpt2 = m_kpts2[n];
+
+            if (!this->loss_func->validKptLoc( kpt1->getCoordX(), kpt1->getCoordY(), kpt1->getSize() ))
+            {
+                loss = kpt1->getDescriptor("residual").at<double>(0,0);
+                tot_loss += loss*loss/2;        // atnote: Why is loss increasing to keep keypoints in image?
+                continue;
+            }
+
+            y_k = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX(),
+                                            kpt1->getCoordY(),
+                                            1);
+
+            x_k = (cv::Mat_<double>(3,1)<<  kpt2->getCoordX(),
+                                            kpt2->getCoordY(),
+                                            1);
+
+            loss = this->loss_func->calculateKptLoss( F_matrix, A, x_k, y_k, v_k_opt );
+            kpt1->setDescriptor(v_k_opt, "v_k_opt");
+            tot_loss += loss*loss/2;
+        }
+        if (best_loss == -1)
+        {
+            std::cout << "Saving initial state..." << std::endl;
+            for ( int n = 0; n < this->m_kpts1.size(); ++n )
+            {
+                kpt1 = m_kpts1[n];
+                cv::Mat loc = kpt1->getLoc();
+                kpt1->setDescriptor(loc, "init");
+
+                v_k_opt = kpt1->getDescriptor("v_k_opt");
+                y_k_opt = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX() + v_k_opt.at<double>(0,0),
+                                                    kpt1->getCoordY() + v_k_opt.at<double>(1,0),
+                                                    1);
+            }
+            best_loss = tot_loss;
+        }
+        if (tot_loss < best_loss || best_loss == -1)
+        {
+            best_loss = tot_loss;
+            for ( int n = 0; n < this->m_kpts1.size(); ++n )
+            {
+                kpt1 = m_kpts1[n];
+                v_k_opt = kpt1->getDescriptor("v_k_opt");
+                y_k_opt = (cv::Mat_<double>(3,1)<<  kpt1->getCoordX() + v_k_opt.at<double>(0,0),
+                                                    kpt1->getCoordY() + v_k_opt.at<double>(1,0),
+                                                    1);
+                kpt1->setDescriptor(y_k_opt, "y_k_opt");
+            }
+        }
+        // std::cout << "   " << this->it_num << ": " << tot_loss << "\n";
+        this->it_num += 1;
+        return tot_loss;
+    }
     return -1.0;
+}
+
+cv::Mat KeyPointUpdate::getOptimalPosDescriptors()
+{
+    cv::Mat opt_loc, desc;
+    cv::KeyPoint kpt1_cv;
+    vector<cv::KeyPoint> kpts_cv;
+    for ( shared_ptr<KeyPoint2> kpt1 : this->m_kpts1)
+    {
+        kpt1_cv = kpt1->compileCVKeyPoint();
+        opt_loc = kpt1->getDescriptor("y_k_opt");
+        // std::cout << opt_loc << std::endl;
+        kpt1_cv.pt.x = opt_loc.at<double>(0,0);
+        kpt1_cv.pt.y = opt_loc.at<double>(1,0);
+        // std::cout << kpt1_cv.pt << std::endl;
+        if (loss_func->validKptLoc(opt_loc.at<double>(0,0), opt_loc.at<double>(1,0), kpt1->getSize()))
+        {
+            kpts_cv.push_back(kpt1_cv);
+        }
+    }
+    this->loss_func->computeDescriptors(this->img, kpts_cv, desc);
+    return desc;
+}
+
+void KeyPointUpdate::logOptimalPosDescriptorDistance(std::string filename)
+{
+    std::string desc_name = loss_func->descriptor_name;
+
+    cv::Mat descs1 = this->getOptimalPosDescriptors();
+
+    assert(this->m_kpts1.size() == this->m_kpts2.size());
+    assert(this->m_kpts1.size() == descs1.rows);
+
+    int i = 0;
+    cv::Mat opt_loc;
+    shared_ptr<KeyPoint2> kpt1, kpt2;
+    for ( int n = 0; n < this->m_kpts1.size(); ++n )
+    {
+        kpt1 = this->m_kpts1[n];
+        kpt2 = this->m_kpts2[n];
+
+        opt_loc = kpt1->getDescriptor("y_k_opt");
+
+        if (loss_func->validKptLoc(opt_loc.at<double>(0,0), opt_loc.at<double>(1,0), kpt1->getSize()))
+        {
+            cv::Mat desc1 = descs1.row(i);
+            cv::Mat desc2 = kpt2->getDescriptor(desc_name);
+            cv::Mat hamming = computeHammingDistance(desc2, desc1);
+            int h = hamming.at<double>(0);
+            writeInt2File(filename, h, ",");
+            i+=1;
+        }
+    }
+    writeString2File(filename, "");
 }
 
 void KeyPointUpdate::logY_k_opt(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, 

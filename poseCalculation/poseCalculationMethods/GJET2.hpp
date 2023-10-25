@@ -206,6 +206,8 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         double getBestLoss();
         std::vector<std::shared_ptr<KeyPoint2>> getMKpts1();
         std::vector<std::shared_ptr<KeyPoint2>> getMKpts2();
+        cv::Mat getOptimalPosDescriptors();
+        void logOptimalPosDescriptorDistance(std::string filename);
         void logY_k_opt(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat F_matrix, std::vector<std::shared_ptr<Point2DGJET>> points2D);
         void registerOptKptPosReprErr( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& F_matrix );
         void registerOptKptPosLinear( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);

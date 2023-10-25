@@ -1,9 +1,9 @@
 GJET.linear: false    # True for passthrough of initialization.
-GJET.baseline:  false # True for reprojection loss.
+GJET.baseline:  true # True for reprojection loss.
 GJET.kpt_free: false  # Keypoint positions are part of the optimization variables of CERES.
 GJET.use_motion_prior: false
 GJET.revert_kpt: true         # Revert keypoint and descriptor to original values.
 GJET.n_reg_size: 9            # Descriptor sampling area.
 GJET.epsylon: 1.5
-GJET.precomp_descriptors: true
-GJET.descriptor_name: GJETDesc
+GJET.precomp_descriptors: false
+GJET.descriptor_name: orb #GJETDesc
