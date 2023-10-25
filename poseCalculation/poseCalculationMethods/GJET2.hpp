@@ -140,6 +140,7 @@ class GJET : public PoseCalculator
 {
     private:
         ParamID paramId = ParamID::LIEPARAM;
+        std::string hamming_log_file = "output/hamming.txt";
 
         // Settings
         bool linear;

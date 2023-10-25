@@ -133,6 +133,8 @@ GJET::GJET()
     this->n_reg_size = config["GJET.n_reg_size"].as<int>();
     this->epsylon = config["GJET.epsylon"].as<double>();
 
+    clearFile(this->hamming_log_file);
+
     bool precomp_descriptor = config["GJET.precomp_descriptors"].as<bool>();
     std::string desc_name = config["GJET.descriptor_name"].as<std::string>();
     if (precomp_descriptor && desc_name=="orb")
@@ -574,7 +576,6 @@ bool GJET::logDescriptorDistance(int img_nr,
                                 vector<shared_ptr<KeyPoint2>> m_kpts1,
                                 vector<shared_ptr<KeyPoint2>> m_kpts2)
 {
-    std::string file_name = "output/hamming.txt";
     std::string desc_name = loss_func->descriptor_name;
 
     assert(m_kpts1.size() == m_kpts2.size());
@@ -591,10 +592,10 @@ bool GJET::logDescriptorDistance(int img_nr,
             cv::Mat desc2 = kpt2->getDescriptor(desc_name);
             cv::Mat hamming = computeHammingDistance(desc2, desc1);
             int h = hamming.at<double>(0);
-            writeInt2File(file_name, h, ",");
+            writeInt2File(this->hamming_log_file, h, ",");
         }
     }
-    writeString2File(file_name, "");
+    writeString2File(this->hamming_log_file, "");
     return true;
 }
 
