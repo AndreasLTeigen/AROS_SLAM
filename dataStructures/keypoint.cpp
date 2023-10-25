@@ -403,7 +403,7 @@ void KeyPoint2::drawEnhancedKeyPoint( cv::Mat &canvas, cv::Mat &img, std::shared
         //double a = - epiline[0].x / epiline[0].y;
         //double b = - epiline[0].z / epiline[0].y;
 
-        cv::Mat epiline = F_matrix.t() * matched_kpt->getLoc();
+        cv::Mat epiline = F_matrix * matched_kpt->getLoc();
         // std::cout << epiline << std::endl;
         // std::cout << kpt->getLoc().t() * epiline << std::endl;
         double a = - epiline.at<double>(0,0) / epiline.at<double>(1,0);
@@ -574,7 +574,7 @@ void KeyPoint2::drawKptHeatMapAnalysis( cv::Mat &canvas, cv::Mat &img, std::shar
 
             cv::Mat epiline, x2_k;
             x2_k = matched_kpt->getLoc();
-            epiline = F_matrix.t() * x2_k;
+            epiline = F_matrix * x2_k;
             double a = -epiline.at<double>(0,0) / epiline.at<double>(1,0);
             double b = -epiline.at<double>(2,0) / epiline.at<double>(1,0);
             //std::cout << "a: " << a << ", b: " << b << std::endl; 

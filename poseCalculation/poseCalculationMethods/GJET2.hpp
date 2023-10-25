@@ -70,7 +70,7 @@ class LossFunction
 class DJETLoss : public LossFunction
 {
     private:
-        bool precompDescriptors = true;
+        bool precompDescriptors;
         // int reg_size = n_reg_size;//7;
 
         cv::Mat img;
@@ -174,6 +174,10 @@ class GJET : public PoseCalculator
                         std::shared_ptr<FrameData> frame2, 
                         cv::Mat& img )override;
         bool ceresLogToFile(int img_nr, ceres::Solver::Summary summary, std::string file_path="output/ceresLog.txt");
+        bool logDescriptorDistance( int img_nr, 
+                                    std::shared_ptr<LossFunction> loss_func,
+                                    std::vector<std::shared_ptr<KeyPoint2>> m_kpts1,
+                                    std::vector<std::shared_ptr<KeyPoint2>> m_kpts2);
 };
 
 class KeyPointUpdate : public ceres::EvaluationCallback
@@ -199,6 +203,8 @@ class KeyPointUpdate : public ceres::EvaluationCallback
         ~KeyPointUpdate(){};
         bool isUpdated();
         double getBestLoss();
+        std::vector<std::shared_ptr<KeyPoint2>> getMKpts1();
+        std::vector<std::shared_ptr<KeyPoint2>> getMKpts2();
         void logY_k_opt(std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat F_matrix, std::vector<std::shared_ptr<Point2DGJET>> points2D);
         void registerOptKptPosReprErr( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2, cv::Mat& F_matrix );
         void registerOptKptPosLinear( std::shared_ptr<FrameData> frame1, std::shared_ptr<FrameData> frame2);

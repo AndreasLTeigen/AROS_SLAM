@@ -38,7 +38,7 @@ ILog.path: output/IncrementalLog/
 
 # -----UI config-----
 UI.display_img: true
-UI.GUI_show: true
+UI.GUI_show: false
 UI.map_width: 1024
 UI.map_height: 768
 UI.camera_size: 0.15
@@ -49,7 +49,7 @@ UI.menu_bar_width: 175
 UI.true_color: true
 
 # -----Sequencer parameter config-----
-Seq.auto_start: false
+Seq.auto_start: true
 Seq.starting_frame_nr: 80
 Seq.frame_skip: 0
 
